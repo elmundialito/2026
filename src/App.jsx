@@ -1266,7 +1266,7 @@ export default function Mundialito() {
   const [showSync,setShowSync]=useState(false);
   const [showLoad,setShowLoad]=useState(false);
   const [showHostSwitch,setShowHostSwitch]=useState(false);
-  const [spectatorPoolCode,setSpectatorPoolCode]=useState(null);
+  const [spectatorPoolCode,setSpectatorPoolCode]=useState(()=>{try{return window.localStorage?.getItem('mundi_spectator_code')||null;}catch(e){return null;}});
   const [showPoolMgr,setShowPoolMgr]=useState(false);
   const [pools,setPools]=useState([{id:"default",name:"My Pool"}]);
   const [activePoolId,setActivePoolId]=useState("default");

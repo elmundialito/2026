@@ -1,5 +1,45 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 
+// ── Firebase ──────────────────────────────────────────────────
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA-tdvChprSHgpq2a8u_zz25iYxWqxdrEw",
+  authDomain: "mundialito2026-c1c81.firebaseapp.com",
+  projectId: "mundialito2026-c1c81",
+  storageBucket: "mundialito2026-c1c81.firebasestorage.app",
+  messagingSenderId: "881830828469",
+  appId: "1:881830828469:web:48c3b78104d6f1beb6a1fc"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+// Generate a random 4-letter code
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+async function savePool(code, state) {
+  try {
+    await setDoc(doc(db, 'pools', code), { state: encode(state), updatedAt: Date.now() });
+    return true;
+  } catch(e) { console.error('Save failed:', e); return false; }
+}
+
+async function loadPool(code) {
+  try {
+    const snap = await getDoc(doc(db, 'pools', code.toUpperCase()));
+    if (!snap.exists()) return null;
+    return decode(snap.data().state);
+  } catch(e) { console.error('Load failed:', e); return null; }
+}
+
+
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
 const LOCAL_KEY = "mundi_v11";
 
@@ -289,44 +329,94 @@ function RulesList() {
   );
 }
 
-function SyncModal({open,onClose,code}) {
+function SyncModal({open,onClose,st}) {
+  const [status,setStatus]=useState("idle"); // idle | saving | done | error
+  const [poolCode,setPoolCode]=useState(null);
   const [copied,setCopied]=useState(false);
-  const [copiedUrl,setCopiedUrl]=useState(false);
+
+  const handleShare=async()=>{
+    setStatus("saving");
+    const code=generateCode();
+    const ok=await savePool(code,st);
+    if(ok){setPoolCode(code);setStatus("done");}
+    else{setStatus("error");}
+  };
+
   if(!open)return null;
-  const shareUrl=getShareUrl(code||"");
-  const isHosted=window.location.protocol==="https:"&&window.location.hostname!=="localhost";
   return(
-    <Modal open={open} onClose={onClose} title="SHARE UPDATE">
-      {isHosted?(
+    <Modal open={open} onClose={()=>{setStatus("idle");setPoolCode(null);onClose();}} title="SHARE UPDATE">
+      {status==="idle"&&(
         <>
-          <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>Copy this link and send it in WhatsApp. When they open it the scores load automatically — no code needed.</div>
-          <div style={{background:"rgba(10,22,40,0.7)",border:"1px solid #2a3a5c",borderRadius:8,padding:"10px 12px",marginBottom:12,fontFamily:"monospace",fontSize:11,color:"#c9a84c",wordBreak:"break-all"}}>{shareUrl}</div>
-          <button onClick={()=>{navigator.clipboard?.writeText(shareUrl);setCopiedUrl(true);setTimeout(()=>setCopiedUrl(false),2000);}} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",marginBottom:8}}>{copiedUrl?"✓ LINK COPIED!":"🔗 COPY LINK"}</button>
-          <button onClick={()=>{navigator.clipboard?.writeText(code||"");setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer",marginBottom:8}}>{copied?"✓ Copied":"Also copy raw code"}</button>
-        </>
-      ):(
-        <>
-          <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>Copy this code and send it to your group. They tap <strong style={{color:"#6b9bd1"}}>📥 Load update</strong> and paste it in to see the latest scores and standings.</div>
-          <textarea readOnly value={code||""} style={{width:"100%",height:90,padding:12,borderRadius:8,border:"1px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#c9a84c",fontFamily:"monospace",fontSize:10,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:12}}/>
-          <button onClick={()=>{navigator.clipboard?.writeText(code||"");setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",marginBottom:8}}>{copied?"✓ COPIED!":"📋 COPY CODE"}</button>
+          <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:20,lineHeight:1.6}}>
+            Generate a 4-letter code and share it with your group. They enter it on their phone to load the latest scores instantly.
+          </div>
+          <button onClick={handleShare} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer"}}>
+            📋 GENERATE CODE
+          </button>
         </>
       )}
-      <button onClick={onClose} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Close</button>
+      {status==="saving"&&(
+        <div style={{textAlign:"center",padding:"24px 0",fontFamily:"'Bebas Neue'",fontSize:18,color:"#c9a84c",letterSpacing:2}}>Saving…</div>
+      )}
+      {status==="done"&&poolCode&&(
+        <>
+          <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>
+            Send this code to your group in WhatsApp. They tap <strong style={{color:"#6b9bd1"}}>📥 Load update</strong> and type it in.
+          </div>
+          <div style={{textAlign:"center",padding:"20px 0",fontFamily:"'Bebas Neue'",fontSize:56,color:"#c9a84c",letterSpacing:12,background:"rgba(201,168,76,0.08)",borderRadius:14,border:"2px solid rgba(201,168,76,0.3)",marginBottom:16}}>
+            {poolCode}
+          </div>
+          <button onClick={()=>{navigator.clipboard?.writeText(poolCode);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",marginBottom:8}}>
+            {copied?"✓ COPIED!":"📋 COPY CODE"}
+          </button>
+          <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",textAlign:"center"}}>Code expires in 30 days</div>
+        </>
+      )}
+      {status==="error"&&(
+        <>
+          <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#d97757",marginBottom:16}}>Something went wrong saving to the database. Check your connection and try again.</div>
+          <button onClick={()=>setStatus("idle")} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:"#d97757",color:"white",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>TRY AGAIN</button>
+        </>
+      )}
     </Modal>
   );
 }
 
 function LoadModal({open,onClose,onLoad}) {
-  const [val,setVal]=useState("");const [err,setErr]=useState("");
+  const [val,setVal]=useState("");
+  const [err,setErr]=useState("");
+  const [loading,setLoading]=useState(false);
   if(!open)return null;
-  const doLoad=()=>{const e=onLoad(val.trim());if(e){setErr(e);return;}setVal("");setErr("");onClose();};
+
+  const doLoad=async()=>{
+    const code=val.trim().toUpperCase();
+    if(!code)return;
+    setLoading(true);setErr("");
+    const data=await loadPool(code);
+    setLoading(false);
+    if(!data){setErr("Code not found — check it and try again.");return;}
+    const e=onLoad(data);
+    if(e){setErr(e);return;}
+    setVal("");setErr("");onClose();
+  };
+
   return(
     <Modal open={open} onClose={onClose} title="LOAD UPDATE">
-      <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>Paste the code your host sent you to see the latest scores and standings.</div>
-      <textarea value={val} onChange={e=>{setVal(e.target.value);setErr("");}} placeholder="Paste code here (starts with M2: or MUNDI:)…" style={{width:"100%",height:90,padding:12,borderRadius:8,border:err?"1px solid #d97757":"1px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"monospace",fontSize:10,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:err?6:12}}/>
+      <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>
+        Enter the 4-letter code your host sent you.
+      </div>
+      <input
+        value={val}
+        onChange={e=>{setVal(e.target.value.toUpperCase().slice(0,4));setErr("");}}
+        placeholder="e.g. MUN8"
+        maxLength={4}
+        style={{width:"100%",padding:"16px",borderRadius:10,border:err?"1.5px solid #d97757":"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:10,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:err?6:16}}
+      />
       {err&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#d97757",marginBottom:12}}>{err}</div>}
       <div style={{display:"flex",gap:8}}>
-        <button onClick={doLoad} disabled={!val.trim()} style={{flex:1,padding:"13px 0",borderRadius:10,border:"none",background:val.trim()?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:val.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:val.trim()?"pointer":"default"}}>LOAD UPDATE</button>
+        <button onClick={doLoad} disabled={val.trim().length<4||loading} style={{flex:1,padding:"13px 0",borderRadius:10,border:"none",background:val.trim().length===4?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:val.trim().length===4?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:val.trim().length===4?"pointer":"default"}}>
+          {loading?"LOADING…":"LOAD UPDATE"}
+        </button>
         <button onClick={onClose} style={{padding:"13px 20px",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button>
       </div>
     </Modal>
@@ -1074,6 +1164,20 @@ export default function Mundialito() {
 
   const handleBeHost=()=>{const id="pool_"+Date.now();setPools([{id,name:"My Pool"}]);setActivePoolId(id);setActivePoolName("My Pool");setSt(EMPTY);setIsHost(true);setAppState("host");};
 
+  const handleFirebaseLoad=(decoded)=>{
+    try{
+      const merged=mergeState(EMPTY,decoded);
+      setSt(merged);setIsHost(false);
+      if(merged.draftLocked){
+        const seen=window.localStorage?.getItem("mundi_intro_seen");
+        if(seen){setAppState("spectator");setActiveTab("group");}
+        else{setAppState("spectator_intro");}
+      }else if(merged.setupLocked){setAppState("spectator");setActiveTab("draft");}
+      else{setAppState("spectator");setActiveTab("setup");}
+      return null;
+    }catch(e){return "Something went wrong.";}
+  };
+
   const handleJoinAttempt=code=>{try{const decoded=decode(code.trim());if(!decoded)return "Invalid code — make sure you copied the full code starting with M2:";const merged=mergeState(EMPTY,decoded);setSt(merged);setIsHost(false);if(merged.draftLocked){const seen=window.localStorage?.getItem("mundi_intro_seen");if(seen){setAppState("spectator");setActiveTab("group");}else{setAppState("spectator_intro");}}else if(merged.setupLocked){setAppState("spectator");setActiveTab("draft");}else{setAppState("spectator");setActiveTab("setup");}return null;}catch(e){return "Something went wrong. Try copying the code again.";}};
 
   if(appState==="loading")return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}><div style={{fontFamily:"'Bebas Neue'",fontSize:48,color:"#c9a84c",letterSpacing:10}}>MUNDIALITO</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#5a6a8a"}}>Loading…</div></div></>);
@@ -1115,8 +1219,8 @@ export default function Mundialito() {
       </div>
       <div style={{paddingBottom:48}}>{tabContent()}</div>
       <Modal open={showRules} onClose={()=>setShowRules(false)} title="HOW IT WORKS"><RulesList/></Modal>
-      <SyncModal open={showSync} onClose={()=>setShowSync(false)} code={syncCode}/>
-      <LoadModal open={showLoad} onClose={()=>setShowLoad(false)} onLoad={handleJoinAttempt}/>
+      <SyncModal open={showSync} onClose={()=>setShowSync(false)} st={st}/>
+      <LoadModal open={showLoad} onClose={()=>setShowLoad(false)} onLoad={handleFirebaseLoad}/>
       <PoolMgrModal/>
     </div></>
   );

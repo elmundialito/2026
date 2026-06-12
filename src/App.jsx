@@ -1293,8 +1293,33 @@ export default function Mundialito() {
         }
       }catch(e){}
     }
-    // Fall back to localStorage
+    // Fall back to localStorage for host
     try{const raw=window.localStorage?.getItem(LOCAL_KEY);if(raw){const saved=JSON.parse(raw);setSt(mergeState(EMPTY,saved.st));setPools(saved.pools||[{id:"default",name:"My Pool"}]);setActivePoolId(saved.activePoolId||"default");setActivePoolName(saved.activePoolName||"My Pool");setIsHost(true);setAppState("host");return;}}catch(e){}
+    // Check for saved spectator code — auto-load their pool
+    try{
+      const savedCode=window.localStorage?.getItem("mundi_spectator_code");
+      if(savedCode){
+        setAppState("loading");
+        loadPool(savedCode).then(data=>{
+          if(data){
+            const merged=mergeState(EMPTY,data);
+            setSt(merged);setIsHost(false);
+            setSpectatorPoolCode(savedCode);
+            if(merged.draftLocked){
+              const seen=window.localStorage?.getItem("mundi_intro_seen");
+              if(seen){setAppState("spectator");setActiveTab("group");}
+              else{setAppState("spectator_intro");}
+            }else if(merged.setupLocked){setAppState("spectator");setActiveTab("draft");}
+            else{setAppState("spectator");setActiveTab("setup");}
+          } else {
+            // Code no longer valid, go to welcome
+            window.localStorage?.removeItem("mundi_spectator_code");
+            setAppState("welcome");
+          }
+        }).catch(()=>setAppState("welcome"));
+        return;
+      }
+    }catch(e){}
     setAppState("welcome");
   },[]);
   useEffect(()=>{if(appState!=="host")return;try{window.localStorage?.setItem(LOCAL_KEY,JSON.stringify({st,pools,activePoolId,activePoolName}));}catch(e){};},[st,appState,pools,activePoolId,activePoolName]);
@@ -1314,7 +1339,11 @@ export default function Mundialito() {
     try{
       const merged=mergeState(EMPTY,decoded);
       setSt(merged);setIsHost(false);
-      if(code)setSpectatorPoolCode(code.toUpperCase());
+      const upperCode=code?code.toUpperCase():null;
+      if(upperCode){
+        setSpectatorPoolCode(upperCode);
+        try{window.localStorage?.setItem("mundi_spectator_code",upperCode);}catch(e){}
+      }
       if(merged.draftLocked){
         const seen=window.localStorage?.getItem("mundi_intro_seen");
         if(seen){setAppState("spectator");setActiveTab("group");}
@@ -1368,7 +1397,7 @@ export default function Mundialito() {
         <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"#c9a84c",lineHeight:1}}>MUNDIALITO</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>World Cup 2026 · 🇨🇦 🇺🇸 🇲🇽 · June 11 – July 19</div>
         <button onClick={()=>setShowRules(true)} style={{position:"absolute",top:20,right:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:18,cursor:"pointer"}}>?</button>
-          <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");}catch(e){}window.location.reload();}}} style={{position:"absolute",top:20,left:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
+          <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");window.localStorage?.removeItem("mundi_spectator_code");}catch(e){}window.location.reload();}}} style={{position:"absolute",top:20,left:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
       </div>
       <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,padding:"10px 16px 0",flexWrap:"wrap"}}>
         {isHost?(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)"}}><span style={{fontSize:11}}>🎙️</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#c9a84c",letterSpacing:1}}>HOST</span></div><button onClick={()=>setShowPoolMgr(true)} style={{padding:"4px 12px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4,maxWidth:160,overflow:"hidden"}}>🏆 <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activePoolName}</span> ▾</button><button onClick={()=>setShowSync(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"#c9a84c",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📋 Share update</button></>):(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(107,155,209,0.1)",border:"1px solid rgba(107,155,209,0.3)"}}><span style={{fontSize:11}}>👀</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#6b9bd1",letterSpacing:1}}>SPECTATOR</span></div><button onClick={()=>setShowLoad(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(107,155,209,0.4)",background:"rgba(107,155,209,0.1)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📥 Load update</button>

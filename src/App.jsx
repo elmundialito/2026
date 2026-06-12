@@ -24,11 +24,21 @@ function generateCode() {
   return code;
 }
 
-async function savePool(code, state) {
+async function savePool(code, state, password) {
   try {
-    await setDoc(doc(db, 'pools', code), { state: encode(state), updatedAt: Date.now() });
+    const data = { state: encode(state), updatedAt: Date.now() };
+    if (password) data.password = password;
+    await setDoc(doc(db, 'pools', code), data, { merge: true });
     return true;
   } catch(e) { console.error('Save failed:', e); return false; }
+}
+
+async function checkPassword(code, password) {
+  try {
+    const snap = await getDoc(doc(db, 'pools', code.toUpperCase()));
+    if (!snap.exists()) return false;
+    return snap.data().password === password;
+  } catch(e) { return false; }
 }
 
 async function loadPool(code) {
@@ -332,23 +342,26 @@ function RulesList() {
 function SyncModal({open,onClose,st,poolCode,setPoolCode}) {
   const [status,setStatus]=useState("idle"); // idle | choosing | saving | done | error
   const [customCode,setCustomCode]=useState("");
+  const [password,setPassword]=useState("");
+  const [showPw,setShowPw]=useState(false);
   const [copied,setCopied]=useState(false);
+
+  // Load saved password from localStorage
+  const [savedPw,setSavedPw]=useState(()=>{try{return window.localStorage?.getItem("mundi_host_pw")||"";}catch(e){return "";}});
 
   useEffect(()=>{
     if(open){
       if(poolCode){
-        // Already have a code — just update the database
-        doSave(poolCode);
+        doSave(poolCode, savedPw);
       } else {
-        // First time — ask for a code
         setStatus("choosing");
       }
     }
   },[open]);
 
-  const doSave=async(code)=>{
+  const doSave=async(code, pw)=>{
     setStatus("saving");
-    const ok=await savePool(code,st);
+    const ok=await savePool(code, st, pw||undefined);
     if(ok){
       setPoolCode(code);
       try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}
@@ -361,26 +374,41 @@ function SyncModal({open,onClose,st,poolCode,setPoolCode}) {
   const handleChoose=()=>{
     const code=customCode.trim().toUpperCase();
     if(code.length<2)return;
-    doSave(code);
+    if(!password.trim())return;
+    try{window.localStorage?.setItem("mundi_host_pw",password.trim());}catch(e){}
+    setSavedPw(password.trim());
+    doSave(code, password.trim());
   };
 
   if(!open)return null;
   return(
-    <Modal open={open} onClose={()=>{setStatus("idle");setCustomCode("");onClose();}} title="SHARE UPDATE">
+    <Modal open={open} onClose={()=>{setStatus("idle");setCustomCode("");setPassword("");onClose();}} title="SHARE UPDATE">
       {status==="choosing"&&(
         <>
           <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>
-            Choose a short code for your pool — your group will use this every time. 2–6 characters, letters and numbers only.
+            Set a code and password for your pool. Your family uses the code to load scores. The password lets you switch to host mode on any device.
           </div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:"#5a6a8a",marginBottom:6}}>POOL CODE (2–6 CHARACTERS)</div>
           <input
             value={customCode}
             onChange={e=>setCustomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6))}
             placeholder="e.g. CS26"
             maxLength={6}
-            style={{width:"100%",padding:"16px",borderRadius:10,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:10,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:16}}
+            style={{width:"100%",padding:"14px",borderRadius:10,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:8,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:14}}
           />
-          <button onClick={handleChoose} disabled={customCode.trim().length<2} style={{width:"100%",padding:"14px 0",borderRadius:10,border:"none",background:customCode.trim().length>=2?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:customCode.trim().length>=2?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:customCode.trim().length>=2?"pointer":"default"}}>
-            SET CODE →
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:"#5a6a8a",marginBottom:6}}>HOST PASSWORD</div>
+          <div style={{position:"relative",marginBottom:16}}>
+            <input
+              type={showPw?"text":"password"}
+              value={password}
+              onChange={e=>setPassword(e.target.value)}
+              placeholder="Choose a password"
+              style={{width:"100%",padding:"12px 44px 12px 14px",borderRadius:10,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:15,outline:"none",boxSizing:"border-box"}}
+            />
+            <button onClick={()=>setShowPw(s=>!s)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:"#5a6a8a",cursor:"pointer",fontSize:16}}>{showPw?"🙈":"👁"}</button>
+          </div>
+          <button onClick={handleChoose} disabled={customCode.trim().length<2||!password.trim()} style={{width:"100%",padding:"14px 0",borderRadius:10,border:"none",background:customCode.trim().length>=2&&password.trim()?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:customCode.trim().length>=2&&password.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:customCode.trim().length>=2&&password.trim()?"pointer":"default"}}>
+            SAVE & SHARE →
           </button>
         </>
       )}
@@ -398,15 +426,15 @@ function SyncModal({open,onClose,st,poolCode,setPoolCode}) {
           <button onClick={()=>{navigator.clipboard?.writeText(poolCode);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",marginBottom:8}}>
             {copied?"✓ COPIED!":"📋 COPY CODE"}
           </button>
-          <button onClick={()=>{try{window.localStorage?.removeItem("mundi_pool_code");}catch(e){}setPoolCode(null);setCustomCode("");setStatus("choosing");}} style={{width:"100%",padding:"9px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
-            Change code
+          <button onClick={()=>{try{window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");}catch(e){}setPoolCode(null);setCustomCode("");setPassword("");setSavedPw("");setStatus("choosing");}} style={{width:"100%",padding:"9px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
+            Change code / password
           </button>
         </>
       )}
       {status==="error"&&(
         <>
           <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#d97757",marginBottom:16}}>Something went wrong. Check your connection and try again.</div>
-          <button onClick={()=>doSave(poolCode||customCode.trim().toUpperCase())} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:"#d97757",color:"white",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>TRY AGAIN</button>
+          <button onClick={()=>doSave(poolCode||customCode.trim().toUpperCase(), savedPw||password.trim())} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:"#d97757",color:"white",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>TRY AGAIN</button>
         </>
       )}
     </Modal>
@@ -414,7 +442,7 @@ function SyncModal({open,onClose,st,poolCode,setPoolCode}) {
 }
 
 
-function LoadModal({open,onClose,onLoad}) {
+function LoadModal({open,onClose,onLoad,onHostLoad}) {
   const [val,setVal]=useState("");
   const [err,setErr]=useState("");
   const [loading,setLoading]=useState(false);
@@ -427,7 +455,7 @@ function LoadModal({open,onClose,onLoad}) {
     const data=await loadPool(code);
     setLoading(false);
     if(!data){setErr("Code not found — check it and try again.");return;}
-    const e=onLoad(data);
+    const e=onLoad(data, code);
     if(e){setErr(e);return;}
     setVal("");setErr("");onClose();
   };
@@ -435,22 +463,20 @@ function LoadModal({open,onClose,onLoad}) {
   return(
     <Modal open={open} onClose={onClose} title="LOAD UPDATE">
       <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>
-        Enter the 4-letter code your host sent you.
+        Enter your pool code to load the latest scores.
       </div>
       <input
         value={val}
-        onChange={e=>{setVal(e.target.value.toUpperCase().slice(0,4));setErr("");}}
-        placeholder="e.g. MUN8"
-        maxLength={4}
-        style={{width:"100%",padding:"16px",borderRadius:10,border:err?"1.5px solid #d97757":"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:10,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:err?6:16}}
+        onChange={e=>{setVal(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6));setErr("");}}
+        placeholder="e.g. CS26"
+        maxLength={6}
+        style={{width:"100%",padding:"16px",borderRadius:10,border:err?"1.5px solid #d97757":"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:8,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:err?6:16}}
       />
       {err&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#d97757",marginBottom:12}}>{err}</div>}
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={doLoad} disabled={val.trim().length<4||loading} style={{flex:1,padding:"13px 0",borderRadius:10,border:"none",background:val.trim().length===4?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:val.trim().length===4?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:val.trim().length===4?"pointer":"default"}}>
-          {loading?"LOADING…":"LOAD UPDATE"}
-        </button>
-        <button onClick={onClose} style={{padding:"13px 20px",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button>
-      </div>
+      <button onClick={doLoad} disabled={val.trim().length<2||loading} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:val.trim().length>=2?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:val.trim().length>=2?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:val.trim().length>=2?"pointer":"default",marginBottom:8}}>
+        {loading?"LOADING…":"LOAD UPDATE"}
+      </button>
+      <button onClick={onClose} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button>
     </Modal>
   );
 }
@@ -1146,6 +1172,51 @@ function JoinScreen({onJoin,onBack}) {
   return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div style={{maxWidth:420,width:"100%",background:"linear-gradient(165deg,#0f1e38,#0a1628)",borderRadius:20,border:"1px solid rgba(201,168,76,0.35)",padding:"32px 28px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>📋</div><div style={{fontFamily:"'Bebas Neue'",fontSize:26,color:"#c9a84c",letterSpacing:3,marginBottom:8}}>LOAD POOL</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:20,lineHeight:1.6}}>Ask your host to tap <strong style={{color:"#c9a84c"}}>📋 Share update</strong> and send you the code. Paste it below.</div><textarea value={val} onChange={e=>{setVal(e.target.value);setErr("");}} placeholder="Paste code here (starts with M2:)…" style={{width:"100%",height:100,padding:12,borderRadius:10,border:err?"1.5px solid #d97757":"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"monospace",fontSize:10,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:err?6:16,textAlign:"left"}}/>{err&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#d97757",marginBottom:12,textAlign:"left"}}>{err}</div>}<div style={{display:"flex",gap:8}}><button onClick={onBack} style={{padding:"12px 16px",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>← Back</button><button onClick={doJoin} disabled={!val.trim()} style={{flex:1,padding:"12px 0",borderRadius:10,border:"none",background:val.trim()?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:val.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:val.trim()?"pointer":"default"}}>LOAD POOL</button></div></div></div></>);
 }
 
+function SwitchToHostModal({open,onClose,onSuccess,poolCode}) {
+  const [pw,setPw]=useState("");
+  const [err,setErr]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [showPw,setShowPw]=useState(false);
+  if(!open)return null;
+
+  const doSwitch=async()=>{
+    if(!pw.trim())return;
+    setLoading(true);setErr("");
+    const ok=await checkPassword(poolCode,pw.trim());
+    setLoading(false);
+    if(!ok){setErr("Wrong password — try again.");return;}
+    // Save password locally so they don't have to enter it again on this device
+    try{window.localStorage?.setItem("mundi_host_pw",pw.trim());}catch(e){}
+    setPw("");setErr("");onSuccess();
+  };
+
+  return(
+    <Modal open={open} onClose={()=>{setPw("");setErr("");onClose();}} title="HOST ACCESS">
+      <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>
+        Enter your host password to unlock full edit access on this device.
+      </div>
+      <div style={{position:"relative",marginBottom:err?6:16}}>
+        <input
+          type={showPw?"text":"password"}
+          value={pw}
+          onChange={e=>{setPw(e.target.value);setErr("");}}
+          onKeyDown={e=>e.key==="Enter"&&doSwitch()}
+          placeholder="Host password"
+          autoFocus
+          style={{width:"100%",padding:"12px 44px 12px 14px",borderRadius:10,border:err?"1.5px solid #d97757":"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:15,outline:"none",boxSizing:"border-box"}}
+        />
+        <button onClick={()=>setShowPw(s=>!s)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:"#5a6a8a",cursor:"pointer",fontSize:16}}>{showPw?"🙈":"👁"}</button>
+      </div>
+      {err&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#d97757",marginBottom:12}}>{err}</div>}
+      <button onClick={doSwitch} disabled={!pw.trim()||loading} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:pw.trim()?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:pw.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:pw.trim()?"pointer":"default",marginBottom:8}}>
+        {loading?"CHECKING…":"UNLOCK HOST ACCESS"}
+      </button>
+      <button onClick={()=>{setPw("");setErr("");onClose();}} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button>
+    </Modal>
+  );
+}
+
+
 export default function Mundialito() {
   const [appState,setAppState]=useState("loading");
   const [isHost,setIsHost]=useState(false);
@@ -1154,6 +1225,8 @@ export default function Mundialito() {
   const [showRules,setShowRules]=useState(false);
   const [showSync,setShowSync]=useState(false);
   const [showLoad,setShowLoad]=useState(false);
+  const [showHostSwitch,setShowHostSwitch]=useState(false);
+  const [spectatorPoolCode,setSpectatorPoolCode]=useState(null);
   const [showPoolMgr,setShowPoolMgr]=useState(false);
   const [pools,setPools]=useState([{id:"default",name:"My Pool"}]);
   const [activePoolId,setActivePoolId]=useState("default");
@@ -1197,10 +1270,11 @@ export default function Mundialito() {
 
   const handleBeHost=()=>{const id="pool_"+Date.now();setPools([{id,name:"My Pool"}]);setActivePoolId(id);setActivePoolName("My Pool");setSt(EMPTY);setIsHost(true);setAppState("host");};
 
-  const handleFirebaseLoad=(decoded)=>{
+  const handleFirebaseLoad=(decoded, code)=>{
     try{
       const merged=mergeState(EMPTY,decoded);
       setSt(merged);setIsHost(false);
+      if(code)setSpectatorPoolCode(code.toUpperCase());
       if(merged.draftLocked){
         const seen=window.localStorage?.getItem("mundi_intro_seen");
         if(seen){setAppState("spectator");setActiveTab("group");}
@@ -1245,7 +1319,8 @@ export default function Mundialito() {
         <button onClick={()=>setShowRules(true)} style={{position:"absolute",top:20,right:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:18,cursor:"pointer"}}>?</button>
       </div>
       <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,padding:"10px 16px 0",flexWrap:"wrap"}}>
-        {isHost?(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)"}}><span style={{fontSize:11}}>🎙️</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#c9a84c",letterSpacing:1}}>HOST</span></div><button onClick={()=>setShowPoolMgr(true)} style={{padding:"4px 12px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4,maxWidth:160,overflow:"hidden"}}>🏆 <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activePoolName}</span> ▾</button><button onClick={()=>setShowSync(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"#c9a84c",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📋 Share update</button></>):(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(107,155,209,0.1)",border:"1px solid rgba(107,155,209,0.3)"}}><span style={{fontSize:11}}>👀</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#6b9bd1",letterSpacing:1}}>SPECTATOR</span></div><button onClick={()=>setShowLoad(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(107,155,209,0.4)",background:"rgba(107,155,209,0.1)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📥 Load update</button></>)}
+        {isHost?(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)"}}><span style={{fontSize:11}}>🎙️</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#c9a84c",letterSpacing:1}}>HOST</span></div><button onClick={()=>setShowPoolMgr(true)} style={{padding:"4px 12px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4,maxWidth:160,overflow:"hidden"}}>🏆 <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activePoolName}</span> ▾</button><button onClick={()=>setShowSync(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"#c9a84c",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📋 Share update</button></>):(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(107,155,209,0.1)",border:"1px solid rgba(107,155,209,0.3)"}}><span style={{fontSize:11}}>👀</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#6b9bd1",letterSpacing:1}}>SPECTATOR</span></div><button onClick={()=>setShowLoad(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(107,155,209,0.4)",background:"rgba(107,155,209,0.1)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📥 Load update</button>
+            {spectatorPoolCode&&<button onClick={()=>setShowHostSwitch(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"#c9a84c",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🎙️ Host mode</button>}</>)}
       </div>
       <div style={{display:"flex",justifyContent:"center",gap:2,padding:"14px 12px 0",marginBottom:26}}>
         {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);return(<button key={tab.id} onClick={()=>{if(open)setActiveTab(tab.id);}} style={{padding:"9px 6px 11px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid #c9a84c":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"#c9a84c":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tab.label}</div></button>);})}
@@ -1254,6 +1329,7 @@ export default function Mundialito() {
       <Modal open={showRules} onClose={()=>setShowRules(false)} title="HOW IT WORKS"><RulesList/></Modal>
       <SyncModal open={showSync} onClose={()=>setShowSync(false)} st={st} poolCode={poolCode} setPoolCode={setPoolCode}/>
       <LoadModal open={showLoad} onClose={()=>setShowLoad(false)} onLoad={handleFirebaseLoad}/>
+        <SwitchToHostModal open={showHostSwitch} onClose={()=>setShowHostSwitch(false)} poolCode={spectatorPoolCode} onSuccess={()=>{setIsHost(true);setShowHostSwitch(false);}}/>
       <PoolMgrModal/>
     </div></>
   );

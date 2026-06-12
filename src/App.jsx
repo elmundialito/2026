@@ -1167,9 +1167,49 @@ function SpectatorIntro({st,initials,onComplete}) {
 }
 
 function JoinScreen({onJoin,onBack}) {
-  const [val,setVal]=useState("");const [err,setErr]=useState("");
-  const doJoin=()=>{const e=onJoin(val.trim());if(e)setErr(e);};
-  return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div style={{maxWidth:420,width:"100%",background:"linear-gradient(165deg,#0f1e38,#0a1628)",borderRadius:20,border:"1px solid rgba(201,168,76,0.35)",padding:"32px 28px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>📋</div><div style={{fontFamily:"'Bebas Neue'",fontSize:26,color:"#c9a84c",letterSpacing:3,marginBottom:8}}>LOAD POOL</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:20,lineHeight:1.6}}>Ask your host to tap <strong style={{color:"#c9a84c"}}>📋 Share update</strong> and send you the code. Paste it below.</div><textarea value={val} onChange={e=>{setVal(e.target.value);setErr("");}} placeholder="Paste code here (starts with M2:)…" style={{width:"100%",height:100,padding:12,borderRadius:10,border:err?"1.5px solid #d97757":"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"monospace",fontSize:10,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:err?6:16,textAlign:"left"}}/>{err&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#d97757",marginBottom:12,textAlign:"left"}}>{err}</div>}<div style={{display:"flex",gap:8}}><button onClick={onBack} style={{padding:"12px 16px",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>← Back</button><button onClick={doJoin} disabled={!val.trim()} style={{flex:1,padding:"12px 0",borderRadius:10,border:"none",background:val.trim()?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:val.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:val.trim()?"pointer":"default"}}>LOAD POOL</button></div></div></div></>);
+  const [val,setVal]=useState("");
+  const [err,setErr]=useState("");
+  const [loading,setLoading]=useState(false);
+
+  const doJoin=async()=>{
+    const code=val.trim().toUpperCase();
+    if(!code)return;
+    setLoading(true);setErr("");
+    const data=await loadPool(code);
+    setLoading(false);
+    if(!data){setErr("Code not found — check it and try again.");return;}
+    const e=onJoin(data, code);
+    if(e){setErr(e);return;}
+  };
+
+  return(
+    <><style>{FONTS}</style>
+    <div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{maxWidth:420,width:"100%",background:"linear-gradient(165deg,#0f1e38,#0a1628)",borderRadius:20,border:"1px solid rgba(201,168,76,0.35)",padding:"32px 28px",textAlign:"center"}}>
+        <div style={{fontSize:40,marginBottom:12}}>⚽</div>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:26,color:"#c9a84c",letterSpacing:3,marginBottom:8}}>LOAD POOL</div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:24,lineHeight:1.6}}>
+          Enter the code your host sent you.
+        </div>
+        <input
+          value={val}
+          onChange={e=>{setVal(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6));setErr("");}}
+          onKeyDown={e=>e.key==="Enter"&&doJoin()}
+          placeholder="e.g. CS26"
+          maxLength={6}
+          autoFocus
+          style={{width:"100%",padding:"16px",borderRadius:10,border:err?"1.5px solid #d97757":"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:8,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:err?6:20}}
+        />
+        {err&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#d97757",marginBottom:16,textAlign:"left"}}>{err}</div>}
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={onBack} style={{padding:"12px 16px",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>← Back</button>
+          <button onClick={doJoin} disabled={val.trim().length<2||loading} style={{flex:1,padding:"12px 0",borderRadius:10,border:"none",background:val.trim().length>=2?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:val.trim().length>=2?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:val.trim().length>=2?"pointer":"default"}}>
+            {loading?"LOADING…":"LOAD POOL"}
+          </button>
+        </div>
+      </div>
+    </div></>
+  );
 }
 
 function SwitchToHostModal({open,onClose,onSuccess,poolCode}) {
@@ -1285,7 +1325,18 @@ export default function Mundialito() {
     }catch(e){return "Something went wrong.";}
   };
 
-  const handleJoinAttempt=code=>{try{const decoded=decode(code.trim());if(!decoded)return "Invalid code — make sure you copied the full code starting with M2:";const merged=mergeState(EMPTY,decoded);setSt(merged);setIsHost(false);if(merged.draftLocked){const seen=window.localStorage?.getItem("mundi_intro_seen");if(seen){setAppState("spectator");setActiveTab("group");}else{setAppState("spectator_intro");}}else if(merged.setupLocked){setAppState("spectator");setActiveTab("draft");}else{setAppState("spectator");setActiveTab("setup");}return null;}catch(e){return "Something went wrong. Try copying the code again.";}};
+  const handleJoinAttempt=(decodedOrCode, code)=>{
+    // Accepts either a pre-decoded object (from Firebase) or legacy M2: string
+    try{
+      let decoded = decodedOrCode;
+      let poolC = code;
+      if(typeof decodedOrCode === "string"){
+        decoded = decode(decodedOrCode.trim());
+        if(!decoded) return "Invalid code — make sure you copied the full code starting with M2:";
+      }
+      return handleFirebaseLoad(decoded, poolC);
+    }catch(e){return "Something went wrong.";}
+  };
 
   if(appState==="loading")return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}><div style={{fontFamily:"'Bebas Neue'",fontSize:48,color:"#c9a84c",letterSpacing:10}}>MUNDIALITO</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#5a6a8a"}}>Loading…</div></div></>);
   if(appState==="welcome")return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div style={{maxWidth:420,width:"100%",background:"linear-gradient(165deg,#0f1e38,#0a1628)",borderRadius:20,border:"1px solid rgba(201,168,76,0.35)",padding:"32px 28px",textAlign:"center"}}><div style={{fontSize:52,marginBottom:12}}>⚽</div><div style={{fontFamily:"'Bebas Neue'",fontSize:32,color:"#c9a84c",letterSpacing:4,marginBottom:6}}>MUNDIALITO</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:28,lineHeight:1.6}}>Welcome! Are you running this pool or joining to watch?</div><div style={{display:"flex",flexDirection:"column",gap:10}}><button onClick={()=>setAppState("join")} style={{padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:"pointer"}}>👀 I'M WATCHING — JOIN POOL</button><button onClick={handleBeHost} style={{padding:"14px 0",borderRadius:12,border:"2px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>🎙️ I'M THE HOST</button></div></div></div></>);

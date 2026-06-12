@@ -329,29 +329,58 @@ function RulesList() {
   );
 }
 
-function SyncModal({open,onClose,st}) {
-  const [status,setStatus]=useState("idle"); // idle | saving | done | error
-  const [poolCode,setPoolCode]=useState(null);
+function SyncModal({open,onClose,st,poolCode,setPoolCode}) {
+  const [status,setStatus]=useState("idle"); // idle | choosing | saving | done | error
+  const [customCode,setCustomCode]=useState("");
   const [copied,setCopied]=useState(false);
 
-  const handleShare=async()=>{
+  useEffect(()=>{
+    if(open){
+      if(poolCode){
+        // Already have a code — just update the database
+        doSave(poolCode);
+      } else {
+        // First time — ask for a code
+        setStatus("choosing");
+      }
+    }
+  },[open]);
+
+  const doSave=async(code)=>{
     setStatus("saving");
-    const code=generateCode();
     const ok=await savePool(code,st);
-    if(ok){setPoolCode(code);setStatus("done");}
-    else{setStatus("error");}
+    if(ok){
+      setPoolCode(code);
+      try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}
+      setStatus("done");
+    } else {
+      setStatus("error");
+    }
+  };
+
+  const handleChoose=()=>{
+    const code=customCode.trim().toUpperCase();
+    if(code.length<2)return;
+    doSave(code);
   };
 
   if(!open)return null;
   return(
-    <Modal open={open} onClose={()=>{setStatus("idle");setPoolCode(null);onClose();}} title="SHARE UPDATE">
-      {status==="idle"&&(
+    <Modal open={open} onClose={()=>{setStatus("idle");setCustomCode("");onClose();}} title="SHARE UPDATE">
+      {status==="choosing"&&(
         <>
-          <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:20,lineHeight:1.6}}>
-            Generate a 4-letter code and share it with your group. They enter it on their phone to load the latest scores instantly.
+          <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>
+            Choose a short code for your pool — your group will use this every time. 2–6 characters, letters and numbers only.
           </div>
-          <button onClick={handleShare} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer"}}>
-            📋 GENERATE CODE
+          <input
+            value={customCode}
+            onChange={e=>setCustomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6))}
+            placeholder="e.g. CS26"
+            maxLength={6}
+            style={{width:"100%",padding:"16px",borderRadius:10,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:10,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:16}}
+          />
+          <button onClick={handleChoose} disabled={customCode.trim().length<2} style={{width:"100%",padding:"14px 0",borderRadius:10,border:"none",background:customCode.trim().length>=2?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:customCode.trim().length>=2?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:customCode.trim().length>=2?"pointer":"default"}}>
+            SET CODE →
           </button>
         </>
       )}
@@ -361,7 +390,7 @@ function SyncModal({open,onClose,st}) {
       {status==="done"&&poolCode&&(
         <>
           <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>
-            Send this code to your group in WhatsApp. They tap <strong style={{color:"#6b9bd1"}}>📥 Load update</strong> and type it in.
+            Send this code to your group. They go to <strong style={{color:"#c9a84c"}}>elmundialito.github.io/2026</strong>, tap <strong style={{color:"#6b9bd1"}}>📥 Load update</strong> and type it in. <strong style={{color:"#e0dcd4"}}>Same code every time.</strong>
           </div>
           <div style={{textAlign:"center",padding:"20px 0",fontFamily:"'Bebas Neue'",fontSize:56,color:"#c9a84c",letterSpacing:12,background:"rgba(201,168,76,0.08)",borderRadius:14,border:"2px solid rgba(201,168,76,0.3)",marginBottom:16}}>
             {poolCode}
@@ -369,18 +398,21 @@ function SyncModal({open,onClose,st}) {
           <button onClick={()=>{navigator.clipboard?.writeText(poolCode);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",marginBottom:8}}>
             {copied?"✓ COPIED!":"📋 COPY CODE"}
           </button>
-          <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",textAlign:"center"}}>Code expires in 30 days</div>
+          <button onClick={()=>{try{window.localStorage?.removeItem("mundi_pool_code");}catch(e){}setPoolCode(null);setCustomCode("");setStatus("choosing");}} style={{width:"100%",padding:"9px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
+            Change code
+          </button>
         </>
       )}
       {status==="error"&&(
         <>
-          <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#d97757",marginBottom:16}}>Something went wrong saving to the database. Check your connection and try again.</div>
-          <button onClick={()=>setStatus("idle")} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:"#d97757",color:"white",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>TRY AGAIN</button>
+          <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#d97757",marginBottom:16}}>Something went wrong. Check your connection and try again.</div>
+          <button onClick={()=>doSave(poolCode||customCode.trim().toUpperCase())} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:"#d97757",color:"white",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>TRY AGAIN</button>
         </>
       )}
     </Modal>
   );
 }
+
 
 function LoadModal({open,onClose,onLoad}) {
   const [val,setVal]=useState("");
@@ -1126,6 +1158,7 @@ export default function Mundialito() {
   const [pools,setPools]=useState([{id:"default",name:"My Pool"}]);
   const [activePoolId,setActivePoolId]=useState("default");
   const [activePoolName,setActivePoolName]=useState("My Pool");
+  const [poolCode,setPoolCode]=useState(()=>{try{return window.localStorage?.getItem("mundi_pool_code")||null;}catch(e){return null;}});
 
   useEffect(()=>{
     // Check URL for shared code first
@@ -1219,7 +1252,7 @@ export default function Mundialito() {
       </div>
       <div style={{paddingBottom:48}}>{tabContent()}</div>
       <Modal open={showRules} onClose={()=>setShowRules(false)} title="HOW IT WORKS"><RulesList/></Modal>
-      <SyncModal open={showSync} onClose={()=>setShowSync(false)} st={st}/>
+      <SyncModal open={showSync} onClose={()=>setShowSync(false)} st={st} poolCode={poolCode} setPoolCode={setPoolCode}/>
       <LoadModal open={showLoad} onClose={()=>setShowLoad(false)} onLoad={handleFirebaseLoad}/>
       <PoolMgrModal/>
     </div></>

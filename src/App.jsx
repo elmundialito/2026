@@ -1187,7 +1187,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       {!pot&&<div style={{marginBottom:10}}/>}
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {playerData.map((p,rank)=>{
-          const color=PC[p.idx];const isFirst=rank===0;const expanded=expandedIdx===p.idx;
+          const color=getPlayerColor(p.idx,PC[p.idx]);const isFirst=rank===0;const expanded=expandedIdx===p.idx;
           return(
             <div key={p.idx} style={{background:isFirst?`linear-gradient(135deg,${color}18,rgba(26,39,68,0.5))`:"rgba(26,39,68,0.3)",borderRadius:14,padding:"16px 20px",border:`1px solid ${color}${isFirst?"66":"33"}`,position:"relative",overflow:"hidden"}}>
               {isFirst&&<div style={{position:"absolute",top:0,right:0,fontFamily:"'Bebas Neue'",fontSize:70,color:`${color}08`,letterSpacing:-2,lineHeight:1,padding:"0 10px"}}>1ST</div>}
@@ -1504,18 +1504,21 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
   const [pic, setPic] = useState(null);
   const [selectedColor, setSelectedColor] = useState(currentColor||PLAYER_COLORS[playerIdx%PLAYER_COLORS.length]);
   const [takenColors, setTakenColors] = useState([]);
+  const [cropSrc, setCropSrc] = useState(null); // raw image src for crop UI
+  const [cropScale, setCropScale] = useState(1);
+  const [cropOffset, setCropOffset] = useState({x:0,y:0});
+  const [dragStart, setDragStart] = useState(null);
   const fileRef = useRef(null);
+  const cropImgRef = useRef(null);
+  const CROP_SIZE = 220;
 
   useEffect(()=>{
     if(!open||playerIdx===null) return;
-    // Always re-read pic from cache (populated by Firestore on load)
     setPic(getProfilePic(playerIdx));
-    // Load taken colours and also re-fetch profile pics in case cache is stale
+    setCropSrc(null);
     const code = window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(code){
-      loadProfilePics(code).then(()=>{
-        setPic(getProfilePic(playerIdx));
-      });
+      loadProfilePics(code).then(()=>{ setPic(getProfilePic(playerIdx)); });
       loadPlayerColors(code).then(colors=>{
         const taken = Object.entries(colors).filter(([k])=>parseInt(k)!==playerIdx).map(([,v])=>v);
         setTakenColors(taken);
@@ -1524,31 +1527,86 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
   },[open,playerIdx]);
 
   if(!open||playerIdx===null) return null;
-  const color = selectedColor;
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
     if(!file) return;
-    // Resize image before saving to keep Firestore document small
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX = 120;
-        const ratio = Math.min(MAX/img.width, MAX/img.height);
-        canvas.width = Math.round(img.width*ratio);
-        canvas.height = Math.round(img.height*ratio);
-        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-        saveProfilePicToFirestore(playerIdx, dataUrl);
-        setPic(dataUrl);
-        onPicSaved&&onPicSaved();
-      };
-      img.src = ev.target.result;
+      setCropSrc(ev.target.result);
+      setCropScale(1);
+      setCropOffset({x:0,y:0});
     };
     reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
+    e.target.value="";
   };
+
+  const confirmCrop = () => {
+    const img = cropImgRef.current;
+    if(!img) return;
+    const canvas = document.createElement("canvas");
+    const OUT = 240;
+    canvas.width = OUT; canvas.height = OUT;
+    const ctx = canvas.getContext("2d");
+    // Clip to circle
+    ctx.beginPath(); ctx.arc(OUT/2,OUT/2,OUT/2,0,Math.PI*2); ctx.clip();
+    // Draw scaled+offset image centered in crop window
+    const naturalW = img.naturalWidth, naturalH = img.naturalHeight;
+    const fitScale = Math.max(CROP_SIZE/naturalW, CROP_SIZE/naturalH);
+    const drawW = naturalW*fitScale*cropScale;
+    const drawH = naturalH*fitScale*cropScale;
+    const drawX = (CROP_SIZE-drawW)/2 + cropOffset.x;
+    const drawY = (CROP_SIZE-drawH)/2 + cropOffset.y;
+    // Scale to output size
+    const s = OUT/CROP_SIZE;
+    ctx.drawImage(img, drawX*s, drawY*s, drawW*s, drawH*s);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+    saveProfilePicToFirestore(playerIdx, dataUrl);
+    setPic(dataUrl);
+    setCropSrc(null);
+    onPicSaved&&onPicSaved();
+  };
+
+  const onMouseDown = (e) => { e.preventDefault(); setDragStart({x:e.clientX-cropOffset.x, y:e.clientY-cropOffset.y}); };
+  const onMouseMove = (e) => { if(!dragStart) return; setCropOffset({x:e.clientX-dragStart.x, y:e.clientY-dragStart.y}); };
+  const onMouseUp = () => setDragStart(null);
+  const onTouchStart = (e) => { const t=e.touches[0]; setDragStart({x:t.clientX-cropOffset.x, y:t.clientY-cropOffset.y}); };
+  const onTouchMove = (e) => { e.preventDefault(); if(!dragStart) return; const t=e.touches[0]; setCropOffset({x:t.clientX-dragStart.x, y:t.clientY-dragStart.y}); };
+
+  // Crop UI
+  if(cropSrc) return(
+    <Modal open={open} onClose={()=>setCropSrc(null)} title="CROP YOUR PHOTO">
+      <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#8899b4",textAlign:"center",marginBottom:12}}>Drag to reposition · Pinch or scroll to zoom</div>
+      <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
+        <div
+          style={{width:CROP_SIZE,height:CROP_SIZE,borderRadius:"50%",overflow:"hidden",border:"3px solid var(--accent)",cursor:"grab",position:"relative",touchAction:"none",flexShrink:0}}
+          onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
+          onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onMouseUp}
+          onWheel={e=>{e.preventDefault();setCropScale(s=>Math.min(4,Math.max(0.5,s-e.deltaY*0.002)));}}
+        >
+          <img ref={cropImgRef} src={cropSrc} draggable={false}
+            style={{position:"absolute",maxWidth:"none",
+              width:()=>{const img=cropImgRef.current;if(!img)return"100%";const fw=Math.max(CROP_SIZE,img.naturalWidth);return fw+"px";},
+              transform:`translate(${cropOffset.x}px,${cropOffset.y}px) scale(${cropScale})`,
+              transformOrigin:"center center",
+              left:"50%", top:"50%", translate:"-50% -50%",
+              userSelect:"none",pointerEvents:"none"}}
+          />
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+        <span style={{fontSize:14}}>🔍</span>
+        <input type="range" min="0.5" max="4" step="0.05" value={cropScale}
+          onChange={e=>setCropScale(parseFloat(e.target.value))}
+          style={{flex:1,accentColor:"var(--accent)"}}/>
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>setCropSrc(null)} style={{flex:1,padding:"12px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,cursor:"pointer"}}>BACK</button>
+        <button onClick={confirmCrop} style={{flex:2,padding:"12px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>USE THIS PHOTO ✓</button>
+      </div>
+    </Modal>
+  );
 
   return(
     <Modal open={open} onClose={onClose} title="YOUR PROFILE">
@@ -1748,6 +1806,14 @@ export default function Mundialito() {
     setAppState("welcome");
   },[]);
   useEffect(()=>{if(appState!=="host")return;try{window.localStorage?.setItem(LOCAL_KEY,JSON.stringify({st,pools,activePoolId,activePoolName}));}catch(e){};},[st,appState,pools,activePoolId,activePoolName]);
+
+  // Always load profile pics when entering host mode
+  useEffect(()=>{
+    if(appState!=="host")return;
+    const code=window.localStorage?.getItem("mundi_pool_code")||poolCode;
+    if(!code)return;
+    loadProfilePics(code).then(()=>setPicRefresh(n=>n+1));
+  },[appState]);
 
   // Keep a ref to latest st so the debounced save always sends fresh data
   const stRef=useRef(st);

@@ -258,6 +258,22 @@ const UI = {
     round32:"Round of 32", round16:"Round of 16", quarterfinals:"Quarterfinals",
     semifinals:"Semifinals", final:"Final", thirdPlace:"3rd Place",
     win:"Win", matchday:"matchday",
+    draftComplete:"DRAFT COMPLETE", allTeamsClaimed:"All 48 teams claimed.",
+    lockDraft:"LOCK DRAFT → BEGIN GROUP STAGE", watchDraw:"🎬 Watch the draw",
+    picksLive:"ROSTERS · LIVE", teamsOdds:"TEAMS · SORTED BY ODDS",
+    roundOrder:"ROUND ORDER", pick:"PICK", undo:"↶ Undo",
+    draftOrderTitle:"DRAFT ORDER", spinBtn:"SPIN", spinning:"SPINNING…",
+    orderSet:"ORDER SET →", orderLocked:"Order locked — continue below",
+    spinTo:"Spin to land on pick",
+    manualPicks:"MANUAL PICKS", manualDesc:"Each player picks their own teams in snake draft order.",
+    autoAssign:"AUTO ASSIGN", autoDesc:"Teams randomly assigned by odds. Revealed by El Presidente.",
+    teamBreakdownLabel:"TEAM BREAKDOWN", out:"OUT",
+    rulesTitle1:"The Goal", rulesBody1:"Draft a roster of World Cup teams. Score points based on how your teams perform. Highest total takes the pot.",
+    rulesTitle2:"The Draft", rulesBody2:"Take turns picking teams in a snake draft — direction reverses each round. Everyone ends up with the same number of teams (48 ÷ players).",
+    rulesTitle3:"Group Stage", rulesBody3:"Your teams play 3 group games each. You earn 3 pts per win, 1 pt per draw. Losses = 0.",
+    rulesTitle4:"Knockout Stage", rulesBody4:"Bonus points every time one of your teams wins a KO match. Stakes rise each round: R32=3, R16=5, QF=7, SF=9, 3rd Place=6, Final=11.",
+    rulesTitle5:"Winning", rulesBody5:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams past R32 → higher GS total → coin toss.",
+    tapToContinue:"Tap to continue",
   },
   es: {
     setup:"Config.", draft:"Sorteo", group:"Fase de Grupos", knockout:"Eliminatorias", leaderboard:"Clasificación",
@@ -282,6 +298,22 @@ const UI = {
     round32:"Ronda de 32", round16:"Ronda de 16", quarterfinals:"Cuartos de final",
     semifinals:"Semifinales", final:"Final", thirdPlace:"3er Puesto",
     win:"Gana", matchday:"jornada",
+    draftComplete:"SORTEO COMPLETADO", allTeamsClaimed:"Los 48 equipos han sido asignados.",
+    lockDraft:"CONFIRMAR SORTEO → COMENZAR FASE DE GRUPOS", watchDraw:"🎬 Ver el sorteo",
+    picksLive:"EQUIPOS · EN VIVO", teamsOdds:"EQUIPOS · POR PROBABILIDAD",
+    roundOrder:"ORDEN DE RONDA", pick:"ELEGIR", undo:"↶ Deshacer",
+    draftOrderTitle:"ORDEN DEL SORTEO", spinBtn:"GIRAR", spinning:"GIRANDO…",
+    orderSet:"ORDEN FIJADO →", orderLocked:"Orden fijado — continúa abajo",
+    spinTo:"Gira para el pick",
+    manualPicks:"SELECCIÓN MANUAL", manualDesc:"Cada jugador elige sus equipos en orden de serpiente.",
+    autoAssign:"ASIGNACIÓN AUTO", autoDesc:"Equipos asignados al azar por probabilidad. Revelados por El Presidente.",
+    teamBreakdownLabel:"DESGLOSE DE EQUIPOS", out:"ELIMINADO",
+    rulesTitle1:"El Objetivo", rulesBody1:"Elige un equipo de selecciones del Mundial. Ganas puntos según su rendimiento. El que más tenga se lleva el premio.",
+    rulesTitle2:"El Sorteo", rulesBody2:"Eligen equipos por turnos en orden de serpiente — la dirección cambia cada ronda. Todos terminan con el mismo número de equipos (48 ÷ jugadores).",
+    rulesTitle3:"Fase de Grupos", rulesBody3:"Tus equipos juegan 3 partidos de grupo. Ganas 3 pts por victoria, 1 pt por empate. Las derrotas = 0.",
+    rulesTitle4:"Fase Eliminatoria", rulesBody4:"Puntos extra cada vez que uno de tus equipos gana un partido eliminatorio. Las apuestas suben cada ronda: R32=3, R16=5, CF=7, SF=9, 3er Puesto=6, Final=11.",
+    rulesTitle5:"Ganar", rulesBody5:"El TOTAL más alto (Grupos + Eliminatorias) se lleva el premio. Desempate: más equipos que pasan R32 → mayor total de grupos → sorteo.",
+    tapToContinue:"Toca para continuar",
   },
 };
 
@@ -323,9 +355,16 @@ const LangContext = createContext("en");
 const CODE3 = {"SPAIN":"ESP","FRANCE":"FRA","ENGLAND":"ENG","BRAZIL":"BRA","PORTUGAL":"POR","ARGENTINA":"ARG","GERMANY":"GER","NETHERLANDS":"NED","NORWAY":"NOR","BELGIUM":"BEL","COLOMBIA":"COL","JAPAN":"JPN","MOROCCO":"MAR","MEXICO":"MEX","URUGUAY":"URU","USA":"USA","CROATIA":"CRO","SWITZERLAND":"SUI","TÜRKIYE":"TUR","ECUADOR":"ECU","CANADA":"CAN","SENEGAL":"SEN","SWEDEN":"SWE","AUSTRIA":"AUT","PARAGUAY":"PAR","SCOTLAND":"SCO","CZECHIA":"CZE","EGYPT":"EGY","IVORY COAST":"CIV","BOSNIA AND HERZEGOVINA":"BIH","ALGERIA":"ALG","GHANA":"GHA","SOUTH KOREA":"KOR","AUSTRALIA":"AUS","IRAN":"IRN","TUNISIA":"TUN","DR CONGO":"COD","SAUDI ARABIA":"KSA","SOUTH AFRICA":"RSA","IRAQ":"IRQ","PANAMA":"PAN","UZBEKISTAN":"UZB","CAPE VERDE":"CPV","QATAR":"QAT","HAITI":"HAI","JORDAN":"JOR","NEW ZEALAND":"NZL","CURAÇAO":"CUW"};
 const code3 = n => CODE3[n]||n.slice(0,3);
 const fmtOdds = n => n<100 ? n.toFixed(2) : new Intl.NumberFormat("en-US",{minimumFractionDigits:2}).format(n);
-const fmtDate = dateStr => {
-  // dateStr is already a local date (YYYY-MM-DD) so parse as local noon
+const DAYS_ES = ["DOM","LUN","MAR","MIÉ","JUE","VIE","SÁB"];
+const MONTHS_ES = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+
+const fmtDate = (dateStr, lang="en") => {
   const d = new Date(dateStr+"T12:00:00");
+  if(lang==="es") {
+    const day=DAYS_ES[d.getDay()];
+    const month=MONTHS_ES[d.getMonth()];
+    return `${day} · ${month} ${d.getDate()}`;
+  }
   return d.toLocaleDateString("en-US",{weekday:"short"}).toUpperCase()+" · "+d.toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase();
 };
 
@@ -493,9 +532,11 @@ const RULES_DATA = [
 ];
 
 function RulesList() {
+  const lang=useContext(LangContext);
+  const rules=[1,2,3,4,5].map(n=>({n:String(n),title:t(lang,`rulesTitle${n}`),body:t(lang,`rulesBody${n}`)}));
   return(
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      {RULES_DATA.map(r=>(
+      {rules.map(r=>(
         <div key={r.n} style={{display:"flex",gap:12}}>
           <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,background:"rgba(201,168,76,0.15)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue'",fontSize:16}}>{r.n}</div>
           <div><div style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:600,color:"#e0dcd4",marginBottom:2}}>{r.title}</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",lineHeight:1.55}}>{r.body}</div></div>
@@ -859,7 +900,7 @@ function DraftReplay({config,picks,draftOrder,initials,onClose}) {
   );
 }
 
-function RosterCard({name,color,initial,teams,isCurrent,total,expanded}) {
+function RosterCard({name,color,initial,teams,isCurrent,total,expanded,lang="en"}) {
   const show=expanded?teams:teams.slice(-4);
   return(
     <div style={{background:isCurrent?`${color}18`:"rgba(26,39,68,0.3)",border:`1px solid ${color}${isCurrent?"88":"33"}`,borderRadius:10,padding:"10px 12px"}}>
@@ -871,8 +912,8 @@ function RosterCard({name,color,initial,teams,isCurrent,total,expanded}) {
         <span style={{fontFamily:"'Bebas Neue'",fontSize:12,color:`${color}99`,letterSpacing:1}}>{teams.length}{total?`/${total}`:""}</span>
       </div>
       <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-        {show.length===0?<span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#3d5070",fontStyle:"italic"}}>no picks yet</span>
-          :show.map(tn=>{const t=TBN[tn];return(<span key={tn} style={{padding:"2px 6px",borderRadius:5,background:`${color}11`,fontSize:13,display:"inline-flex",alignItems:"center",gap:4,fontFamily:"'DM Sans'",color:"#e0dcd4"}}><span>{t?.flag}</span><span style={{fontSize:11,fontWeight:500}}>{tn}</span></span>);})}
+        {show.length===0?<span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#3d5070",fontStyle:"italic"}}>{lang==="es"?"sin picks":"no picks yet"}</span>
+          :show.map(tn=>{const tm=TBN[tn];return(<span key={tn} style={{padding:"2px 6px",borderRadius:5,background:`${color}11`,fontSize:13,display:"inline-flex",alignItems:"center",gap:4,fontFamily:"'DM Sans'",color:"#e0dcd4"}}><span>{tm?.flag}</span><span style={{fontSize:11,fontWeight:500}}>{countryName(tn,lang)}</span></span>);})}
         {!expanded&&teams.length>4&&<span style={{padding:"2px 6px",fontFamily:"'DM Sans'",fontSize:11,color:`${color}99`,fontStyle:"italic"}}>+{teams.length-4} more</span>}
       </div>
     </div>
@@ -925,6 +966,7 @@ function SetupScreen({config,setConfig,onLock,readOnly}) {
 }
 
 function DraftScreen({config,draftOrder,setDraftOrder,picks,setPicks,onLockDraft,readOnly,initials,draftMode,setDraftMode}) {
+  const lang=useContext(LangContext);
   const [orderStep,setOrderStep]=useState(null);
   const [pickFlash,setPickFlash]=useState(null);
   const [watching,setWatching]=useState(false);
@@ -985,21 +1027,21 @@ function DraftScreen({config,draftOrder,setDraftOrder,picks,setPicks,onLockDraft
         <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",zIndex:200,textAlign:"center",animation:"flashIn 0.3s ease-out",pointerEvents:"none"}}>
           <div style={{background:`linear-gradient(135deg,${PC[pickFlash.playerIdx]}33,rgba(10,22,40,0.97))`,border:`2px solid ${PC[pickFlash.playerIdx]}`,borderRadius:20,padding:"24px 36px"}}>
             <div style={{fontSize:56,marginBottom:8}}>{TBN[pickFlash.team]?.flag}</div>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:26,color:PC[pickFlash.playerIdx],letterSpacing:2}}>{pickFlash.team}</div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:26,color:PC[pickFlash.playerIdx],letterSpacing:2}}>{countryName(pickFlash.team,lang)}</div>
           </div>
         </div>
       )}
       <div style={{background:`linear-gradient(135deg,${curColor}33,${curColor}11)`,border:`2px solid ${curColor}`,borderRadius:14,padding:"14px 22px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontFamily:"'DM Sans'",fontSize:11,color:curColor,letterSpacing:2,fontWeight:600,marginBottom:2}}>PICK {(picks.length||0)+1} OF 48 · ROUND {round}/{totalRounds}</div>
+          <div style={{fontFamily:"'DM Sans'",fontSize:11,color:curColor,letterSpacing:2,fontWeight:600,marginBottom:2}}>PICK {(picks.length||0)+1} OF 48 · {t(lang,"roundOrder")} {round}/{totalRounds}</div>
           <div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:curColor,letterSpacing:2,lineHeight:1}}>{(curName||"").toUpperCase()}'S TURN</div>
         </div>
-        {(picks.length||0)>0&&<button onClick={()=>setPicks(p=>p.slice(0,-1))} style={{padding:"7px 14px",borderRadius:8,border:`1px solid ${curColor}66`,background:"transparent",color:curColor,fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>↶ Undo</button>}
+        {(picks.length||0)>0&&<button onClick={()=>setPicks(p=>p.slice(0,-1))} style={{padding:"7px 14px",borderRadius:8,border:`1px solid ${curColor}66`,background:"transparent",color:curColor,fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>{t(lang,"undo")}</button>}
       </div>
       <div style={{height:5,background:"rgba(26,39,68,0.6)",borderRadius:3,marginBottom:12,overflow:"hidden"}}><div style={{height:"100%",width:`${((picks.length||0)/48)*100}%`,background:"linear-gradient(90deg,var(--accent),#d97757)",transition:"width 0.3s"}}/></div>
       <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.6fr) minmax(0,1fr)",gap:14}}>
         <div>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"#5a6a8a",marginBottom:8}}>TEAMS · SORTED BY ODDS</div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"#5a6a8a",marginBottom:8}}>{t(lang,"teamsOdds")}</div>
           <div style={{display:"flex",flexDirection:"column",gap:4}}>
             {TEAMS.map(team=>{
               const pick=(picks||[]).find(p=>p.team===team.name);const picked=!!pick;
@@ -1007,20 +1049,20 @@ function DraftScreen({config,draftOrder,setDraftOrder,picks,setPicks,onLockDraft
               return(
                 <div key={team.name} onClick={()=>!picked&&addPick(team.name,curIdx)} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 12px",borderRadius:8,background:picked?`${oc}15`:"rgba(26,39,68,0.4)",border:picked?`1px solid ${oc}55`:"1px solid #1e2f50",borderLeft:picked?`4px solid ${oc}`:"4px solid transparent",cursor:picked?"default":"pointer",opacity:picked?0.65:1,transition:"all 0.1s"}} onMouseEnter={e=>{if(!picked){e.currentTarget.style.background="rgba(201,168,76,0.08)";e.currentTarget.style.borderLeft=`4px solid ${curColor}`;}} } onMouseLeave={e=>{if(!picked){e.currentTarget.style.background="rgba(26,39,68,0.4)";e.currentTarget.style.borderLeft="4px solid transparent";}}}>
                   <span style={{fontSize:20,lineHeight:1,flexShrink:0}}>{team.flag}</span>
-                  <span style={{fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:picked?oc:"#e0dcd4",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team.name}</span>
+                  <span style={{fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:picked?oc:"#e0dcd4",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{countryName(team.name,lang)}</span>
                   <span style={{fontFamily:"'DM Sans'",fontSize:11,color:picked?`${oc}88`:"#8899b4",flexShrink:0}}>{fmtOdds(team.odds)}</span>
                   {picked?<div style={{width:20,height:20,borderRadius:4,background:oc,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{oi}</div>
-                    :<button onClick={e=>{e.stopPropagation();addPick(team.name,curIdx);}} style={{padding:"3px 9px",borderRadius:5,border:`1px solid ${curColor}`,background:`${curColor}22`,color:curColor,fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,cursor:"pointer",flexShrink:0}}>PICK</button>}
+                    :<button onClick={e=>{e.stopPropagation();addPick(team.name,curIdx);}} style={{padding:"3px 9px",borderRadius:5,border:`1px solid ${curColor}`,background:`${curColor}22`,color:curColor,fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,cursor:"pointer",flexShrink:0}}>{t(lang,"pick")}</button>}
                 </div>
               );
             })}
           </div>
         </div>
         <div>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"#5a6a8a",marginBottom:8}}>ROSTERS · LIVE</div>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>{rosters.map((teams,idx)=><RosterCard key={idx} name={config.playerNames[idx]} color={PC[idx]} initial={initials[idx]} teams={teams} isCurrent={idx===curIdx} total={48/config.playerCount}/>)}</div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"#5a6a8a",marginBottom:8}}>{t(lang,"picksLive")}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>{rosters.map((teams,idx)=><RosterCard key={idx} name={config.playerNames[idx]} color={PC[idx]} initial={initials[idx]} teams={teams} isCurrent={idx===curIdx} total={48/config.playerCount} lang={lang}/>)}</div>
           <div style={{marginTop:14}}>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#5a6a8a",marginBottom:6}}>ROUND {round} ORDER</div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#5a6a8a",marginBottom:6}}>{t(lang,"roundOrder")} {round}</div>
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(draftOrder||[]).length>0&&(round%2===1?draftOrder:[...draftOrder].reverse()).map((pi,slot)=>{const past=slot<((picks.length||0)%config.playerCount);const now=slot===((picks.length||0)%config.playerCount);return(<div key={slot} style={{padding:"2px 7px",borderRadius:6,background:now?`${PC[pi]}33`:"transparent",border:`1px solid ${PC[pi]}${now?"":"44"}`,color:PC[pi],opacity:past?0.4:1,fontFamily:"'DM Sans'",fontSize:11,fontWeight:600}}>{config.playerNames[pi]}</div>);})}</div>
           </div>
         </div>
@@ -1098,9 +1140,9 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
   };
   return(
     <div style={{background:resultBg,borderRadius:10,padding:"10px 12px",border:resultBorder,marginBottom:6,borderLeft:oa!=null?`3px solid ${PC[oa.playerIdx]}`:ob!=null?`3px solid ${PC[ob.playerIdx]}`:"3px solid transparent"}}>
-      <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative"}}>
         <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>GRP {match.g}</span>
-        <span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1}}>{match.ko&&!result?fmtKickoff(match.d,match.ko):""}</span>
+        {match.ko&&!result&&<span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1,whiteSpace:"nowrap"}}>{fmtKickoff(match.d,match.ko)}</span>}
         <span style={{fontStyle:"italic",opacity:0.8}}>{match.v}</span>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1232,7 +1274,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
         return(
           <div key={date} ref={isScrollTarget?scrollTargetRef:null} style={{marginBottom:18}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:isToday?"var(--accent)":isPast?"#5a6a8a":"#8899b4"}}>{fmtDate(date)}</div>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:isToday?"var(--accent)":isPast?"#5a6a8a":"#8899b4"}}>{fmtDate(date,lang)}</div>
               {isToday&&<div style={{padding:"2px 8px",borderRadius:10,background:"rgba(201,168,76,0.2)",border:"1px solid rgba(201,168,76,0.4)",fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1.5}}>{t(lang,"today")}</div>}
               <div style={{flex:1,height:1,background:"rgba(26,39,68,0.6)"}}/>
               <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a"}}>{matches.filter(m=>matchResults[m.id]!=null).length}/{matches.length}</span>
@@ -1377,8 +1419,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
   return(
     <div style={{maxWidth:720,margin:"0 auto",padding:"0 16px"}}>
       <div style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:4,color:"var(--accent)",textAlign:"center",marginBottom:6}}>{t(lang,"leaderboardTitle")}</div>
-      {pot>0&&<div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",textAlign:"center",marginBottom:16}}>🏆 Prize pool: <span style={{color:"var(--accent)",fontWeight:700}}>${pot.toLocaleString()}</span> · winner takes all</div>}
-      {!pot&&<div style={{marginBottom:10}}/>}
+      <div style={{marginBottom:10}}/>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {playerData.map((p,rank)=>{
           const color=p.color;const isFirst=rank===0;const expanded=expandedIdx===p.idx;
@@ -1390,7 +1431,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                 <div style={{flex:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                     <PlayerAvatar idx={p.idx} name={p.name} size={44} style={{borderRadius:"50%",flexShrink:0}} refresh={picRefresh}/>
-                    <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color,display:"flex",alignItems:"center",gap:6}}>{p.name}{myPlayerIdx===p.idx&&<span style={{fontSize:10,color:"var(--accent)",background:"rgba(201,168,76,0.15)",padding:"1px 7px",borderRadius:8,fontFamily:"'DM Sans'",fontWeight:600}}>you</span>}</div>
+                    <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color,display:"flex",alignItems:"center",gap:6}}>{p.name}{myPlayerIdx===p.idx&&<span style={{fontSize:10,color:"var(--accent)",background:"rgba(201,168,76,0.15)",padding:"1px 7px",borderRadius:8,fontFamily:"'DM Sans'",fontWeight:600}}>{lang==="es"?"yo":"you"}</span>}</div>
                     <span style={{fontFamily:"'DM Sans'",fontSize:11,color:`${color}88`,marginLeft:"auto"}}>{expanded?"▲":"▼"}</span>
                   </div>
                   <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
@@ -1400,17 +1441,17 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                   </div>
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
-                  <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>Total</div>
+                  <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"total")}</div>
                   <div style={{fontFamily:"'Bebas Neue'",fontSize:34,color,letterSpacing:1,lineHeight:1}}>{p.total}</div>
-                  <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",marginTop:2}}>points</div>
+                  <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",marginTop:2}}>{lang==="es"?(p.total===1?"punto":"puntos"):(p.total===1?"point":"points")}</div>
                 </div>
               </div>
               <div style={{height:4,background:"rgba(26,39,68,0.6)",borderRadius:2,marginTop:12,overflow:"hidden"}}><div style={{height:"100%",width:`${(p.total/barMax)*100}%`,background:`linear-gradient(90deg,${color},${color}99)`,transition:"width 0.5s"}}/></div>
               {expanded&&(
                 <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(26,39,68,0.6)"}}>
-                  <div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:`${color}99`,marginBottom:8}}>TEAM BREAKDOWN</div>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:`${color}99`,marginBottom:8}}>{t(lang,"teamBreakdownLabel")}</div>
                   <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                    {p.teamBreakdown.map(({team,gsPts,koPts,eliminated})=>{const t=TBN[team];const tp=gsPts+koPts;return(<div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:"rgba(10,22,40,0.3)",opacity:eliminated?0.45:1}}><span style={{fontSize:15,flexShrink:0}}>{t?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,flex:1,color:eliminated?"#5a6a8a":"#e0dcd4",textDecoration:eliminated?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team}</span>{eliminated&&<span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",background:"rgba(26,39,68,0.5)",padding:"1px 5px",borderRadius:4,flexShrink:0}}>OUT</span>}<div style={{textAlign:"right",flexShrink:0}}><div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:tp>0?color:"#5a6a8a",letterSpacing:1,lineHeight:1}}>{tp}<span style={{fontSize:8,opacity:0.7}}>pts</span></div>{koPts>0&&<div style={{fontFamily:"'DM Sans'",fontSize:9,color:`${color}88`}}>GS {gsPts} + KO {koPts}</div>}</div></div>);})}
+                    {p.teamBreakdown.map(({team,gsPts,koPts,eliminated})=>{const tm=TBN[team];const tp=gsPts+koPts;const displayName=countryName(team,lang);return(<div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:"rgba(10,22,40,0.3)",opacity:eliminated?0.45:1}}><span style={{fontSize:15,flexShrink:0}}>{tm?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,flex:1,color:eliminated?"#5a6a8a":"#e0dcd4",textDecoration:eliminated?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>{eliminated&&<span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",background:"rgba(26,39,68,0.5)",padding:"1px 5px",borderRadius:4,flexShrink:0}}>{t(lang,"out")}</span>}<div style={{textAlign:"right",flexShrink:0}}><div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:tp>0?color:"#5a6a8a",letterSpacing:1,lineHeight:1}}>{tp}<span style={{fontSize:8,opacity:0.7}}>pts</span></div>{koPts>0&&<div style={{fontFamily:"'DM Sans'",fontSize:9,color:`${color}88`}}>GS {gsPts} + KO {koPts}</div>}</div></div>);})}
                   </div>
                 </div>
               )}
@@ -1686,14 +1727,14 @@ function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
 }
 
 function SelectNameModal({open, onClose, onSelect, playerNames, picks}) {
+  const lang=useContext(LangContext);
   const [selected, setSelected] = useState(null);
   if(!open) return null;
   const names = playerNames||[];
-
   return(
-    <Modal open={open} onClose={onClose} title="SELECT YOUR NAME">
+    <Modal open={open} onClose={onClose} title={t(lang,"selectName")}>
       <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>
-        Tap your name so we can personalise your experience.
+        {t(lang,"tapYourName")}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
         {names.map((name,i)=>{
@@ -1710,7 +1751,7 @@ function SelectNameModal({open, onClose, onSelect, playerNames, picks}) {
         })}
       </div>
       <button onClick={()=>{if(selected!==null)onSelect(selected);}} disabled={selected===null} style={{width:"100%",padding:"14px 0",borderRadius:12,border:"none",background:selected!==null?"linear-gradient(135deg,var(--accent),var(--accent-dark))":"rgba(26,39,68,0.5)",color:selected!==null?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:selected!==null?"pointer":"default"}}>
-        THAT'S ME →
+        {t(lang,"thatSMe")}
       </button>
     </Modal>
   );
@@ -1738,6 +1779,7 @@ async function loadPlayerColors(code) {
 }
 
 function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, currentColor, onColorChange, onPicSaved}) {
+  const lang=useContext(LangContext);
   const [pic, setPic] = useState(null);
   const [selectedColor, setSelectedColor] = useState(currentColor||PLAYER_COLORS[playerIdx%PLAYER_COLORS.length]);
   const [takenColors, setTakenColors] = useState([]);
@@ -1820,8 +1862,8 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
 
   // Crop UI
   if(cropSrc) return(
-    <Modal open={open} onClose={()=>setCropSrc(null)} title="CROP YOUR PHOTO">
-      <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#8899b4",textAlign:"center",marginBottom:12}}>Drag to reposition · Use slider to zoom</div>
+    <Modal open={open} onClose={()=>setCropSrc(null)} title={t(lang,"cropPhoto")}>
+      <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#8899b4",textAlign:"center",marginBottom:12}}>{t(lang,"dragReposition")}</div>
       <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
         <div
           style={{width:CROP_SIZE,height:CROP_SIZE,borderRadius:"50%",overflow:"hidden",border:"3px solid var(--accent)",cursor:"grab",position:"relative",touchAction:"none",flexShrink:0,background:"#0a1628"}}
@@ -1850,14 +1892,14 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
           style={{flex:1,accentColor:"var(--accent)"}}/>
       </div>
       <div style={{display:"flex",gap:8}}>
-        <button onClick={()=>setCropSrc(null)} style={{flex:1,padding:"12px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,cursor:"pointer"}}>BACK</button>
-        <button onClick={confirmCrop} style={{flex:2,padding:"12px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>USE THIS PHOTO ✓</button>
+        <button onClick={()=>setCropSrc(null)} style={{flex:1,padding:"12px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,cursor:"pointer"}}>{t(lang,"back")}</button>
+        <button onClick={confirmCrop} style={{flex:2,padding:"12px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>{t(lang,"usePhoto")}</button>
       </div>
     </Modal>
   );
 
   return(
-    <Modal open={open} onClose={onClose} title="YOUR PROFILE">
+    <Modal open={open} onClose={onClose} title={t(lang,"yourProfile")}>
       <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,marginBottom:20}}>
         <PlayerAvatar idx={playerIdx} name={playerName} size={88} refresh={pic?1:0}/>
@@ -1865,18 +1907,18 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
       </div>
       {!pic?(
         <button onClick={()=>fileRef.current?.click()} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-          <span style={{fontSize:22}}>📷</span> ADD YOUR PHOTO
+          {t(lang,"addPhoto")}
         </button>
       ):(
         <button onClick={()=>fileRef.current?.click()} style={{width:"100%",padding:"13px 0",borderRadius:12,border:"1.5px solid var(--accent)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",marginBottom:8}}>
-          📷 CHANGE PHOTO
+          {t(lang,"changePhoto")}
         </button>
       )}
       <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",marginBottom:20,lineHeight:1.5}}>
-        {pic?"Looking good! It'll show on everyone's standings.":"Your photo shows on the standings for everyone in the pool."}
+        {pic?t(lang,"photoCaptionDone"):t(lang,"photoCaption")}
       </div>
       <div style={{marginBottom:20}}>
-        <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",letterSpacing:1,marginBottom:10}}>YOUR COLOUR</div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",letterSpacing:1,marginBottom:10}}>{t(lang,"yourColour")}</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
           {PLAYER_PICK_COLORS.map(c=>{
             const taken=takenColors.includes(c)&&c!==selectedColor;
@@ -1891,7 +1933,7 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
         </div>
       </div>
       <button onClick={()=>{onColorChange&&onColorChange(selectedColor);savePlayerColor(playerIdx,selectedColor);onDone();}} style={{width:"100%",padding:"13px 0",borderRadius:12,border:"none",background:pic?`linear-gradient(135deg,${selectedColor},${selectedColor}cc)`:"rgba(26,39,68,0.6)",color:pic?"#0a1628":"#8899b4",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:"pointer"}}>
-        {pic?"LOOKS GOOD →":"SKIP FOR NOW →"}
+        {pic?t(lang,"looksGood"):t(lang,"skipForNow")}
       </button>
     </Modal>
   );
@@ -1945,8 +1987,8 @@ function ResultOverlay({results, onDone}) {
   const bg=isWin?"linear-gradient(165deg,#0a2010,#0f3820)":isLoss?"linear-gradient(165deg,#200a0a,#380f0f)":"linear-gradient(165deg,#0a1020,#0f1a30)";
   const accent=isWin?"#61a978":isLoss?"#d97757":"#6b9bd1";
   const emoji=isWin?"🎉":isLoss?"😢":"🤷";
-  const msgEN=isWin?`${current.team} WIN!`:isLoss?`${current.team} LOSE`:lang==="es"?"EMPATE":"DRAW";
-  const msgES=isWin?`¡${current.team} GANA!`:isLoss?`${current.team} PIERDE`:"EMPATE";
+  const msgEN=isWin?`${countryName(current.team,"en")} WIN!`:isLoss?`${countryName(current.team,"en")} LOSE`:"DRAW";
+  const msgES=isWin?`¡${countryName(current.team,"es")} GANA!`:isLoss?`${countryName(current.team,"es")} PIERDE`:"EMPATE";
   const msg=lang==="es"?msgES:msgEN;
   const score=`${current.score.home} – ${current.score.away}`;
   const opacity=phase==="in"?0:phase==="hold"?1:0;
@@ -1990,7 +2032,7 @@ function ResultOverlay({results, onDone}) {
         {results.length>1&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",marginTop:12}}>{idx+1} / {results.length}</div>}
       </div>
 
-      <div style={{position:"absolute",bottom:40,fontFamily:"'DM Sans'",fontSize:12,color:"#3a4a6a"}}>{lang==="es"?"Toca para continuar":"Tap to continue"}</div>
+      <div style={{position:"absolute",bottom:40,fontFamily:"'DM Sans'",fontSize:12,color:"#3a4a6a"}}>{t(lang,"tapToContinue")}</div>
       <div style={{position:"absolute",inset:0}} onClick={()=>{setPhase("out");setTimeout(()=>{if(idx<results.length-1)setIdx(i=>i+1);else onDone();},300);}}/>
     </div>
   );
@@ -2362,7 +2404,7 @@ export default function Mundialito() {
       <div style={{position:"relative",textAlign:"center",padding:"26px 20px 4px"}}>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"var(--accent)",lineHeight:1}}>MUNDIALITO</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>World Cup 2026 · 🇨🇦 🇺🇸 🇲🇽</div>
-        <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#4a5a7a",marginTop:2,letterSpacing:1,textTransform:"uppercase"}}>June 11 – July 19</div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#4a5a7a",marginTop:2,letterSpacing:1,textTransform:"uppercase"}}>{lang==="es"?"11 de junio – 19 de julio":"June 11 – July 19"}</div>
         {/* Right: 🎨 and 🌐 stacked */}
         <div style={{position:"absolute",top:14,right:14,display:"flex",flexDirection:"column",gap:4}}>
           <button onClick={()=>setShowTheme(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🎨</button>

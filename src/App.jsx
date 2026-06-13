@@ -985,17 +985,17 @@ function GroupStandingsAccordion({g,res,ownership,initials}) {
 function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials}) {
   const [flash,setFlash]=useState(null);
   const [view,setView]=useState("schedule");
+  const scrollTargetRef=useRef(null);
   const ownership=useMemo(()=>{const o={};(picks||[]).forEach(p=>{o[p.team]={playerIdx:p.playerIdx,name:config.playerNames[p.playerIdx]};});return o;},[picks,config.playerNames]);
   const playerPts=useMemo(()=>Array.from({length:config.playerCount},(_,i)=>playerGSPts(i,picks||[],matchResults)),[config.playerCount,picks,matchResults]);
   const matchesByDate=useMemo(()=>{
     const g={};
     GM.forEach(m=>{
-      // Use local date derived from UTC kickoff time so grouping matches user's timezone
       let localDate=m.d;
       if(m.ko){
         try{
           const utcDt=new Date(m.d+"T"+m.ko+":00Z");
-          localDate=utcDt.toLocaleDateString("en-CA"); // YYYY-MM-DD in local timezone
+          localDate=utcDt.toLocaleDateString("en-CA");
         }catch(e){}
       }
       if(!g[localDate])g[localDate]=[];
@@ -1004,7 +1004,18 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
     return Object.entries(g).sort(([a],[b])=>a.localeCompare(b));
   },[]);
   const recorded=useMemo(()=>Object.keys(matchResults).filter(id=>matchResults[id]!=null).length,[matchResults]);
-  const today=new Date().toISOString().slice(0,10);
+  const today=new Date().toLocaleDateString("en-CA");
+
+  // Auto-scroll to today (or nearest upcoming date) when schedule tab loads
+  useEffect(()=>{
+    if(view!=="schedule")return;
+    const t=setTimeout(()=>{
+      if(scrollTargetRef.current){
+        scrollTargetRef.current.scrollIntoView({behavior:"smooth",block:"start"});
+      }
+    },120);
+    return()=>clearTimeout(t);
+  },[view]);
 
   const onSet=(matchId,val)=>{
     if(readOnly)return;
@@ -1034,8 +1045,10 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
       </div>
       {view==="schedule"&&matchesByDate.map(([date,matches])=>{
         const isToday=date===today;const isPast=date<today;
+        // Scroll target: today if it exists, otherwise the first future date
+        const isScrollTarget=isToday||(date>today&&!matchesByDate.some(([d])=>d===today||d>today&&d<date));
         return(
-          <div key={date} style={{marginBottom:18}}>
+          <div key={date} ref={isScrollTarget?scrollTargetRef:null} style={{marginBottom:18}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
               <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:isToday?"var(--accent)":isPast?"#5a6a8a":"#8899b4"}}>{fmtDate(date)}</div>
               {isToday&&<div style={{padding:"2px 8px",borderRadius:10,background:"rgba(201,168,76,0.2)",border:"1px solid rgba(201,168,76,0.4)",fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1.5}}>TODAY</div>}
@@ -1500,19 +1513,26 @@ async function loadPlayerColors(code) {
 }
 
 function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, currentColor, onColorChange}) {
-  const [pic, setPic] = useState(()=>getProfilePic(playerIdx));
+  const [pic, setPic] = useState(null);
   const [selectedColor, setSelectedColor] = useState(currentColor||PLAYER_COLORS[playerIdx%PLAYER_COLORS.length]);
   const [takenColors, setTakenColors] = useState([]);
   const fileRef = useRef(null);
 
   useEffect(()=>{
-    if(!open) return;
-    // Load taken colours from Firestore
+    if(!open||playerIdx===null) return;
+    // Always re-read pic from cache (populated by Firestore on load)
+    setPic(getProfilePic(playerIdx));
+    // Load taken colours and also re-fetch profile pics in case cache is stale
     const code = window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
-    if(code) loadPlayerColors(code).then(colors=>{
-      const taken = Object.entries(colors).filter(([k])=>parseInt(k)!==playerIdx).map(([,v])=>v);
-      setTakenColors(taken);
-    });
+    if(code){
+      loadProfilePics(code).then(()=>{
+        setPic(getProfilePic(playerIdx));
+      });
+      loadPlayerColors(code).then(colors=>{
+        const taken = Object.entries(colors).filter(([k])=>parseInt(k)!==playerIdx).map(([,v])=>v);
+        setTakenColors(taken);
+      });
+    }
   },[open,playerIdx]);
 
   if(!open||playerIdx===null) return null;
@@ -1749,6 +1769,7 @@ export default function Mundialito() {
     },800);
     return()=>clearTimeout(autoSaveTimerRef.current);
   },[st.matchResults,st.koResults,st.koOverrides,appState,poolCode]);
+
   const initials=useMemo(()=>getInitials(st.config.playerNames||[]),[st.config.playerNames]);
   const anyGroupDone=useMemo(()=>Object.keys(GROUPS).some(g=>GM.filter(m=>m.g===g).every(m=>st.matchResults[m.id]!=null)),[st.matchResults]);
   const resolvedBracket=useMemo(()=>resolveKOBracket(st.matchResults,st.koResults,st.koOverrides),[st.matchResults,st.koResults,st.koOverrides]);
@@ -1831,19 +1852,52 @@ export default function Mundialito() {
         <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"var(--accent)",lineHeight:1}}>MUNDIALITO</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>World Cup 2026 · 🇨🇦 🇺🇸 🇲🇽 · June 11 – July 19</div>
         <button onClick={()=>setShowRules(true)} style={{position:"absolute",top:20,right:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:18,cursor:"pointer"}}>?</button>
-          <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");window.localStorage?.removeItem("mundi_spectator_code");}catch(e){}window.location.reload();}}} style={{position:"absolute",top:20,left:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
+        <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");window.localStorage?.removeItem("mundi_spectator_code");}catch(e){}window.location.reload();}}} style={{position:"absolute",top:20,left:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
       </div>
-      <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,padding:"10px 16px 0",flexWrap:"wrap"}}>
-        {isHost?(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)"}}><span style={{fontSize:11}}>🎙️</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"var(--accent)",letterSpacing:1}}>HOST</span></div><button onClick={()=>setShowPoolMgr(true)} style={{padding:"4px 12px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4,maxWidth:160,overflow:"hidden"}}>🏆 <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activePoolName}</span> ▾</button><button onClick={()=>setShowSync(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📋 Share update</button>
-            <button onClick={()=>setShowNotify(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.1)",color:"#61a978",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🔔 Notify</button>
-            <button onClick={()=>setShowTheme(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>🎨</button></>):(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(107,155,209,0.1)",border:"1px solid rgba(107,155,209,0.3)"}}><span style={{fontSize:11}}>👀</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#6b9bd1",letterSpacing:1}}>SPECTATOR</span></div><button onClick={()=>setShowLoad(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(107,155,209,0.4)",background:"rgba(107,155,209,0.1)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📥 Load update</button>
-            {spectatorPoolCode&&<button onClick={()=>setShowHostSwitch(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🎙️ Host mode</button>}
-            <button onClick={()=>setShowTheme(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>🎨</button></>)}
+
+      {/* Slim status + profile row */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px 0",gap:8}}>
+        {/* Left: mode badge */}
+        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+          {isHost?(
+            <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)"}}>
+              <span style={{fontSize:11}}>🎙️</span>
+              <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"var(--accent)",letterSpacing:1}}>HOST</span>
+            </div>
+          ):(
+            <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(107,155,209,0.1)",border:"1px solid rgba(107,155,209,0.3)"}}>
+              <span style={{fontSize:11}}>👀</span>
+              <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#6b9bd1",letterSpacing:1}}>SPECTATOR</span>
+            </div>
+          )}
+          {/* Spectator: load update + host mode */}
+          {!isHost&&<button onClick={()=>setShowLoad(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(107,155,209,0.4)",background:"rgba(107,155,209,0.1)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📥 Load</button>}
+          {!isHost&&spectatorPoolCode&&<button onClick={()=>setShowHostSwitch(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🎙️ Host</button>}
+          {/* Host: notify + theme */}
+          {isHost&&<button onClick={()=>setShowNotify(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.1)",color:"#61a978",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🔔 Notify</button>}
+          <button onClick={()=>setShowTheme(true)} style={{padding:"4px 8px",borderRadius:20,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>🎨</button>
+        </div>
+        {/* Right: avatar — always visible, opens profile */}
+        {myPlayerIdx!==null&&(
+          <div onClick={()=>{setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 10px 4px 6px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",cursor:"pointer",flexShrink:0}} title="Edit your profile">
+            <div style={{position:"relative"}}>
+              <PlayerAvatar idx={myPlayerIdx} name={(st.config?.playerNames||[])[myPlayerIdx]||""} size={28}/>
+            </div>
+            <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:"#e0dcd4",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(st.config?.playerNames||[])[myPlayerIdx]||""}</span>
+            <span style={{fontSize:10,color:"#5a6a8a"}}>✏️</span>
+          </div>
+        )}
       </div>
       <div style={{display:"flex",justifyContent:"center",gap:2,padding:"14px 12px 0",marginBottom:26}}>
         {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);return(<button key={tab.id} onClick={()=>{if(open)setActiveTab(tab.id);}} style={{padding:"9px 6px 11px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tab.label}</div></button>);})}
       </div>
-      <div style={{paddingBottom:48}}>{tabContent()}</div>
+      <div style={{paddingBottom:isHost?72:48}}>{tabContent()}</div>
+      {isHost&&(
+        <div style={{position:"fixed",bottom:0,left:0,right:0,background:"rgba(10,22,40,0.96)",borderTop:"1px solid #1e2f50",padding:"10px 16px",display:"flex",gap:8,zIndex:100,backdropFilter:"blur(8px)"}}>
+          <button onClick={()=>setShowSync(true)} style={{flex:1,padding:"10px 0",borderRadius:10,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,cursor:"pointer"}}>📋 SHARE POOL CODE</button>
+          <button onClick={()=>setShowPoolMgr(true)} style={{padding:"10px 14px",borderRadius:10,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>🏆 {activePoolName}</button>
+        </div>
+      )}
       <Modal open={showRules} onClose={()=>setShowRules(false)} title="HOW IT WORKS"><RulesList/></Modal>
       <SyncModal open={showSync} onClose={()=>setShowSync(false)} st={st} poolCode={poolCode} setPoolCode={setPoolCode}/>
       <LoadModal open={showLoad} onClose={()=>setShowLoad(false)} onLoad={handleFirebaseLoad}/>

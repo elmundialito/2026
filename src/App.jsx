@@ -83,6 +83,31 @@ const decode = c => {
   } catch { return null; }
 };
 
+// ── OneSignal notifications ───────────────────────────────────
+async function sendNotification(message) {
+  try {
+    const resp = await fetch("https://mundialito-notify.byroncristol.workers.dev", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message })
+    });
+    return resp.ok;
+  } catch(e) { return false; }
+}
+
+async function requestNotificationPermission() {
+  try {
+    if(window.OneSignalDeferred) {
+      window.OneSignalDeferred.push(async (OneSignal) => {
+        await OneSignal.Notifications.requestPermission();
+      });
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+
 // ── URL sync ──────────────────────────────────────────────────
 const getUrlCode = () => {
   try {
@@ -1257,6 +1282,59 @@ function SwitchToHostModal({open,onClose,onSuccess,poolCode}) {
 }
 
 
+function NotifyModal({open,onClose}) {
+  const [status,setStatus]=useState("idle");
+  const [custom,setCustom]=useState("");
+
+  useEffect(()=>{
+    if(open) requestNotificationPermission();
+  },[open]);
+  const presets=[
+    "⚽ Match just finished — check the scores!",
+    "🏁 Group stage update — standings have changed!",
+    "🏆 Knockout result in — see who's through!",
+    "📊 Scores updated — check the standings!",
+  ];
+
+  const send=async(msg)=>{
+    setStatus("sending");
+    const ok=await sendNotification(msg);
+    if(ok){
+      setStatus("done");
+      setTimeout(()=>{setStatus("idle");onClose();},2000);
+    } else {
+      setStatus("error");
+    }
+  };
+
+  if(!open)return null;
+  return(
+    <Modal open={open} onClose={onClose} title="NOTIFY GROUP">
+      {status==="sending"&&<div style={{textAlign:"center",padding:"24px 0",fontFamily:"'Bebas Neue'",fontSize:18,color:"#c9a84c",letterSpacing:2}}>Sending…</div>}
+      {status==="done"&&<div style={{textAlign:"center",padding:"24px 0",fontFamily:"'Bebas Neue'",fontSize:18,color:"#61a978",letterSpacing:2}}>✓ Sent!</div>}
+      {status==="error"&&<div style={{textAlign:"center",padding:"24px 0"}}><div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"#d97757",letterSpacing:2,marginBottom:12}}>Failed to send</div><button onClick={()=>setStatus("idle")} style={{padding:"10px 20px",borderRadius:8,border:"none",background:"#d97757",color:"white",fontFamily:"'Bebas Neue'",fontSize:14,cursor:"pointer"}}>TRY AGAIN</button></div>}
+      {status==="idle"&&(
+        <>
+          <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>Send a push notification to everyone who has enabled alerts.</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+            {presets.map((p,i)=>(
+              <button key={i} onClick={()=>send(p)} style={{padding:"11px 14px",borderRadius:10,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.4)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer",textAlign:"left"}}>
+                {p}
+              </button>
+            ))}
+          </div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:"#5a6a8a",marginBottom:6}}>OR CUSTOM MESSAGE</div>
+          <div style={{display:"flex",gap:8}}>
+            <input value={custom} onChange={e=>setCustom(e.target.value)} placeholder="Type a message…" style={{flex:1,padding:"10px 12px",borderRadius:8,border:"1px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:13,outline:"none"}}/>
+            <button onClick={()=>custom.trim()&&send(custom.trim())} disabled={!custom.trim()} style={{padding:"10px 16px",borderRadius:8,border:"none",background:custom.trim()?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:custom.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:custom.trim()?"pointer":"default"}}>SEND</button>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+
+
 export default function Mundialito() {
   const [appState,setAppState]=useState("loading");
   const [isHost,setIsHost]=useState(false);
@@ -1266,6 +1344,7 @@ export default function Mundialito() {
   const [showSync,setShowSync]=useState(false);
   const [showLoad,setShowLoad]=useState(false);
   const [showHostSwitch,setShowHostSwitch]=useState(false);
+  const [showNotify,setShowNotify]=useState(false);
   const [spectatorPoolCode,setSpectatorPoolCode]=useState(()=>{try{return window.localStorage?.getItem('mundi_spectator_code')||null;}catch(e){return null;}});
   const [showPoolMgr,setShowPoolMgr]=useState(false);
   const [pools,setPools]=useState([{id:"default",name:"My Pool"}]);
@@ -1400,7 +1479,8 @@ export default function Mundialito() {
           <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");window.localStorage?.removeItem("mundi_spectator_code");}catch(e){}window.location.reload();}}} style={{position:"absolute",top:20,left:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
       </div>
       <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,padding:"10px 16px 0",flexWrap:"wrap"}}>
-        {isHost?(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)"}}><span style={{fontSize:11}}>🎙️</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#c9a84c",letterSpacing:1}}>HOST</span></div><button onClick={()=>setShowPoolMgr(true)} style={{padding:"4px 12px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4,maxWidth:160,overflow:"hidden"}}>🏆 <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activePoolName}</span> ▾</button><button onClick={()=>setShowSync(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"#c9a84c",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📋 Share update</button></>):(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(107,155,209,0.1)",border:"1px solid rgba(107,155,209,0.3)"}}><span style={{fontSize:11}}>👀</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#6b9bd1",letterSpacing:1}}>SPECTATOR</span></div><button onClick={()=>setShowLoad(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(107,155,209,0.4)",background:"rgba(107,155,209,0.1)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📥 Load update</button>
+        {isHost?(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)"}}><span style={{fontSize:11}}>🎙️</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#c9a84c",letterSpacing:1}}>HOST</span></div><button onClick={()=>setShowPoolMgr(true)} style={{padding:"4px 12px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4,maxWidth:160,overflow:"hidden"}}>🏆 <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activePoolName}</span> ▾</button><button onClick={()=>setShowSync(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"#c9a84c",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📋 Share update</button>
+            <button onClick={()=>setShowNotify(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.1)",color:"#61a978",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🔔 Notify</button></>):(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(107,155,209,0.1)",border:"1px solid rgba(107,155,209,0.3)"}}><span style={{fontSize:11}}>👀</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#6b9bd1",letterSpacing:1}}>SPECTATOR</span></div><button onClick={()=>setShowLoad(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(107,155,209,0.4)",background:"rgba(107,155,209,0.1)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📥 Load update</button>
             {spectatorPoolCode&&<button onClick={()=>setShowHostSwitch(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"#c9a84c",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🎙️ Host mode</button>}</>)}
       </div>
       <div style={{display:"flex",justifyContent:"center",gap:2,padding:"14px 12px 0",marginBottom:26}}>
@@ -1410,6 +1490,7 @@ export default function Mundialito() {
       <Modal open={showRules} onClose={()=>setShowRules(false)} title="HOW IT WORKS"><RulesList/></Modal>
       <SyncModal open={showSync} onClose={()=>setShowSync(false)} st={st} poolCode={poolCode} setPoolCode={setPoolCode}/>
       <LoadModal open={showLoad} onClose={()=>setShowLoad(false)} onLoad={handleFirebaseLoad}/>
+        <NotifyModal open={showNotify} onClose={()=>setShowNotify(false)}/>
         <SwitchToHostModal open={showHostSwitch} onClose={()=>setShowHostSwitch(false)} poolCode={spectatorPoolCode} onSuccess={()=>{setIsHost(true);setShowHostSwitch(false);}}/>
       <PoolMgrModal/>
     </div></>

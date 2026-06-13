@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 
 // ── Firebase ──────────────────────────────────────────────────
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA-tdvChprSHgpq2a8u_zz25iYxWqxdrEw",
@@ -145,7 +145,7 @@ const PLAYER_COUNTS = [2,3,4,6,8];
 const DEFAULT_KO = { r32:3, r16:5, qf:7, sf:9, third:6, final:11 };
 const KO_LABELS = { r32:"Round of 32", r16:"Round of 16", qf:"Quarterfinals", sf:"Semifinals", final:"Final", third:"3rd Place" };
 const ROUND_ORDER = ["r32","r16","qf","sf","third","final"];
-const PC = ["#c9a84c","#d97757","#61a978","#6b9bd1","#b67ad6","#d65b87","#e0b834","#5fb3b3"];
+const PC = ["var(--accent)","#d97757","#61a978","#6b9bd1","#b67ad6","#d65b87","#e0b834","#5fb3b3"];
 const TABS = [
   {id:"setup",    label:"Setup",       icon:"⚙️",  unlockMsg:null},
   {id:"draft",    label:"Draft",       icon:"🎯",  unlockMsg:"Complete Setup first."},
@@ -341,7 +341,7 @@ function Modal({open,onClose,title,children}) {
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(5,12,24,0.85)",backdropFilter:"blur(4px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,overflowY:"auto"}}>
       <div onClick={e=>e.stopPropagation()} style={{maxWidth:560,width:"100%",background:"linear-gradient(165deg,#0f1e38,#0a1628)",borderRadius:18,border:"1px solid rgba(201,168,76,0.3)",padding:"28px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:24,color:"#c9a84c",letterSpacing:3}}>{title}</div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:24,color:"var(--accent)",letterSpacing:3}}>{title}</div>
           <button onClick={onClose} style={{width:32,height:32,borderRadius:8,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontSize:16,cursor:"pointer"}}>✕</button>
         </div>
         {children}
@@ -368,7 +368,7 @@ function RulesList() {
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       {RULES_DATA.map(r=>(
         <div key={r.n} style={{display:"flex",gap:12}}>
-          <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,background:"rgba(201,168,76,0.15)",color:"#c9a84c",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue'",fontSize:16}}>{r.n}</div>
+          <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,background:"rgba(201,168,76,0.15)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue'",fontSize:16}}>{r.n}</div>
           <div><div style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:600,color:"#e0dcd4",marginBottom:2}}>{r.title}</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",lineHeight:1.55}}>{r.body}</div></div>
         </div>
       ))}
@@ -431,7 +431,7 @@ function SyncModal({open,onClose,st,poolCode,setPoolCode}) {
             onChange={e=>setCustomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6))}
             placeholder="e.g. CS26"
             maxLength={6}
-            style={{width:"100%",padding:"14px",borderRadius:10,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:8,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:14}}
+            style={{width:"100%",padding:"14px",borderRadius:10,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:8,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:14}}
           />
           <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:"#5a6a8a",marginBottom:6}}>HOST PASSWORD</div>
           <div style={{position:"relative",marginBottom:16}}>
@@ -444,23 +444,23 @@ function SyncModal({open,onClose,st,poolCode,setPoolCode}) {
             />
             <button onClick={()=>setShowPw(s=>!s)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:"#5a6a8a",cursor:"pointer",fontSize:16}}>{showPw?"🙈":"👁"}</button>
           </div>
-          <button onClick={handleChoose} disabled={customCode.trim().length<2||!password.trim()} style={{width:"100%",padding:"14px 0",borderRadius:10,border:"none",background:customCode.trim().length>=2&&password.trim()?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:customCode.trim().length>=2&&password.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:customCode.trim().length>=2&&password.trim()?"pointer":"default"}}>
+          <button onClick={handleChoose} disabled={customCode.trim().length<2||!password.trim()} style={{width:"100%",padding:"14px 0",borderRadius:10,border:"none",background:customCode.trim().length>=2&&password.trim()?"linear-gradient(135deg,var(--accent),var(--accent-dark))":"rgba(26,39,68,0.5)",color:customCode.trim().length>=2&&password.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:customCode.trim().length>=2&&password.trim()?"pointer":"default"}}>
             SAVE & SHARE →
           </button>
         </>
       )}
       {status==="saving"&&(
-        <div style={{textAlign:"center",padding:"24px 0",fontFamily:"'Bebas Neue'",fontSize:18,color:"#c9a84c",letterSpacing:2}}>Saving…</div>
+        <div style={{textAlign:"center",padding:"24px 0",fontFamily:"'Bebas Neue'",fontSize:18,color:"var(--accent)",letterSpacing:2}}>Saving…</div>
       )}
       {status==="done"&&poolCode&&(
         <>
           <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>
-            Send this code to your group. They go to <strong style={{color:"#c9a84c"}}>elmundialito.github.io/2026</strong>, tap <strong style={{color:"#6b9bd1"}}>📥 Load update</strong> and type it in. <strong style={{color:"#e0dcd4"}}>Same code every time.</strong>
+            Send this code to your group. They go to <strong style={{color:"var(--accent)"}}>elmundialito.github.io/2026</strong>, tap <strong style={{color:"#6b9bd1"}}>📥 Load update</strong> and type it in. <strong style={{color:"#e0dcd4"}}>Same code every time.</strong>
           </div>
-          <div style={{textAlign:"center",padding:"20px 0",fontFamily:"'Bebas Neue'",fontSize:56,color:"#c9a84c",letterSpacing:12,background:"rgba(201,168,76,0.08)",borderRadius:14,border:"2px solid rgba(201,168,76,0.3)",marginBottom:16}}>
+          <div style={{textAlign:"center",padding:"20px 0",fontFamily:"'Bebas Neue'",fontSize:56,color:"var(--accent)",letterSpacing:12,background:"rgba(201,168,76,0.08)",borderRadius:14,border:"2px solid rgba(201,168,76,0.3)",marginBottom:16}}>
             {poolCode}
           </div>
-          <button onClick={()=>{navigator.clipboard?.writeText(poolCode);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",marginBottom:8}}>
+          <button onClick={()=>{navigator.clipboard?.writeText(poolCode);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",marginBottom:8}}>
             {copied?"✓ COPIED!":"📋 COPY CODE"}
           </button>
           <button onClick={()=>{try{window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");}catch(e){}setPoolCode(null);setCustomCode("");setPassword("");setSavedPw("");setStatus("choosing");}} style={{width:"100%",padding:"9px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
@@ -507,10 +507,10 @@ function LoadModal({open,onClose,onLoad,onHostLoad}) {
         onChange={e=>{setVal(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6));setErr("");}}
         placeholder="e.g. CS26"
         maxLength={6}
-        style={{width:"100%",padding:"16px",borderRadius:10,border:err?"1.5px solid #d97757":"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:8,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:err?6:16}}
+        style={{width:"100%",padding:"16px",borderRadius:10,border:err?"1.5px solid #d97757":"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:8,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:err?6:16}}
       />
       {err&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#d97757",marginBottom:12}}>{err}</div>}
-      <button onClick={doLoad} disabled={val.trim().length<2||loading} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:val.trim().length>=2?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:val.trim().length>=2?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:val.trim().length>=2?"pointer":"default",marginBottom:8}}>
+      <button onClick={doLoad} disabled={val.trim().length<2||loading} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:val.trim().length>=2?"linear-gradient(135deg,var(--accent),var(--accent-dark))":"rgba(26,39,68,0.5)",color:val.trim().length>=2?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:val.trim().length>=2?"pointer":"default",marginBottom:8}}>
         {loading?"LOADING…":"LOAD UPDATE"}
       </button>
       <button onClick={onClose} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button>
@@ -548,25 +548,25 @@ function StadiumSpin({playerNames,onComplete,onBack,replayOrder}) {
   return(
     <div style={{maxWidth:720,margin:"0 auto",padding:"0 16px",textAlign:"center"}}>
       <style>{`@keyframes spinPop{0%{transform:scale(0.6);opacity:0}100%{transform:scale(1);opacity:1}}`}</style>
-      <div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:"#c9a84c",letterSpacing:4,marginBottom:4}}>DRAFT ORDER</div>
+      <div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:"var(--accent)",letterSpacing:4,marginBottom:4}}>DRAFT ORDER</div>
       <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:18}}>{!allDone?`Spin to land on pick #${results.length+1}`:"Order locked — continue below"}</div>
       <div style={{position:"relative",width:280,height:290,margin:"0 auto 18px"}}>
-        <div style={{position:"absolute",left:"50%",top:-2,transform:"translateX(-50%)",width:0,height:0,zIndex:2,borderLeft:"12px solid transparent",borderRight:"12px solid transparent",borderTop:"20px solid #c9a84c"}}/>
+        <div style={{position:"absolute",left:"50%",top:-2,transform:"translateX(-50%)",width:0,height:0,zIndex:2,borderLeft:"12px solid transparent",borderRight:"12px solid transparent",borderTop:"20px solid var(--accent)"}}/>
         <svg width="260" height="260" viewBox="0 0 260 260" style={{position:"absolute",top:10,left:10,transform:`rotate(${rotation}deg)`,transition:spinning?"transform 3s cubic-bezier(0.16,1,0.3,1)":"none"}}>
-          <circle cx={cx} cy={cy} r={r+8} fill="#0a1628" stroke="#c9a84c" strokeWidth="2"/>
+          <circle cx={cx} cy={cy} r={r+8} fill="#0a1628" stroke="var(--accent)" strokeWidth="2"/>
           {remaining.map((pi,i)=>{const pos=lpos(i);const label=nameToInitial(playerNames[pi]||"");return(<g key={pi}><path d={wpath(i)} fill={PC[pi]} stroke="#0a1628" strokeWidth="2"/><text x={pos.x} y={pos.y} fill="#0a1628" fontFamily="'Bebas Neue'" fontSize={N>4?12:14} textAnchor="middle" dominantBaseline="middle" transform={`rotate(${wd*i+wd/2} ${pos.x} ${pos.y})`}>{label}</text></g>);})}
-          <circle cx={cx} cy={cy} r="22" fill="#0a1628" stroke="#c9a84c" strokeWidth="2"/>
-          <circle cx={cx} cy={cy} r="8" fill="#c9a84c"/>
+          <circle cx={cx} cy={cy} r="22" fill="#0a1628" stroke="var(--accent)" strokeWidth="2"/>
+          <circle cx={cx} cy={cy} r="8" fill="var(--accent)"/>
         </svg>
       </div>
       {justWon!==null&&<div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:PC[justWon],letterSpacing:2,marginBottom:12,animation:"spinPop 0.4s ease-out"}}>{results.length}. {(playerNames[justWon]||"").toUpperCase()}</div>}
-      {!replayOrder&&!allDone&&<button onClick={()=>spin(undefined)} disabled={spinning||remaining.length<=1} style={{padding:"12px 32px",borderRadius:10,border:"none",background:spinning||remaining.length<=1?"rgba(26,39,68,0.5)":"linear-gradient(135deg,#c9a84c,#a8883a)",color:spinning||remaining.length<=1?"#3d5070":"#0a1628",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:spinning||remaining.length<=1?"default":"pointer",marginBottom:16}}>{spinning?"SPINNING…":`SPIN #${results.length+1}`}</button>}
+      {!replayOrder&&!allDone&&<button onClick={()=>spin(undefined)} disabled={spinning||remaining.length<=1} style={{padding:"12px 32px",borderRadius:10,border:"none",background:spinning||remaining.length<=1?"rgba(26,39,68,0.5)":"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:spinning||remaining.length<=1?"#3d5070":"#0a1628",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:spinning||remaining.length<=1?"default":"pointer",marginBottom:16}}>{spinning?"SPINNING…":`SPIN #${results.length+1}`}</button>}
       {replayOrder&&!allDone&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",fontStyle:"italic",marginBottom:16}}>Replaying draw #{results.length+1} of {N}…</div>}
       {results.length>0&&<div style={{display:"flex",justifyContent:"center",gap:6,flexWrap:"wrap",marginBottom:14}}>{results.map((pi,slot)=>(<div key={slot} style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:`${PC[pi]}22`,border:`1px solid ${PC[pi]}66`}}><span style={{fontFamily:"'Bebas Neue'",fontSize:12,color:PC[pi],letterSpacing:1}}>{slot+1}</span><span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:PC[pi]}}>{playerNames[pi]}</span></div>))}</div>}
       <div style={{display:"flex",gap:8,justifyContent:"center"}}>
         {!replayOrder&&<button onClick={onBack} style={{padding:"9px 18px",borderRadius:8,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>← Back</button>}
         {replayOrder&&<button onClick={()=>onComplete(replayOrder)} style={{padding:"9px 18px",borderRadius:8,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>SKIP →</button>}
-        {allDone&&!replayOrder&&<button onClick={()=>onComplete(results)} style={{padding:"9px 24px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,cursor:"pointer"}}>ORDER SET →</button>}
+        {allDone&&!replayOrder&&<button onClick={()=>onComplete(results)} style={{padding:"9px 24px",borderRadius:8,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,cursor:"pointer"}}>ORDER SET →</button>}
       </div>
     </div>
   );
@@ -580,19 +580,19 @@ function SorteoScene({armOut,armRaised,animating,ballPositions,nextPlayerName,ne
       {[{r:310,op:0.5,sw:28},{r:268,op:0.4,sw:22},{r:226,op:0.32,sw:18},{r:184,op:0.25,sw:14}].map((t,i)=>(<ellipse key={i} cx="310" cy="390" rx={t.r} ry={t.r*0.38} fill="none" stroke={`rgba(90,130,210,${t.op})`} strokeWidth={t.sw}/>))}
       <rect x="0" y="290" width="620" height="50" fill="url(#pg)"/>
       <rect x="50" y="308" width="520" height="28" rx="5" fill="rgba(18,85,18,0.45)" stroke="rgba(60,160,60,0.3)" strokeWidth="1.5"/>
-      <rect x="155" y="12" width="310" height="52" rx="8" fill={nextPlayerName?`${nextPlayerColor||"#c9a84c"}22`:"rgba(201,168,76,0.12)"} stroke={nextPlayerName?(nextPlayerColor||"#c9a84c"):"#c9a84c"} strokeWidth="1.5"/>
-      {nextPlayerName?(<><text x="310" y="30" textAnchor="middle" fill={`${nextPlayerColor||"#c9a84c"}99`} fontFamily="'DM Sans'" fontSize="9" letterSpacing="3">NOW DRAWING FOR</text><text x="310" y="53" textAnchor="middle" fill={nextPlayerColor||"#c9a84c"} fontFamily="'Bebas Neue'" fontSize="22" letterSpacing="2">{(nextPlayerName||"").toUpperCase()}</text></>):(<><text x="310" y="32" textAnchor="middle" fill="#c9a84c" fontFamily="'Bebas Neue'" fontSize="16" letterSpacing="5">SORTEO OFICIAL</text><text x="310" y="53" textAnchor="middle" fill="#c9a84c88" fontFamily="'DM Sans'" fontSize="10" letterSpacing="3">MUNDIALITO 2026</text></>)}
+      <rect x="155" y="12" width="310" height="52" rx="8" fill={nextPlayerName?`${nextPlayerColor||"#c9a84c"}22`:"rgba(201,168,76,0.12)"} stroke={nextPlayerName?(nextPlayerColor||"#c9a84c"):"var(--accent)"} strokeWidth="1.5"/>
+      {nextPlayerName?(<><text x="310" y="30" textAnchor="middle" fill={`${nextPlayerColor||"#c9a84c"}99`} fontFamily="'DM Sans'" fontSize="9" letterSpacing="3">NOW DRAWING FOR</text><text x="310" y="53" textAnchor="middle" fill={nextPlayerColor||"#c9a84c"} fontFamily="'Bebas Neue'" fontSize="22" letterSpacing="2">{(nextPlayerName||"").toUpperCase()}</text></>):(<><text x="310" y="32" textAnchor="middle" fill="var(--accent)" fontFamily="'Bebas Neue'" fontSize="16" letterSpacing="5">SORTEO OFICIAL</text><text x="310" y="53" textAnchor="middle" fill="var(--accent)" fontFamily="'DM Sans'" fontSize="10" letterSpacing="3">MUNDIALITO 2026</text></>)}
       <rect x="141" y="220" width="17" height="74" rx="8.5" fill="#1a2f5c" transform="rotate(4,149,220)"/>
       <ellipse cx="150" cy="296" rx="13" ry="11" fill="#f0b896" transform="rotate(4,150,296)"/>
       <rect x="150" y="312" width="24" height="20" rx="5" fill="#152548"/><rect x="178" y="312" width="24" height="20" rx="5" fill="#152548"/>
       <rect x="146" y="326" width="32" height="10" rx="5" fill="#0a0f1a"/><rect x="176" y="326" width="32" height="10" rx="5" fill="#0a0f1a"/>
       <rect x="147" y="210" width="76" height="108" rx="10" fill="#1a2f5c"/>
       <polygon points="185,215 200,215 203,255 183,255" fill="white"/>
-      <polygon points="191,218 198,218 194,262" fill="#c9a84c"/>
+      <polygon points="191,218 198,218 194,262" fill="var(--accent)"/>
       <polygon points="185,215 168,229 183,255 185,240" fill="#152548"/>
       <polygon points="200,215 217,229 203,255 200,240" fill="#152548"/>
       {[262,272,282].map(y=><circle key={y} cx="193" cy={y} r="2.5" fill="#2a3a5c"/>)}
-      <rect x="156" y="228" width="22" height="14" rx="3" fill="#c9a84c" opacity="0.9"/><text x="167" y="239" textAnchor="middle" fill="#0a1628" fontFamily="'Bebas Neue'" fontSize="8">FIFA</text>
+      <rect x="156" y="228" width="22" height="14" rx="3" fill="var(--accent)" opacity="0.9"/><text x="167" y="239" textAnchor="middle" fill="#0a1628" fontFamily="'Bebas Neue'" fontSize="8">FIFA</text>
       <g style={ws}><ellipse cx="430" cy="200" rx="100" ry="22" fill="rgba(140,200,255,0.07)" stroke="rgba(140,200,255,0.32)" strokeWidth="2"/></g>
       <g style={ws}>{[0,1,2].map(ri=>ballPositions.filter(b=>b.ri===ri).map((b,i)=>{const t=TBN[b.team];const clr=PC[b.pi];return(<g key={`${ri}-${i}`}><circle cx={b.cx+2} cy={b.cy+3} r={b.r} fill="rgba(0,0,0,0.4)"/><circle cx={b.cx} cy={b.cy} r={b.r} fill={clr}/><circle cx={b.cx-b.r*0.28} cy={b.cy-b.r*0.28} r={b.r*0.4} fill="rgba(255,255,255,0.3)"/><text x={b.cx} y={b.cy+b.r*0.38} textAnchor="middle" dominantBaseline="middle" fontSize={b.r*1.5}>{t?.flag||"⚽"}</text></g>);}))}</g>
       <g style={{transformOrigin:"210px 212px",transform:armOut?(armRaised?"rotate(-2deg)":"rotate(15deg)"):"rotate(-6deg)",transition:"transform 0.5s cubic-bezier(0.34,1.56,0.64,1)"}}>
@@ -668,7 +668,7 @@ function AutoReveal({config,draftOrder,initials,onComplete,onSkip,precomputedPic
     <div style={{maxWidth:720,margin:"0 auto",padding:"0 16px",textAlign:"center"}}>
       <style>{`@keyframes bowlWob{0%,100%{transform:rotate(0)}18%{transform:rotate(-5deg)}48%{transform:rotate(5deg)}74%{transform:rotate(-2.5deg)}90%{transform:rotate(1deg)}}@keyframes revealSlide{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:translateY(0)}}@keyframes rosterIn{0%{opacity:0;transform:scale(0)}100%{opacity:1;transform:scale(1)}}`}</style>
       <div style={{position:"relative",borderRadius:16,overflow:"hidden",border:"1px solid #2a3a5c",marginBottom:8}}>
-        {speed<3&&rc>0&&<div style={{position:"absolute",top:8,right:8,zIndex:20}}><button onClick={()=>{const s=speed===1?2:3;speedRef.current=s;setSpeed(s);}} style={{padding:"4px 10px",borderRadius:8,border:"1px solid #c9a84c",background:"rgba(5,16,30,0.85)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:13,cursor:"pointer"}}>⚡ {speed===1?"2×":"3×"}</button></div>}
+        {speed<3&&rc>0&&<div style={{position:"absolute",top:8,right:8,zIndex:20}}><button onClick={()=>{const s=speed===1?2:3;speedRef.current=s;setSpeed(s);}} style={{padding:"4px 10px",borderRadius:8,border:"1px solid var(--accent)",background:"rgba(5,16,30,0.85)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:13,cursor:"pointer"}}>⚡ {speed===1?"2×":"3×"}</button></div>}
         <SorteoScene armOut={armOut} armRaised={armRaised} animating={animating} ballPositions={bp} remaining={remaining} nextPlayerName={nextPick?config.playerNames[nextPick.playerIdx]:null} nextPlayerColor={nextPick?PC[nextPick.playerIdx]:null}/>
       </div>
 
@@ -691,11 +691,11 @@ function AutoReveal({config,draftOrder,initials,onComplete,onSkip,precomputedPic
 
       <div style={{display:"flex",gap:10,justifyContent:"center",marginBottom:14}}>
         {!done?(<>
-          <button onClick={doReveal} disabled={animating} style={{padding:"12px 28px",borderRadius:10,border:"none",background:animating?"rgba(26,39,68,0.5)":"linear-gradient(135deg,#c9a84c,#a8883a)",color:animating?"#3d5070":"#0a1628",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:animating?"default":"pointer"}}>{animating?"DRAWING…":`DRAW PICK #${rc+1} OF ${assignment.length}`}</button>
-          <button onClick={()=>setAutoPlay(a=>!a)} style={{padding:"12px 16px",borderRadius:10,border:`1px solid ${autoPlay?"#c9a84c":"#2a3a5c"}`,background:autoPlay?"rgba(201,168,76,0.1)":"transparent",color:autoPlay?"#c9a84c":"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,cursor:"pointer"}}>{autoPlay?"⏸ Pause":"▶ Auto"}</button>
+          <button onClick={doReveal} disabled={animating} style={{padding:"12px 28px",borderRadius:10,border:"none",background:animating?"rgba(26,39,68,0.5)":"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:animating?"#3d5070":"#0a1628",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:animating?"default":"pointer"}}>{animating?"DRAWING…":`DRAW PICK #${rc+1} OF ${assignment.length}`}</button>
+          <button onClick={()=>setAutoPlay(a=>!a)} style={{padding:"12px 16px",borderRadius:10,border:`1px solid ${autoPlay?"var(--accent)":"#2a3a5c"}`,background:autoPlay?"rgba(201,168,76,0.1)":"transparent",color:autoPlay?"var(--accent)":"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,cursor:"pointer"}}>{autoPlay?"⏸ Pause":"▶ Auto"}</button>
         </>):(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10,width:"100%"}}>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:22,color:"#c9a84c",letterSpacing:3}}>✓ SORTEO COMPLETE</div>
-          <button onClick={()=>onComplete(assignment)} style={{padding:"14px 40px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer"}}>🏆 LOCK IN TEAMS →</button>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:22,color:"var(--accent)",letterSpacing:3}}>✓ SORTEO COMPLETE</div>
+          <button onClick={()=>onComplete(assignment)} style={{padding:"14px 40px",borderRadius:12,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer"}}>🏆 LOCK IN TEAMS →</button>
         </div>)}
       </div>
       {!done&&<button onClick={onSkip||onComplete} style={{width:"100%",marginTop:6,padding:"11px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,cursor:"pointer"}}>SKIP → GO TO GROUP STAGE</button>}
@@ -720,7 +720,7 @@ function DraftReplay({config,picks,draftOrder,initials,onClose}) {
   return(
     <div style={{maxWidth:720,margin:"0 auto",padding:"0 16px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#c9a84c",letterSpacing:3}}>🎬 {phase==="order"?"DRAW ORDER":"SORTEO REPLAY"}</div>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"var(--accent)",letterSpacing:3}}>🎬 {phase==="order"?"DRAW ORDER":"SORTEO REPLAY"}</div>
         <button onClick={onClose} style={{padding:"5px 12px",borderRadius:8,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>✕ Close</button>
       </div>
       {phase==="order"&&draftOrder&&draftOrder.length>0
@@ -756,16 +756,16 @@ function SetupScreen({config,setConfig,onLock,readOnly}) {
     <div style={{maxWidth:720,margin:"0 auto",padding:"0 16px"}}>
       <div style={{background:"rgba(26,39,68,0.25)",borderRadius:12,border:"1px solid #1e2f50",marginBottom:28,overflow:"hidden"}}>
         <div style={{padding:"14px 20px 14px",borderBottom:"1px solid #1e2f50"}}>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2.5,color:"#c9a84c"}}>HOW MUNDIALITO WORKS</div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2.5,color:"var(--accent)"}}>HOW MUNDIALITO WORKS</div>
         </div>
         <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
-          {RULES_DATA.map(r=><div key={r.n} style={{display:"flex",gap:10}}><div style={{width:22,height:22,borderRadius:"50%",flexShrink:0,background:"rgba(201,168,76,0.15)",color:"#c9a84c",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue'",fontSize:13}}>{r.n}</div><div><span style={{fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"#e0dcd4"}}>{r.title}: </span><span style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4"}}>{r.body}</span></div></div>)}
+          {RULES_DATA.map(r=><div key={r.n} style={{display:"flex",gap:10}}><div style={{width:22,height:22,borderRadius:"50%",flexShrink:0,background:"rgba(201,168,76,0.15)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue'",fontSize:13}}>{r.n}</div><div><span style={{fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"#e0dcd4"}}>{r.title}: </span><span style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4"}}>{r.body}</span></div></div>)}
         </div>
       </div>
       <SL>How many players?</SL>
       <div style={{display:"flex",gap:8,marginBottom:32}}>
         {PLAYER_COUNTS.map(n=>(
-          <button key={n} disabled={readOnly} onClick={()=>!readOnly&&setConfig(c=>({...c,playerCount:n,playerNames:Array.from({length:n},(_,i)=>c.playerNames[i]||"")}))} style={{flex:1,padding:"14px 0",borderRadius:10,border:config.playerCount===n?"2px solid #c9a84c":"2px solid #2a3a5c",background:config.playerCount===n?"rgba(201,168,76,0.12)":"rgba(26,39,68,0.5)",color:config.playerCount===n?"#c9a84c":"#8899b4",fontFamily:"'Bebas Neue'",fontSize:26,letterSpacing:2,cursor:readOnly?"default":"pointer",opacity:readOnly&&config.playerCount!==n?0.4:1}}>
+          <button key={n} disabled={readOnly} onClick={()=>!readOnly&&setConfig(c=>({...c,playerCount:n,playerNames:Array.from({length:n},(_,i)=>c.playerNames[i]||"")}))} style={{flex:1,padding:"14px 0",borderRadius:10,border:config.playerCount===n?"2px solid var(--accent)":"2px solid #2a3a5c",background:config.playerCount===n?"rgba(201,168,76,0.12)":"rgba(26,39,68,0.5)",color:config.playerCount===n?"var(--accent)":"#8899b4",fontFamily:"'Bebas Neue'",fontSize:26,letterSpacing:2,cursor:readOnly?"default":"pointer",opacity:readOnly&&config.playerCount!==n?0.4:1}}>
             {n}<div style={{fontFamily:"'DM Sans'",fontSize:11,letterSpacing:0.5,marginTop:2,opacity:0.7,fontWeight:400}}>{48/n} teams</div>
           </button>
         ))}
@@ -782,12 +782,12 @@ function SetupScreen({config,setConfig,onLock,readOnly}) {
       <SL>Entry fee per player</SL>
       <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:24}}>
         <span style={{color:"#5a6a8a",fontSize:22}}>$</span>
-        <input type="number" value={config.entryFee||""} readOnly={readOnly} onChange={e=>!readOnly&&setConfig(c=>({...c,entryFee:e.target.value}))} placeholder="0" style={{width:120,padding:"10px 14px",borderRadius:8,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'Bebas Neue'",fontSize:24,letterSpacing:2,outline:"none"}} onFocus={e=>!readOnly&&(e.target.style.borderColor="#c9a84c")} onBlur={e=>e.target.style.borderColor="#2a3a5c"}/>
+        <input type="number" value={config.entryFee||""} readOnly={readOnly} onChange={e=>!readOnly&&setConfig(c=>({...c,entryFee:e.target.value}))} placeholder="0" style={{width:120,padding:"10px 14px",borderRadius:8,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'Bebas Neue'",fontSize:24,letterSpacing:2,outline:"none"}} onFocus={e=>!readOnly&&(e.target.style.borderColor="var(--accent)")} onBlur={e=>e.target.style.borderColor="#2a3a5c"}/>
         <span style={{color:"#5a6a8a",fontSize:13}}> × {config.playerCount} players</span>
       </div>
-      {config.entryFee&&<div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"#c9a84c",letterSpacing:2,marginBottom:32}}>Total pot: ${(parseFloat(config.entryFee)||0)*config.playerCount} · winner takes all</div>}
+      {config.entryFee&&<div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"var(--accent)",letterSpacing:2,marginBottom:32}}>Total pot: ${(parseFloat(config.entryFee)||0)*config.playerCount} · winner takes all</div>}
       {!readOnly&&(
-        <button onClick={onLock} disabled={!canLock} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:canLock?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:canLock?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:canLock?"pointer":"default",marginBottom:8}}>
+        <button onClick={onLock} disabled={!canLock} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:canLock?"linear-gradient(135deg,var(--accent),var(--accent-dark))":"rgba(26,39,68,0.5)",color:canLock?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:canLock?"pointer":"default",marginBottom:8}}>
           {canLock?"LOCK SETUP → BEGIN DRAFT":`ENTER ALL ${config.playerCount} NAMES TO CONTINUE`}
         </button>
       )}
@@ -815,13 +815,13 @@ function DraftScreen({config,draftOrder,setDraftOrder,picks,setPicks,onLockDraft
 
   if(!draftMode)return(
     <div style={{maxWidth:680,margin:"0 auto",padding:"0 16px",textAlign:"center"}}>
-      <div style={{fontFamily:"'Bebas Neue'",fontSize:38,color:"#c9a84c",letterSpacing:4,marginBottom:8}}>DRAFT DAY</div>
+      <div style={{fontFamily:"'Bebas Neue'",fontSize:38,color:"var(--accent)",letterSpacing:4,marginBottom:8}}>DRAFT DAY</div>
       <div style={{fontFamily:"'DM Sans'",fontSize:14,color:"#8899b4",marginBottom:32}}>How would you like teams to be assigned?</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,maxWidth:520,margin:"0 auto"}}>
         {[{id:"manual",icon:"🧠",label:"MANUAL PICKS",desc:"Each player picks their own teams in snake draft order."},{id:"auto",icon:"⚽",label:"AUTO ASSIGN",desc:"Teams randomly assigned by odds tier. Revealed by El Presidente."}].map(opt=>(
-          <button key={opt.id} onClick={()=>{setDraftMode(opt.id);setOrderStep("spin");}} style={{padding:"24px 16px",borderRadius:14,border:"2px solid #2a3a5c",background:"rgba(26,39,68,0.4)",cursor:"pointer",textAlign:"center"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#c9a84c"} onMouseLeave={e=>e.currentTarget.style.borderColor="#2a3a5c"}>
+          <button key={opt.id} onClick={()=>{setDraftMode(opt.id);setOrderStep("spin");}} style={{padding:"24px 16px",borderRadius:14,border:"2px solid #2a3a5c",background:"rgba(26,39,68,0.4)",cursor:"pointer",textAlign:"center"}} onMouseEnter={e=>e.currentTarget.style.borderColor="var(--accent)"} onMouseLeave={e=>e.currentTarget.style.borderColor="#2a3a5c"}>
             <div style={{fontSize:38,marginBottom:10}}>{opt.icon}</div>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"#c9a84c",marginBottom:6}}>{opt.label}</div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"var(--accent)",marginBottom:6}}>{opt.label}</div>
             <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",lineHeight:1.5}}>{opt.desc}</div>
           </button>
         ))}
@@ -835,16 +835,16 @@ function DraftScreen({config,draftOrder,setDraftOrder,picks,setPicks,onLockDraft
   if(done)return(
     <div style={{maxWidth:920,margin:"0 auto",padding:"0 16px"}}>
       <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:32,color:"#c9a84c",letterSpacing:4}}>DRAFT COMPLETE</div>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:32,color:"var(--accent)",letterSpacing:4}}>DRAFT COMPLETE</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginTop:6}}>{readOnly?"All 48 teams claimed.":"All 48 teams claimed. Lock to begin Group Stage."}</div>
-        <button onClick={()=>setWatching(true)} style={{marginTop:10,padding:"7px 18px",borderRadius:10,border:"1px solid #c9a84c55",background:"rgba(201,168,76,0.08)",color:"#c9a84c",fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,cursor:"pointer"}}>🎬 Watch the draw</button>
+        <button onClick={()=>setWatching(true)} style={{marginTop:10,padding:"7px 18px",borderRadius:10,border:"1px solid #c9a84c55",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,cursor:"pointer"}}>🎬 Watch the draw</button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr",gap:12,marginBottom:28}}>{rosters.map((teams,idx)=><RosterCard key={idx} name={config.playerNames[idx]} color={PC[idx]} initial={initials[idx]} teams={teams} expanded/>)}</div>
-      {!readOnly&&<button onClick={onLockDraft} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer"}}>LOCK DRAFT → BEGIN GROUP STAGE</button>}
+      {!readOnly&&<button onClick={onLockDraft} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer"}}>LOCK DRAFT → BEGIN GROUP STAGE</button>}
     </div>
   );
 
-  const curColor=curIdx!=null?PC[curIdx]:"#c9a84c";
+  const curColor=curIdx!=null?PC[curIdx]:"var(--accent)";
   const curName=curIdx!=null?config.playerNames[curIdx]:"";
   const round=Math.floor((picks.length||0)/config.playerCount)+1;
   const totalRounds=48/config.playerCount;
@@ -867,7 +867,7 @@ function DraftScreen({config,draftOrder,setDraftOrder,picks,setPicks,onLockDraft
         </div>
         {(picks.length||0)>0&&<button onClick={()=>setPicks(p=>p.slice(0,-1))} style={{padding:"7px 14px",borderRadius:8,border:`1px solid ${curColor}66`,background:"transparent",color:curColor,fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>↶ Undo</button>}
       </div>
-      <div style={{height:5,background:"rgba(26,39,68,0.6)",borderRadius:3,marginBottom:12,overflow:"hidden"}}><div style={{height:"100%",width:`${((picks.length||0)/48)*100}%`,background:"linear-gradient(90deg,#c9a84c,#d97757)",transition:"width 0.3s"}}/></div>
+      <div style={{height:5,background:"rgba(26,39,68,0.6)",borderRadius:3,marginBottom:12,overflow:"hidden"}}><div style={{height:"100%",width:`${((picks.length||0)/48)*100}%`,background:"linear-gradient(90deg,var(--accent),#d97757)",transition:"width 0.3s"}}/></div>
       <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.6fr) minmax(0,1fr)",gap:14}}>
         <div>
           <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"#5a6a8a",marginBottom:8}}>TEAMS · SORTED BY ODDS</div>
@@ -905,14 +905,14 @@ function ScoreEntry({matchId,result,onSet,readOnly}) {
   const [av,setAv]=useState(result?.away??"");
   useEffect(()=>{setHv(result?.home??"");setAv(result?.away??"");},[result?.home,result?.away]);
   const trySet=(h,a)=>{const hi=h===""?null:parseInt(h);const ai=a===""?null:parseInt(a);if(hi!=null&&ai!=null&&!isNaN(hi)&&!isNaN(ai))onSet(matchId,{home:Math.max(0,hi),away:Math.max(0,ai)});else if(h===""&&a==="")onSet(matchId,undefined);};
-  const inp=(val,setVal,side)=><input type="number" min="0" max="20" value={val} readOnly={readOnly} onChange={e=>{const v=e.target.value;setVal(v);trySet(side==="home"?v:hv,side==="away"?v:av);}} style={{width:40,padding:"6px 0",textAlign:"center",borderRadius:8,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.6)",color:"#e0dcd4",fontFamily:"'Bebas Neue'",fontSize:22,outline:"none",cursor:readOnly?"default":"text"}} onFocus={e=>!readOnly&&(e.target.style.borderColor="#c9a84c")} onBlur={e=>e.target.style.borderColor="#2a3a5c"}/>;
+  const inp=(val,setVal,side)=><input type="number" min="0" max="20" value={val} readOnly={readOnly} onChange={e=>{const v=e.target.value;setVal(v);trySet(side==="home"?v:hv,side==="away"?v:av);}} style={{width:40,padding:"6px 0",textAlign:"center",borderRadius:8,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.6)",color:"#e0dcd4",fontFamily:"'Bebas Neue'",fontSize:22,outline:"none",cursor:readOnly?"default":"text"}} onFocus={e=>!readOnly&&(e.target.style.borderColor="var(--accent)")} onBlur={e=>e.target.style.borderColor="#2a3a5c"}/>;
   const out=getMatchOutcome(result);
   return(
     <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"center",flexShrink:0}}>
       {inp(hv,setHv,"home")}
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
         <span style={{fontFamily:"'Bebas Neue'",fontSize:14,color:"#5a6a8a",letterSpacing:1}}>–</span>
-        {out&&<div style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#c9a84c",letterSpacing:1}}>{out==="D"?"DRAW":out==="A"?"HOME":"AWAY"}</div>}
+        {out&&<div style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1}}>{out==="D"?"DRAW":out==="A"?"HOME":"AWAY"}</div>}
       </div>
       {inp(av,setAv,"away")}
       {result&&!readOnly&&<button onClick={()=>{setHv("");setAv("");onSet(matchId,undefined);}} style={{width:20,height:20,borderRadius:4,border:"1px solid #5a6a8a",background:"transparent",color:"#5a6a8a",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>×</button>}
@@ -945,7 +945,7 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials}) {
       <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>GRP {match.g}</span>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {match.ko&&!result&&<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"#c9a84c",letterSpacing:1}}>{fmtKickoff(match.d,match.ko)}</span>}
+          {match.ko&&!result&&<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1}}>{fmtKickoff(match.d,match.ko)}</span>}
           <span style={{fontStyle:"italic",opacity:0.8}}>{match.v}</span>
         </div>
       </div>
@@ -964,7 +964,7 @@ function GroupStandingsAccordion({g,res,ownership,initials}) {
   return(
     <div style={{background:"rgba(26,39,68,0.2)",borderRadius:10,border:"1px solid #1e2f50",marginBottom:6,overflow:"hidden"}}>
       <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",padding:"11px 14px",border:"none",background:"transparent",display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left"}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:22,color:"#c9a84c",letterSpacing:2,width:22,textAlign:"center",flexShrink:0}}>{g}</div>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:22,color:"var(--accent)",letterSpacing:2,width:22,textAlign:"center",flexShrink:0}}>{g}</div>
         <div style={{flex:1,display:"flex",gap:4,flexWrap:"wrap"}}>
           {s.map(({team},i)=>{const t=TBN[team];const o=ownership[team];return(<span key={team} style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:4,background:i<2?"rgba(97,169,120,0.1)":"transparent",fontSize:11,fontFamily:"'DM Sans'",color:o?PC[o.playerIdx]:(i<2?"#61a978":"#8899b4"),fontWeight:500}}><span style={{fontSize:12}}>{t?.flag}</span><span>{team}</span>{o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16}/>}</span>);})}
         </div>
@@ -974,7 +974,7 @@ function GroupStandingsAccordion({g,res,ownership,initials}) {
         <div style={{padding:"0 12px 12px"}}>
           <div style={{background:"rgba(10,22,40,0.4)",borderRadius:8,padding:"10px 12px",border:"1px solid #1e2f50"}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 40px 36px",gap:4,fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"0 2px 6px"}}><span>Team</span><span style={{textAlign:"center"}}>P</span><span style={{textAlign:"center"}}>W</span><span style={{textAlign:"center"}}>D</span><span style={{textAlign:"center"}}>L</span><span style={{textAlign:"center"}}>GD</span><span style={{textAlign:"center"}}>Pts</span></div>
-            {s.map((row,i)=>{const t=TBN[row.team];const o=ownership[row.team];return(<div key={row.team} style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 40px 36px",gap:4,padding:"4px 2px",borderTop:i>0?"1px solid rgba(26,39,68,0.5)":"none",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:i<2?"#61a978":"#5a6a8a",width:10,textAlign:"center"}}>{i+1}</span><span style={{fontSize:13}}>{t?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,color:o?PC[o.playerIdx]:"#e0dcd4",whiteSpace:"nowrap"}}>{code3(row.team)}</span>{o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16}/>}</div>{[row.P,row.W,row.D,row.L].map((v,j)=><span key={j} style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4"}}>{v}</span>)}<span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:row.GD>0?"#61a978":row.GD<0?"#d97757":"#8899b4"}}>{row.GD>0?"+":""}{row.GD}</span><span style={{textAlign:"center",fontFamily:"'Bebas Neue'",fontSize:14,color:"#c9a84c",letterSpacing:1}}>{row.Pts}</span></div>);})}
+            {s.map((row,i)=>{const t=TBN[row.team];const o=ownership[row.team];return(<div key={row.team} style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 40px 36px",gap:4,padding:"4px 2px",borderTop:i>0?"1px solid rgba(26,39,68,0.5)":"none",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:i<2?"#61a978":"#5a6a8a",width:10,textAlign:"center"}}>{i+1}</span><span style={{fontSize:13}}>{t?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,color:o?PC[o.playerIdx]:"#e0dcd4",whiteSpace:"nowrap"}}>{code3(row.team)}</span>{o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16}/>}</div>{[row.P,row.W,row.D,row.L].map((v,j)=><span key={j} style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4"}}>{v}</span>)}<span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:row.GD>0?"#61a978":row.GD<0?"#d97757":"#8899b4"}}>{row.GD>0?"+":""}{row.GD}</span><span style={{textAlign:"center",fontFamily:"'Bebas Neue'",fontSize:14,color:"var(--accent)",letterSpacing:1}}>{row.Pts}</span></div>);})}
           </div>
         </div>
       )}
@@ -1010,7 +1010,20 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
     if(readOnly)return;
     const match=GM.find(m=>m.id===matchId);
     if(match&&val){const out=getMatchOutcome(val);const fp=[];const[a,b]=match.t;const oA=ownership[a],oB=ownership[b];if(out==="A"&&oA)fp.push(`+3 pts · ${config.playerNames[oA.playerIdx]}`);else if(out==="B"&&oB)fp.push(`+3 pts · ${config.playerNames[oB.playerIdx]}`);else if(out==="D"){if(oA)fp.push(`+1 · ${config.playerNames[oA.playerIdx]}`);if(oB)fp.push(`+1 · ${config.playerNames[oB.playerIdx]}`);}if(fp.length){setFlash(fp.join("  ·  "));setTimeout(()=>setFlash(null),2500);}}
-    setMatchResults(r=>val==null?{...r,[matchId]:undefined}:{...r,[matchId]:val});
+    setMatchResults(r=>{
+      const newResults=val==null?{...r,[matchId]:undefined}:{...r,[matchId]:val};
+      // Auto-save to Firebase if we have a pool code
+      try{
+        const code=window.localStorage?.getItem("mundi_pool_code");
+        const pw=window.localStorage?.getItem("mundi_host_pw");
+        if(code){
+          // Merge new results into current state and save
+          const newSt={...st,mr:{...st.mr,...newResults}};
+          savePool(code,newSt,pw||undefined);
+        }
+      }catch(e){}
+      return newResults;
+    });
   };
 
   return(
@@ -1027,15 +1040,15 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
         <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",marginLeft:"auto"}}>{recorded}/72</span>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:16}}>
-        {[{id:"schedule",icon:"📅",label:"Match Schedule"},{id:"standings",icon:"📊",label:"Group Standings"}].map(v=>{const active=v.id===view;return <button key={v.id} onClick={()=>setView(v.id)} style={{padding:"9px 16px",borderRadius:8,border:active?"2px solid #c9a84c":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"#c9a84c":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>{v.icon} {v.label}</button>;})}
+        {[{id:"schedule",icon:"📅",label:"Match Schedule"},{id:"standings",icon:"📊",label:"Group Standings"}].map(v=>{const active=v.id===view;return <button key={v.id} onClick={()=>setView(v.id)} style={{padding:"9px 16px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>{v.icon} {v.label}</button>;})}
       </div>
       {view==="schedule"&&matchesByDate.map(([date,matches])=>{
         const isToday=date===today;const isPast=date<today;
         return(
           <div key={date} style={{marginBottom:18}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:isToday?"#c9a84c":isPast?"#5a6a8a":"#8899b4"}}>{fmtDate(date)}</div>
-              {isToday&&<div style={{padding:"2px 8px",borderRadius:10,background:"rgba(201,168,76,0.2)",border:"1px solid rgba(201,168,76,0.4)",fontFamily:"'Bebas Neue'",fontSize:10,color:"#c9a84c",letterSpacing:1.5}}>TODAY</div>}
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:isToday?"var(--accent)":isPast?"#5a6a8a":"#8899b4"}}>{fmtDate(date)}</div>
+              {isToday&&<div style={{padding:"2px 8px",borderRadius:10,background:"rgba(201,168,76,0.2)",border:"1px solid rgba(201,168,76,0.4)",fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1.5}}>TODAY</div>}
               <div style={{flex:1,height:1,background:"rgba(26,39,68,0.6)"}}/>
               <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a"}}>{matches.filter(m=>matchResults[m.id]!=null).length}/{matches.length}</span>
             </div>
@@ -1045,7 +1058,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
       })}
       {view==="standings"&&Object.keys(GROUPS).map(g=><GroupStandingsAccordion key={g} g={g} res={matchResults} ownership={ownership} initials={initials}/>)}
       <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      {flash&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.4)",borderRadius:30,padding:"10px 22px",fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"#c9a84c",whiteSpace:"nowrap",zIndex:200,animation:"slideUp 0.3s ease-out"}}>⚽ {flash}</div>}
+      {flash&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.4)",borderRadius:30,padding:"10px 22px",fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"var(--accent)",whiteSpace:"nowrap",zIndex:200,animation:"slideUp 0.3s ease-out"}}>⚽ {flash}</div>}
     </div>
   );
 }
@@ -1069,7 +1082,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
         <span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"#8899b4",letterSpacing:1}}>M{match.n}</span>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {match.ko&&!hasResult&&<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"#c9a84c",letterSpacing:1}}>{fmtKickoff(match.d,match.ko)}</span>}
+          {match.ko&&!hasResult&&<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1}}>{fmtKickoff(match.d,match.ko)}</span>}
           <span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontStyle:"italic"}}>{match.v}</span>
         </div>
         {!readOnly&&<button onClick={()=>{setEditA(teamA||"");setEditB(teamB||"");setEditOpen(!editOpen);}} style={{fontSize:9,color:"#5a6a8a",background:"transparent",border:"1px solid #2a3a5c",borderRadius:4,padding:"2px 5px",cursor:"pointer"}}>✎ Override</button>}
@@ -1086,7 +1099,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
             </div>
           ))}
           <div style={{display:"flex",gap:6}}>
-            <button onClick={()=>{if(editA)onSetOverride(match.id,"a",editA);if(editB)onSetOverride(match.id,"b",editB);setEditOpen(false);}} style={{flex:1,padding:"6px 0",borderRadius:6,border:"none",background:"#c9a84c",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:1.5,cursor:"pointer"}}>SAVE</button>
+            <button onClick={()=>{if(editA)onSetOverride(match.id,"a",editA);if(editB)onSetOverride(match.id,"b",editB);setEditOpen(false);}} style={{flex:1,padding:"6px 0",borderRadius:6,border:"none",background:"var(--accent)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:1.5,cursor:"pointer"}}>SAVE</button>
             <button onClick={()=>setEditOpen(false)} style={{padding:"6px 12px",borderRadius:6,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontSize:11,cursor:"pointer"}}>Cancel</button>
             {(teamA||teamB)&&<button onClick={()=>{onSetOverride(match.id,"a",undefined);onSetOverride(match.id,"b",undefined);setEditOpen(false);}} style={{padding:"6px 10px",borderRadius:6,border:"1px solid #d97757",background:"transparent",color:"#d97757",fontSize:11,cursor:"pointer"}}>Clear</button>}
           </div>
@@ -1096,7 +1109,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
         <KoTeamDisplay team={teamA} slot={match.sA} owner={oA} initials={initials} isWinner={winA} hasResult={hasResult} isHome={true}/>
         <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
           {(teamA||teamB)?(<>
-            <button onClick={()=>!readOnly&&onSetResult(match.id,winA?undefined:"A")} style={{padding:"4px 8px",borderRadius:5,border:winA?"1.5px solid #c9a84c":"1.5px solid transparent",background:winA?"rgba(201,168,76,0.2)":"rgba(26,39,68,0.4)",color:winA?"#c9a84c":"#5a6a8a",fontFamily:"'DM Sans'",fontSize:9,fontWeight:700,cursor:readOnly?"default":"pointer",textTransform:"uppercase",whiteSpace:"nowrap"}}>{winA?"✓ ":""}{teamA?btnName(teamA):"A"}</button>
+            <button onClick={()=>!readOnly&&onSetResult(match.id,winA?undefined:"A")} style={{padding:"4px 8px",borderRadius:5,border:winA?"1.5px solid var(--accent)":"1.5px solid transparent",background:winA?"rgba(201,168,76,0.2)":"rgba(26,39,68,0.4)",color:winA?"var(--accent)":"#5a6a8a",fontFamily:"'DM Sans'",fontSize:9,fontWeight:700,cursor:readOnly?"default":"pointer",textTransform:"uppercase",whiteSpace:"nowrap"}}>{winA?"✓ ":""}{teamA?btnName(teamA):"A"}</button>
             <button onClick={()=>!readOnly&&onSetResult(match.id,winB?undefined:"B")} style={{padding:"4px 8px",borderRadius:5,border:winB?"1.5px solid #6b9bd1":"1.5px solid transparent",background:winB?"rgba(107,155,209,0.2)":"rgba(26,39,68,0.4)",color:winB?"#6b9bd1":"#5a6a8a",fontFamily:"'DM Sans'",fontSize:9,fontWeight:700,cursor:readOnly?"default":"pointer",textTransform:"uppercase",whiteSpace:"nowrap"}}>{winB?"✓ ":""}{teamB?btnName(teamB):"B"}</button>
           </>):<span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",fontStyle:"italic",textAlign:"center"}}>TBD</span>}
         </div>
@@ -1142,15 +1155,15 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
         </div>
       )}
       <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto"}}>
-        {ROUND_ORDER.map(r=>{const active=activeRound===r;const cnt=roundMatches[r]?.length||0;const done=roundMatches[r]?.filter(m=>koResults[m.id]).length||0;return(<button key={r} onClick={()=>setActiveRound(r)} style={{padding:"7px 12px",borderRadius:8,border:active?"2px solid #c9a84c":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"#c9a84c":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1.5,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}}>{KO_LABELS[r]}<span style={{fontFamily:"'DM Sans'",fontSize:9,color:active?"#c9a84c88":"#3d5070",marginLeft:5}}>{done}/{cnt}</span></button>);})}
+        {ROUND_ORDER.map(r=>{const active=activeRound===r;const cnt=roundMatches[r]?.length||0;const done=roundMatches[r]?.filter(m=>koResults[m.id]).length||0;return(<button key={r} onClick={()=>setActiveRound(r)} style={{padding:"7px 12px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1.5,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}}>{KO_LABELS[r]}<span style={{fontFamily:"'DM Sans'",fontSize:9,color:active?"#c9a84c88":"#3d5070",marginLeft:5}}>{done}/{cnt}</span></button>);})}
       </div>
-      <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",textAlign:"center",marginBottom:12}}>Win = <span style={{color:"#c9a84c",fontWeight:700}}>{config.koPoints[activeRound]} pts</span></div>
+      <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",textAlign:"center",marginBottom:12}}>Win = <span style={{color:"var(--accent)",fontWeight:700}}>{config.koPoints[activeRound]} pts</span></div>
       {roundMatches[activeRound]?.map(m=>{const bk=bracket[m.id];return(<KoMatchCard key={m.id} match={m} teamA={bk?.a||null} teamB={bk?.b||null} result={koResults[m.id]} onSetOverride={(mid,side,val)=>setKoOverride(mid,side,val)} onSetResult={(mid,val)=>setKoResults(r=>({...r,[mid]:val}))} ownership={ownership} initials={koInitials} readOnly={readOnly}/>);})}
     </div>
   );
 }
 
-function StandingsScreen({config,picks,matchResults,bracket,koResults,initials}) {
+function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser}) {
   const [expandedIdx,setExpandedIdx]=useState(null);
   const playerData=useMemo(()=>{
     return Array.from({length:config.playerCount},(_,i)=>{
@@ -1166,8 +1179,8 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials})
   const barMax=Math.max(...playerData.map(x=>x.total))||1;
   return(
     <div style={{maxWidth:720,margin:"0 auto",padding:"0 16px"}}>
-      <div style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:4,color:"#c9a84c",textAlign:"center",marginBottom:6}}>STANDINGS</div>
-      {pot>0&&<div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",textAlign:"center",marginBottom:24}}>🏆 Prize pool: <span style={{color:"#c9a84c",fontWeight:700}}>${pot.toLocaleString()}</span> · winner takes all</div>}
+      <div style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:4,color:"var(--accent)",textAlign:"center",marginBottom:6}}>STANDINGS</div>
+      {pot>0&&<div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",textAlign:"center",marginBottom:24}}>🏆 Prize pool: <span style={{color:"var(--accent)",fontWeight:700}}>${pot.toLocaleString()}</span> · winner takes all</div>}
       {!pot&&<div style={{marginBottom:24}}/>}
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {playerData.map((p,rank)=>{
@@ -1179,8 +1192,8 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials})
                 <div style={{fontFamily:"'Bebas Neue'",fontSize:38,color,letterSpacing:1,width:36,textAlign:"center",flexShrink:0}}>#{rank+1}</div>
                 <div style={{flex:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                    <div style={{width:26,height:26,borderRadius:7,background:color,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[p.idx]}</div>
-                    <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color}}>{p.name}</div>
+                    <PlayerAvatar idx={p.idx} name={p.name} size={28} style={{borderRadius:7}}/>
+                    <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color,display:"flex",alignItems:"center",gap:6}}>{p.name}{myPlayerIdx===p.idx&&<span style={{fontSize:10,color:"var(--accent)",background:"rgba(201,168,76,0.15)",padding:"1px 7px",borderRadius:8,fontFamily:"'DM Sans'",fontWeight:600}}>you</span>}</div>
                     <span style={{fontFamily:"'DM Sans'",fontSize:11,color:`${color}88`,marginLeft:"auto"}}>{expanded?"▲":"▼"}</span>
                   </div>
                   <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
@@ -1209,6 +1222,9 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials})
         })}
       </div>
       <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",marginTop:20,lineHeight:1.7,fontStyle:"italic"}}>Tiebreaker: Most teams past R32 → Highest GS total → Coin toss</div>
+      <button onClick={onChangeUser} style={{width:"100%",marginTop:14,padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
+        👤 Change user
+      </button>
     </div>
   );
 }
@@ -1217,10 +1233,10 @@ function SpectatorIntro({st,initials,onComplete}) {
   const [phase,setPhase]=useState("rules");
   const picks=st.picks||[];
   const rosters=useMemo(()=>{const r=Array.from({length:st.config.playerCount},()=>[]);picks.forEach(p=>{if(p.playerIdx!=null)r[p.playerIdx].push(p.team);});return r;},[picks,st.config.playerCount]);
-  if(phase==="rules") return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div style={{maxWidth:480,width:"100%",background:"linear-gradient(165deg,#0f1e38,#0a1628)",borderRadius:20,border:"1px solid rgba(201,168,76,0.35)",padding:"32px 28px"}}><div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:48,marginBottom:8}}>⚽</div><div style={{fontFamily:"'Bebas Neue'",fontSize:30,color:"#c9a84c",letterSpacing:4,marginBottom:4}}>MUNDIALITO 2026</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",lineHeight:1.6}}>Welcome to the pool! Here's how it works.</div></div><RulesList/><button onClick={()=>setPhase("spin")} style={{width:"100%",marginTop:28,padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer"}}>WATCH THE DRAW 🎡 →</button><button onClick={()=>{try{window.localStorage?.setItem("mundi_intro_seen","1");}catch(e){}onComplete();}} style={{width:"100%",marginTop:10,padding:"14px 0",borderRadius:12,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>SKIP → GO TO GROUP STAGE</button></div></div></>);
-  if(phase==="spin") return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",padding:"32px 16px"}}><div style={{textAlign:"center",marginBottom:20}}><div style={{fontFamily:"'Bebas Neue'",fontSize:14,color:"#5a6a8a",letterSpacing:3,marginBottom:4}}>STEP 1 OF 2</div><div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:"#c9a84c",letterSpacing:4}}>DRAFT ORDER DRAW</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginTop:4}}>This is the order players were drawn to pick their teams</div></div><StadiumSpin playerNames={st.config.playerNames} replayOrder={st.draftOrder||[]} onComplete={()=>setPhase("sorteo")} onBack={()=>setPhase("rules")}/></div></>);
-  if(phase==="sorteo") return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",padding:"32px 16px"}}><div style={{textAlign:"center",marginBottom:20}}><div style={{fontFamily:"'Bebas Neue'",fontSize:14,color:"#5a6a8a",letterSpacing:3,marginBottom:4}}>STEP 2 OF 2</div><div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:"#c9a84c",letterSpacing:4}}>EL SORTEO OFICIAL</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginTop:4}}>Watch El Presidente draw each player's teams</div></div><AutoReveal config={st.config} draftOrder={st.draftOrder||[]} initials={initials} precomputedPicks={picks} autoStart={true} onComplete={()=>setPhase("recap")} onSkip={()=>{try{window.localStorage?.setItem("mundi_intro_seen","1");}catch(e){}onComplete();}}/></div></>);
-  if(phase==="recap") return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",padding:"32px 16px"}}><div style={{textAlign:"center",marginBottom:24}}><div style={{fontFamily:"'Bebas Neue'",fontSize:32,color:"#c9a84c",letterSpacing:4,marginBottom:4}}>🏆 FINAL ROSTERS</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4"}}>Here's who got what. May the best team win!</div></div><div style={{maxWidth:720,margin:"0 auto",display:"grid",gridTemplateColumns:`repeat(${Math.min(st.config.playerCount,2)},1fr)`,gap:14,marginBottom:28}}>{rosters.map((teams,i)=>(<div key={i} style={{background:`${PC[i]}10`,border:`1px solid ${PC[i]}44`,borderRadius:12,padding:"14px 16px"}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${PC[i]}33`}}><div style={{width:26,height:26,borderRadius:7,background:PC[i],color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[i]}</div><span style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:700,color:PC[i]}}>{st.config.playerNames[i]}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,color:`${PC[i]}66`,marginLeft:"auto"}}>{teams.length} teams</span></div><div style={{display:"flex",flexDirection:"column",gap:3}}>{picks.filter(p=>p.playerIdx===i).map((p,j)=>{const t=TBN[p.team];return(<div key={p.team} style={{display:"flex",alignItems:"center",gap:7,padding:"2px 4px"}}><span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:`${PC[i]}55`,width:16,textAlign:"right"}}>{j+1}</span><span style={{fontSize:14}}>{t?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:500,color:"#e0dcd4",flex:1}}>{p.team}</span></div>);})}</div></div>))}</div><div style={{maxWidth:720,margin:"0 auto"}}><button onClick={()=>{try{window.localStorage?.setItem("mundi_intro_seen","1");}catch(e){}onComplete();}} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer"}}>⚽ LET'S PLAY →</button></div></div></>);
+  if(phase==="rules") return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div style={{maxWidth:480,width:"100%",background:"linear-gradient(165deg,#0f1e38,#0a1628)",borderRadius:20,border:"1px solid rgba(201,168,76,0.35)",padding:"32px 28px"}}><div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:48,marginBottom:8}}>⚽</div><div style={{fontFamily:"'Bebas Neue'",fontSize:30,color:"var(--accent)",letterSpacing:4,marginBottom:4}}>MUNDIALITO 2026</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",lineHeight:1.6}}>Welcome to the pool! Here's how it works.</div></div><RulesList/><button onClick={()=>setPhase("spin")} style={{width:"100%",marginTop:28,padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer"}}>WATCH THE DRAW 🎡 →</button><button onClick={()=>{try{window.localStorage?.setItem("mundi_intro_seen","1");}catch(e){}onComplete();}} style={{width:"100%",marginTop:10,padding:"14px 0",borderRadius:12,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>SKIP → GO TO GROUP STAGE</button></div></div></>);
+  if(phase==="spin") return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",padding:"32px 16px"}}><div style={{textAlign:"center",marginBottom:20}}><div style={{fontFamily:"'Bebas Neue'",fontSize:14,color:"#5a6a8a",letterSpacing:3,marginBottom:4}}>STEP 1 OF 2</div><div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:"var(--accent)",letterSpacing:4}}>DRAFT ORDER DRAW</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginTop:4}}>This is the order players were drawn to pick their teams</div></div><StadiumSpin playerNames={st.config.playerNames} replayOrder={st.draftOrder||[]} onComplete={()=>setPhase("sorteo")} onBack={()=>setPhase("rules")}/></div></>);
+  if(phase==="sorteo") return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",padding:"32px 16px"}}><div style={{textAlign:"center",marginBottom:20}}><div style={{fontFamily:"'Bebas Neue'",fontSize:14,color:"#5a6a8a",letterSpacing:3,marginBottom:4}}>STEP 2 OF 2</div><div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:"var(--accent)",letterSpacing:4}}>EL SORTEO OFICIAL</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginTop:4}}>Watch El Presidente draw each player's teams</div></div><AutoReveal config={st.config} draftOrder={st.draftOrder||[]} initials={initials} precomputedPicks={picks} autoStart={true} onComplete={()=>setPhase("recap")} onSkip={()=>{try{window.localStorage?.setItem("mundi_intro_seen","1");}catch(e){}onComplete();}}/></div></>);
+  if(phase==="recap") return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",padding:"32px 16px"}}><div style={{textAlign:"center",marginBottom:24}}><div style={{fontFamily:"'Bebas Neue'",fontSize:32,color:"var(--accent)",letterSpacing:4,marginBottom:4}}>🏆 FINAL ROSTERS</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4"}}>Here's who got what. May the best team win!</div></div><div style={{maxWidth:720,margin:"0 auto",display:"grid",gridTemplateColumns:`repeat(${Math.min(st.config.playerCount,2)},1fr)`,gap:14,marginBottom:28}}>{rosters.map((teams,i)=>(<div key={i} style={{background:`${PC[i]}10`,border:`1px solid ${PC[i]}44`,borderRadius:12,padding:"14px 16px"}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${PC[i]}33`}}><div style={{width:26,height:26,borderRadius:7,background:PC[i],color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[i]}</div><span style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:700,color:PC[i]}}>{st.config.playerNames[i]}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,color:`${PC[i]}66`,marginLeft:"auto"}}>{teams.length} teams</span></div><div style={{display:"flex",flexDirection:"column",gap:3}}>{picks.filter(p=>p.playerIdx===i).map((p,j)=>{const t=TBN[p.team];return(<div key={p.team} style={{display:"flex",alignItems:"center",gap:7,padding:"2px 4px"}}><span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:`${PC[i]}55`,width:16,textAlign:"right"}}>{j+1}</span><span style={{fontSize:14}}>{t?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:500,color:"#e0dcd4",flex:1}}>{p.team}</span></div>);})}</div></div>))}</div><div style={{maxWidth:720,margin:"0 auto"}}><button onClick={()=>{try{window.localStorage?.setItem("mundi_intro_seen","1");}catch(e){}onComplete();}} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer"}}>⚽ LET'S PLAY →</button></div></div></>);
   return null;
 }
 
@@ -1245,7 +1261,7 @@ function JoinScreen({onJoin,onBack}) {
     <div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <div style={{maxWidth:420,width:"100%",background:"linear-gradient(165deg,#0f1e38,#0a1628)",borderRadius:20,border:"1px solid rgba(201,168,76,0.35)",padding:"32px 28px",textAlign:"center"}}>
         <div style={{fontSize:40,marginBottom:12}}>⚽</div>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:26,color:"#c9a84c",letterSpacing:3,marginBottom:8}}>LOAD POOL</div>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:26,color:"var(--accent)",letterSpacing:3,marginBottom:8}}>LOAD POOL</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:24,lineHeight:1.6}}>
           Enter the code your host sent you.
         </div>
@@ -1256,12 +1272,12 @@ function JoinScreen({onJoin,onBack}) {
           placeholder="e.g. CS26"
           maxLength={6}
           autoFocus
-          style={{width:"100%",padding:"16px",borderRadius:10,border:err?"1.5px solid #d97757":"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:8,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:err?6:20}}
+          style={{width:"100%",padding:"16px",borderRadius:10,border:err?"1.5px solid #d97757":"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:8,outline:"none",boxSizing:"border-box",textAlign:"center",marginBottom:err?6:20}}
         />
         {err&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#d97757",marginBottom:16,textAlign:"left"}}>{err}</div>}
         <div style={{display:"flex",gap:8}}>
           <button onClick={onBack} style={{padding:"12px 16px",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>← Back</button>
-          <button onClick={doJoin} disabled={val.trim().length<2||loading} style={{flex:1,padding:"12px 0",borderRadius:10,border:"none",background:val.trim().length>=2?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:val.trim().length>=2?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:val.trim().length>=2?"pointer":"default"}}>
+          <button onClick={doJoin} disabled={val.trim().length<2||loading} style={{flex:1,padding:"12px 0",borderRadius:10,border:"none",background:val.trim().length>=2?"linear-gradient(135deg,var(--accent),var(--accent-dark))":"rgba(26,39,68,0.5)",color:val.trim().length>=2?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:val.trim().length>=2?"pointer":"default"}}>
             {loading?"LOADING…":"LOAD POOL"}
           </button>
         </div>
@@ -1306,7 +1322,7 @@ function SwitchToHostModal({open,onClose,onSuccess,poolCode}) {
         <button onClick={()=>setShowPw(s=>!s)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:"#5a6a8a",cursor:"pointer",fontSize:16}}>{showPw?"🙈":"👁"}</button>
       </div>
       {err&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#d97757",marginBottom:12}}>{err}</div>}
-      <button onClick={doSwitch} disabled={!pw.trim()||loading} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:pw.trim()?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:pw.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:pw.trim()?"pointer":"default",marginBottom:8}}>
+      <button onClick={doSwitch} disabled={!pw.trim()||loading} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:pw.trim()?"linear-gradient(135deg,var(--accent),var(--accent-dark))":"rgba(26,39,68,0.5)",color:pw.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:pw.trim()?"pointer":"default",marginBottom:8}}>
         {loading?"CHECKING…":"UNLOCK HOST ACCESS"}
       </button>
       <button onClick={()=>{setPw("");setErr("");onClose();}} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button>
@@ -1343,7 +1359,7 @@ function NotifyModal({open,onClose}) {
   if(!open)return null;
   return(
     <Modal open={open} onClose={onClose} title="NOTIFY GROUP">
-      {status==="sending"&&<div style={{textAlign:"center",padding:"24px 0",fontFamily:"'Bebas Neue'",fontSize:18,color:"#c9a84c",letterSpacing:2}}>Sending…</div>}
+      {status==="sending"&&<div style={{textAlign:"center",padding:"24px 0",fontFamily:"'Bebas Neue'",fontSize:18,color:"var(--accent)",letterSpacing:2}}>Sending…</div>}
       {status==="done"&&<div style={{textAlign:"center",padding:"24px 0",fontFamily:"'Bebas Neue'",fontSize:18,color:"#61a978",letterSpacing:2}}>✓ Sent!</div>}
       {status==="error"&&<div style={{textAlign:"center",padding:"24px 0"}}><div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"#d97757",letterSpacing:2,marginBottom:12}}>Failed to send</div><button onClick={()=>setStatus("idle")} style={{padding:"10px 20px",borderRadius:8,border:"none",background:"#d97757",color:"white",fontFamily:"'Bebas Neue'",fontSize:14,cursor:"pointer"}}>TRY AGAIN</button></div>}
       {status==="idle"&&(
@@ -1359,10 +1375,244 @@ function NotifyModal({open,onClose}) {
           <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:"#5a6a8a",marginBottom:6}}>OR CUSTOM MESSAGE</div>
           <div style={{display:"flex",gap:8}}>
             <input value={custom} onChange={e=>setCustom(e.target.value)} placeholder="Type a message…" style={{flex:1,padding:"10px 12px",borderRadius:8,border:"1px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:13,outline:"none"}}/>
-            <button onClick={()=>custom.trim()&&send(custom.trim())} disabled={!custom.trim()} style={{padding:"10px 16px",borderRadius:8,border:"none",background:custom.trim()?"linear-gradient(135deg,#c9a84c,#a8883a)":"rgba(26,39,68,0.5)",color:custom.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:custom.trim()?"pointer":"default"}}>SEND</button>
+            <button onClick={()=>custom.trim()&&send(custom.trim())} disabled={!custom.trim()} style={{padding:"10px 16px",borderRadius:8,border:"none",background:custom.trim()?"linear-gradient(135deg,var(--accent),var(--accent-dark))":"rgba(26,39,68,0.5)",color:custom.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:custom.trim()?"pointer":"default"}}>SEND</button>
           </div>
         </>
       )}
+    </Modal>
+  );
+}
+
+
+// ── Profile helpers ───────────────────────────────────────────
+const PLAYER_COLORS = ["#c9a84c","#6b9bd1","#61a978","#d97757","#a855f7","#ec4899","#14b8a6","#f59e0b"];
+
+// In-memory cache of profile pics and colours fetched from Firestore
+const picCache = {};
+const colorCache = {};
+
+function getPlayerColor(playerIdx, fallback) {
+  return colorCache[playerIdx] || fallback || PLAYER_COLORS[playerIdx % PLAYER_COLORS.length];
+}
+
+function getProfilePic(playerIdx) {
+  return picCache[playerIdx] || null;
+}
+
+async function saveProfilePicToFirestore(playerIdx, dataUrl) {
+  try {
+    picCache[playerIdx] = dataUrl;
+    const code = window.localStorage?.getItem("mundi_pool_code") ||
+                 window.localStorage?.getItem("mundi_spectator_code");
+    if (!code) return;
+    const profiles = {};
+    profiles[String(playerIdx)] = dataUrl;
+    await setDoc(doc(db, "pools", code), { profiles }, { merge: true });
+  } catch(e) { console.error("pic save failed", e); }
+}
+
+async function loadProfilePics(code) {
+  try {
+    const snap = await getDoc(doc(db, "pools", code));
+    if (!snap.exists()) return {};
+    const data = snap.data();
+    const profiles = data.profiles || {};
+    Object.keys(profiles).forEach(k => {
+      picCache[parseInt(k)] = profiles[k];
+    });
+    const colors = data.playerColors || {};
+    Object.keys(colors).forEach(k => {
+      colorCache[parseInt(k)] = colors[k];
+    });
+    return colors;
+  } catch(e) { return {}; }
+}
+
+function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
+  const pic = getProfilePic(idx);
+  const color = getPlayerColor(idx);
+  const initials = name ? name.slice(0,2).toUpperCase() : "??";
+  if(pic) return (
+    <div style={{width:size,height:size,borderRadius:"50%",overflow:"hidden",flexShrink:0,...style}}>
+      <img src={pic} style={{width:"100%",height:"100%",objectFit:"cover"}} />
+    </div>
+  );
+  return (
+    <div style={{width:size,height:size,borderRadius:"50%",background:color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.33,fontWeight:900,color:"#0a1628",flexShrink:0,...style}}>
+      {initials}
+    </div>
+  );
+}
+
+function SelectNameModal({open, onClose, onSelect, playerNames, picks}) {
+  const [selected, setSelected] = useState(null);
+  if(!open) return null;
+  const names = playerNames||[];
+
+  return(
+    <Modal open={open} onClose={onClose} title="SELECT YOUR NAME">
+      <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>
+        Tap your name so we can personalise your experience.
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+        {names.map((name,i)=>{
+          const color=PLAYER_COLORS[i%PLAYER_COLORS.length];
+          const initials=name?name.slice(0,2).toUpperCase():"??";
+          const teamCount=(picks||[]).filter(p=>p.playerIdx===i).length;
+          return(
+            <div key={i} onClick={()=>setSelected(i)} style={{background:selected===i?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.6)",border:`1.5px solid ${selected===i?"var(--accent)":"#2a3a5c"}`,borderRadius:14,padding:"14px 10px",display:"flex",flexDirection:"column",alignItems:"center",gap:8,cursor:"pointer"}}>
+              <PlayerAvatar idx={i} name={name} size={48}/>
+              <div style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:700,color:"#e0dcd4",textAlign:"center"}}>{name||`Player ${i+1}`}</div>
+              <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a"}}>{teamCount} teams</div>
+            </div>
+          );
+        })}
+      </div>
+      <button onClick={()=>{if(selected!==null)onSelect(selected);}} disabled={selected===null} style={{width:"100%",padding:"14px 0",borderRadius:12,border:"none",background:selected!==null?"linear-gradient(135deg,var(--accent),var(--accent-dark))":"rgba(26,39,68,0.5)",color:selected!==null?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:selected!==null?"pointer":"default"}}>
+        THAT'S ME →
+      </button>
+    </Modal>
+  );
+}
+
+async function savePlayerColor(playerIdx, color) {
+  try {
+    colorCache[playerIdx] = color;
+    const code = window.localStorage?.getItem("mundi_pool_code") ||
+                 window.localStorage?.getItem("mundi_spectator_code");
+    if (!code) return;
+    const colors = {};
+    colors[String(playerIdx)] = color;
+    await setDoc(doc(db, "pools", code), { playerColors: colors }, { merge: true });
+  } catch(e) {}
+}
+
+async function loadPlayerColors(code) {
+  try {
+    const snap = await getDoc(doc(db, "pools", code));
+    if (!snap.exists()) return {};
+    return snap.data().playerColors || {};
+  } catch(e) { return {}; }
+}
+
+function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, currentColor, onColorChange}) {
+  const [pic, setPic] = useState(()=>getProfilePic(playerIdx));
+  const [selectedColor, setSelectedColor] = useState(currentColor||PLAYER_COLORS[playerIdx%PLAYER_COLORS.length]);
+  const [takenColors, setTakenColors] = useState([]);
+  const fileRef = useRef(null);
+
+  useEffect(()=>{
+    if(!open) return;
+    // Load taken colours from Firestore
+    const code = window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
+    if(code) loadPlayerColors(code).then(colors=>{
+      const taken = Object.entries(colors).filter(([k])=>parseInt(k)!==playerIdx).map(([,v])=>v);
+      setTakenColors(taken);
+    });
+  },[open,playerIdx]);
+
+  if(!open||playerIdx===null) return null;
+  const color = selectedColor;
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if(!file) return;
+    // Resize image before saving to keep Firestore document small
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX = 120;
+        const ratio = Math.min(MAX/img.width, MAX/img.height);
+        canvas.width = Math.round(img.width*ratio);
+        canvas.height = Math.round(img.height*ratio);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        saveProfilePicToFirestore(playerIdx, dataUrl);
+        setPic(dataUrl);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return(
+    <Modal open={open} onClose={onClose} title="YOUR PROFILE">
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12,padding:"8px 0 20px"}}>
+        <div style={{position:"relative",cursor:"pointer"}} onClick={()=>fileRef.current?.click()}>
+          <PlayerAvatar idx={playerIdx} name={playerName} size={80}/>
+          <div style={{position:"absolute",bottom:0,right:0,background:"var(--accent)",borderRadius:"50%",width:26,height:26,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>📷</div>
+        </div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color:"#e0dcd4"}}>{playerName}</div>
+        <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
+      </div>
+      <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#8899b4",textAlign:"center",marginBottom:20,lineHeight:1.6}}>
+        Tap your avatar to add a photo from your camera roll. It'll show on the standings for everyone.
+      </div>
+      <div style={{marginBottom:16}}>
+        <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",letterSpacing:1,marginBottom:10}}>YOUR COLOUR</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+          {PLAYER_PICK_COLORS.map(c=>{
+            const taken=takenColors.includes(c)&&c!==selectedColor;
+            return(
+              <div key={c} onClick={()=>{if(!taken){setSelectedColor(c);onColorChange&&onColorChange(c);savePlayerColor(playerIdx,c);}}}
+                style={{width:32,height:32,borderRadius:8,background:taken?"#1a2744":"transparent",border:`3px solid ${selectedColor===c?"white":taken?"#2a3a5c":c}`,cursor:taken?"not-allowed":"pointer",position:"relative",overflow:"hidden"}}>
+                {!taken&&<div style={{width:"100%",height:"100%",background:c,borderRadius:5}}/>}
+                {taken&&<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>🔒</div>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <button onClick={()=>{onColorChange&&onColorChange(selectedColor);savePlayerColor(playerIdx,selectedColor);onDone();}} style={{width:"100%",padding:"14px 0",borderRadius:12,border:"none",background:`linear-gradient(135deg,${selectedColor},${selectedColor}cc)`,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:"pointer",marginBottom:10}}>
+        {pic?"LOOKS GOOD →":"USE INITIALS →"}
+      </button>
+      {!pic&&<button onClick={()=>fileRef.current?.click()} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>
+        📷 Add a photo instead
+      </button>}
+    </Modal>
+  );
+}
+
+
+const PLAYER_PICK_COLORS = [
+  "#c9a84c","#e879a0","#a855f7","#14b8a6","#3b82f6","#22c55e","#f97316","#ef4444",
+  "#6b9bd1","#61a978","#d97757","#ec4899","#f59e0b","#06b6d4","#84cc16","#8b5cf6",
+  "#ff6b6b","#6ee7b7","#fbbf24","#94a3b8",
+];
+
+const THEME_COLORS = [
+  {name:"Gold",value:"#c9a84c"},
+  {name:"Pink",value:"#e879a0"},
+  {name:"Purple",value:"#a855f7"},
+  {name:"Teal",value:"#14b8a6"},
+  {name:"Blue",value:"#3b82f6"},
+  {name:"Green",value:"#22c55e"},
+  {name:"Orange",value:"#f97316"},
+  {name:"Red",value:"#ef4444"},
+  {name:"Coral",value:"#ff6b6b"},
+  {name:"Mint",value:"#6ee7b7"},
+  {name:"Lavender",value:"#c4b5fd"},
+  {name:"Rose",value:"#fb7185"},
+];
+
+function ThemeModal({open, onClose, currentAccent, onSelect}) {
+  if(!open) return null;
+  return(
+    <Modal open={open} onClose={onClose} title="CHOOSE YOUR THEME">
+      <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>
+        Pick an accent colour. Only you will see this change — it won't affect anyone else's app.
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+        {THEME_COLORS.map(({name,value})=>(
+          <div key={value} onClick={()=>{onSelect(value);onClose();}} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,cursor:"pointer"}}>
+            <div style={{width:48,height:48,borderRadius:12,background:value,border:`3px solid ${currentAccent===value?"white":"transparent"}`,boxShadow:currentAccent===value?"0 0 0 2px "+value:"none"}}/>
+            <div style={{fontFamily:"'DM Sans'",fontSize:10,color:currentAccent===value?"#e0dcd4":"#5a6a8a"}}>{name}</div>
+          </div>
+        ))}
+      </div>
+      <button onClick={onClose} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Close</button>
     </Modal>
   );
 }
@@ -1378,12 +1628,52 @@ export default function Mundialito() {
   const [showLoad,setShowLoad]=useState(false);
   const [showHostSwitch,setShowHostSwitch]=useState(false);
   const [showNotify,setShowNotify]=useState(false);
+  const [showTheme,setShowTheme]=useState(false);
+  const [myPlayerIdx,setMyPlayerIdx]=useState(()=>{try{const v=window.localStorage?.getItem("mundi_my_player");return v!==null?parseInt(v):null;}catch(e){return null;}});
+  const [playerColors,setPlayerColors]=useState({});
+  const [showSelectName,setShowSelectName]=useState(false);
+  const [showProfileSetup,setShowProfileSetup]=useState(false);
+  const [profileSetupIdx,setProfileSetupIdx]=useState(null);
   const [spectatorPoolCode,setSpectatorPoolCode]=useState(()=>{try{return window.localStorage?.getItem('mundi_spectator_code')||null;}catch(e){return null;}});
+
+  // Live sync — listen to Firebase for updates when in spectator mode
+  useEffect(()=>{
+    if(!spectatorPoolCode||appState!=="spectator")return;
+    const unsub=onSnapshot(doc(db,'pools',spectatorPoolCode),(snap)=>{
+      if(!snap.exists())return;
+      try{
+        const decoded=decode(snap.data().state);
+        if(decoded){
+          setSt(prev=>{
+            // Only update if state actually changed (avoid unnecessary re-renders)
+            const newEncoded=snap.data().state;
+            const prevEncoded=encode(prev);
+            if(newEncoded===prevEncoded)return prev;
+            return mergeState(EMPTY,decoded);
+          });
+        }
+      }catch(e){}
+    });
+    return ()=>unsub();
+  },[spectatorPoolCode,appState]);
   const [showPoolMgr,setShowPoolMgr]=useState(false);
   const [pools,setPools]=useState([{id:"default",name:"My Pool"}]);
   const [activePoolId,setActivePoolId]=useState("default");
   const [activePoolName,setActivePoolName]=useState("My Pool");
   const [poolCode,setPoolCode]=useState(()=>{try{return window.localStorage?.getItem("mundi_pool_code")||null;}catch(e){return null;}});
+  const [accentColor,setAccentColor]=useState(()=>{try{return window.localStorage?.getItem("mundi_accent")||"#c9a84c";}catch(e){return "#c9a84c";}});
+
+  // Inject accent colour as CSS variable
+  useEffect(()=>{
+    document.documentElement.style.setProperty("--accent", accentColor);
+    // Derive darker shade for gradients
+    document.documentElement.style.setProperty("--accent-dark", accentColor+"cc");
+  },[accentColor]);
+
+  const setAccent = (color) => {
+    setAccentColor(color);
+    try{window.localStorage?.setItem("mundi_accent", color);}catch(e){}
+  };
 
   useEffect(()=>{
     // Check URL for shared code first
@@ -1406,7 +1696,11 @@ export default function Mundialito() {
       }catch(e){}
     }
     // Fall back to localStorage for host
-    try{const raw=window.localStorage?.getItem(LOCAL_KEY);if(raw){const saved=JSON.parse(raw);setSt(mergeState(EMPTY,saved.st));setPools(saved.pools||[{id:"default",name:"My Pool"}]);setActivePoolId(saved.activePoolId||"default");setActivePoolName(saved.activePoolName||"My Pool");setIsHost(true);setAppState("host");return;}}catch(e){}
+    try{const raw=window.localStorage?.getItem(LOCAL_KEY);if(raw){const saved=JSON.parse(raw);setSt(mergeState(EMPTY,saved.st));setPools(saved.pools||[{id:"default",name:"My Pool"}]);setActivePoolId(saved.activePoolId||"default");setActivePoolName(saved.activePoolName||"My Pool");setIsHost(true);setAppState("host");
+    // Load profile pics
+    const code=window.localStorage?.getItem("mundi_pool_code");
+    if(code)loadProfilePics(code).then(colors=>setPlayerColors(colors));
+    return;}}catch(e){}
     // Check for saved spectator code — auto-load their pool
     try{
       const savedCode=window.localStorage?.getItem("mundi_spectator_code");
@@ -1455,8 +1749,15 @@ export default function Mundialito() {
       if(upperCode){
         setSpectatorPoolCode(upperCode);
         try{window.localStorage?.setItem("mundi_spectator_code",upperCode);}catch(e){}
+        // Load profile pics and player colours from Firestore
+        loadProfilePics(upperCode).then(colors=>setPlayerColors(colors));
         // Ask for notification permission now that they've joined
         setTimeout(()=>requestNotificationPermission(), 3000);
+        // Show select name if they haven't chosen yet
+        try{
+          const v=window.localStorage?.getItem("mundi_my_player");
+          if(v===null)setTimeout(()=>setShowSelectName(true),500);
+        }catch(e){}
       }
       if(merged.draftLocked){
         const seen=window.localStorage?.getItem("mundi_intro_seen");
@@ -1481,52 +1782,80 @@ export default function Mundialito() {
     }catch(e){return "Something went wrong.";}
   };
 
-  if(appState==="loading")return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}><div style={{fontFamily:"'Bebas Neue'",fontSize:48,color:"#c9a84c",letterSpacing:10}}>MUNDIALITO</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#5a6a8a"}}>Loading…</div></div></>);
-  if(appState==="welcome")return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div style={{maxWidth:420,width:"100%",background:"linear-gradient(165deg,#0f1e38,#0a1628)",borderRadius:20,border:"1px solid rgba(201,168,76,0.35)",padding:"32px 28px",textAlign:"center"}}><div style={{fontSize:52,marginBottom:12}}>⚽</div><div style={{fontFamily:"'Bebas Neue'",fontSize:32,color:"#c9a84c",letterSpacing:4,marginBottom:6}}>MUNDIALITO</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:28,lineHeight:1.6}}>Welcome! Are you running this pool or joining to watch?</div><div style={{display:"flex",flexDirection:"column",gap:10}}><button onClick={()=>setAppState("join")} style={{padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:"pointer"}}>👀 I'M WATCHING — JOIN POOL</button><button onClick={handleBeHost} style={{padding:"14px 0",borderRadius:12,border:"2px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>🎙️ I'M THE HOST</button></div></div></div></>);
+  if(appState==="loading")return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}><div style={{fontFamily:"'Bebas Neue'",fontSize:48,color:"var(--accent)",letterSpacing:10}}>MUNDIALITO</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#5a6a8a"}}>Loading…</div></div></>);
+  if(appState==="welcome")return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div style={{maxWidth:420,width:"100%",background:"linear-gradient(165deg,#0f1e38,#0a1628)",borderRadius:20,border:"1px solid rgba(201,168,76,0.35)",padding:"32px 28px",textAlign:"center"}}><div style={{fontSize:52,marginBottom:12}}>⚽</div><div style={{fontFamily:"'Bebas Neue'",fontSize:32,color:"var(--accent)",letterSpacing:4,marginBottom:6}}>MUNDIALITO</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:28,lineHeight:1.6}}>Welcome! Are you running this pool or joining to watch?</div><div style={{display:"flex",flexDirection:"column",gap:10}}><button onClick={()=>setAppState("join")} style={{padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:"pointer"}}>👀 I'M WATCHING — JOIN POOL</button><button onClick={handleBeHost} style={{padding:"14px 0",borderRadius:12,border:"2px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>🎙️ I'M THE HOST</button></div></div></div></>);
   if(appState==="spectator_intro")return(<SpectatorIntro st={st} initials={initials} onComplete={()=>{setAppState("spectator");setActiveTab("group");}}/>);
   if(appState==="join")return <JoinScreen onJoin={handleJoinAttempt} onBack={()=>setAppState("welcome")}/>;
 
   const tabContent=()=>{
     const tab=TABS.find(t=>t.id===activeTab);
     if(!isUnlocked(activeTab))return(<div style={{maxWidth:480,margin:"0 auto",padding:"60px 24px 0",textAlign:"center"}}><div style={{fontSize:56,marginBottom:16,opacity:0.3,filter:"grayscale(1)"}}>{tab?.icon}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:3,color:"#5a6a8a",marginBottom:12}}>{tab?.label.toUpperCase()} — LOCKED</div><div style={{fontFamily:"'DM Sans'",fontSize:14,color:"#5a6a8a",lineHeight:1.6}}>{tab?.unlockMsg}</div></div>);
-    if(activeTab==="setup"){if(st.setupLocked&&!readOnly)return(<div style={{maxWidth:720,margin:"0 auto",padding:"0 16px"}}><div style={{background:"rgba(201,168,76,0.08)",borderRadius:14,padding:"20px 24px",border:"1px solid rgba(201,168,76,0.2)",textAlign:"center"}}><div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"#c9a84c",marginBottom:12}}>✓ SETUP LOCKED</div><div style={{display:"flex",justifyContent:"center",gap:8,flexWrap:"wrap",marginBottom:14}}>{(st.config.playerNames||[]).map((n,i)=><span key={i} style={{padding:"4px 12px",borderRadius:20,background:`${PC[i]}22`,border:`1px solid ${PC[i]}66`,color:PC[i],fontFamily:"'DM Sans'",fontSize:12,fontWeight:600}}>{n}</span>)}</div><div style={{background:"rgba(107,155,209,0.08)",borderRadius:10,padding:"12px 16px",marginBottom:14,border:"1px solid rgba(107,155,209,0.2)"}}><div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#6b9bd1",marginBottom:4}}>SHARING</div><div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#8899b4",lineHeight:1.6}}>Tap <span style={{color:"#c9a84c",fontWeight:600}}>📋 Share update</span> in the header to generate a code to send to your group.</div></div><button onClick={()=>setSt(p=>({...p,setupLocked:false,draftOrder:null,draftMode:null,picks:[],draftLocked:false,matchResults:{},koResults:{},koOverrides:{}}))} style={{padding:"8px 20px",borderRadius:8,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>Unlock &amp; Edit</button></div></div>);
+    if(activeTab==="setup"){if(st.setupLocked&&!readOnly)return(<div style={{maxWidth:720,margin:"0 auto",padding:"0 16px"}}><div style={{background:"rgba(201,168,76,0.08)",borderRadius:14,padding:"20px 24px",border:"1px solid rgba(201,168,76,0.2)",textAlign:"center"}}><div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"var(--accent)",marginBottom:12}}>✓ SETUP LOCKED</div><div style={{display:"flex",justifyContent:"center",gap:8,flexWrap:"wrap",marginBottom:14}}>{(st.config.playerNames||[]).map((n,i)=><span key={i} style={{padding:"4px 12px",borderRadius:20,background:`${PC[i]}22`,border:`1px solid ${PC[i]}66`,color:PC[i],fontFamily:"'DM Sans'",fontSize:12,fontWeight:600}}>{n}</span>)}</div><div style={{background:"rgba(107,155,209,0.08)",borderRadius:10,padding:"12px 16px",marginBottom:14,border:"1px solid rgba(107,155,209,0.2)"}}><div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#6b9bd1",marginBottom:4}}>SHARING</div><div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#8899b4",lineHeight:1.6}}>Tap <span style={{color:"var(--accent)",fontWeight:600}}>📋 Share update</span> in the header to generate a code to send to your group.</div></div><button onClick={()=>setSt(p=>({...p,setupLocked:false,draftOrder:null,draftMode:null,picks:[],draftLocked:false,matchResults:{},koResults:{},koOverrides:{}}))} style={{padding:"8px 20px",borderRadius:8,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>Unlock &amp; Edit</button></div></div>);
       return <SetupScreen config={st.config} setConfig={c=>setSt(p=>({...p,config:typeof c==="function"?c(p.config):c}))} onLock={()=>{setSt(p=>({...p,setupLocked:true}));setActiveTab("draft");}} readOnly={readOnly}/>;}
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
     if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials}/>;
     if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly}/>;
-    if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials}/>;
+    if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)}/>;
     return null;
   };
 
   const PoolMgrModal=()=>{
     const [creating,setCreating]=useState(false);const [newName,setNewName]=useState("");const [renaming,setRenaming]=useState(false);const [renameVal,setRenameVal]=useState("");
     if(!showPoolMgr)return null;
-    return(<Modal open={true} onClose={()=>setShowPoolMgr(false)} title="POOLS"><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16}}>Manage your pools. Each has its own setup, draft and results.</div>{pools.map(p=>{const isActive=p.id===activePoolId;return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:10,background:isActive?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.3)",border:`1px solid ${isActive?"rgba(201,168,76,0.4)":"#2a3a5c"}`,marginBottom:8}}><span style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:isActive?700:400,color:isActive?"#c9a84c":"#e0dcd4",flex:1}}>{p.name}</span>{isActive&&<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"#c9a84c",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"2px 8px",borderRadius:10}}>ACTIVE</span>}{pools.length>1&&<button onClick={()=>{if(window.confirm(`Delete "${p.name}"?`)){const rem=pools.filter(x=>x.id!==p.id);setPools(rem);if(p.id===activePoolId){setActivePoolId(rem[0].id);setActivePoolName(rem[0].name);setSt(EMPTY);}}}} style={{padding:"5px 8px",borderRadius:6,border:"1px solid #3d5070",background:"transparent",color:"#5a6a8a",fontSize:11,cursor:"pointer"}}>✕</button>}</div>);})}{!renaming&&!creating&&(<div style={{display:"flex",gap:8,marginTop:16}}><button onClick={()=>{setRenaming(true);setRenameVal(activePoolName);}} style={{flex:1,padding:"9px 0",borderRadius:8,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Rename</button><button onClick={()=>setCreating(true)} style={{flex:1,padding:"9px 0",borderRadius:8,border:"1px solid #c9a84c44",background:"rgba(201,168,76,0.08)",color:"#c9a84c",fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,cursor:"pointer"}}>+ New pool</button></div>)}{renaming&&(<div style={{marginTop:14}}><input value={renameVal} onChange={e=>setRenameVal(e.target.value)} autoFocus style={{width:"100%",padding:"10px 14px",borderRadius:8,border:"1.5px solid #c9a84c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:14,outline:"none",boxSizing:"border-box",marginBottom:8}}/><div style={{display:"flex",gap:8}}><button onClick={()=>{if(renameVal.trim()){setActivePoolName(renameVal.trim());setPools(ps=>ps.map(x=>x.id===activePoolId?{...x,name:renameVal.trim()}:x));setRenaming(false);setShowPoolMgr(false);}}} style={{flex:1,padding:"9px 0",borderRadius:8,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>SAVE</button><button onClick={()=>setRenaming(false)} style={{padding:"9px 16px",borderRadius:8,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button></div></div>)}{creating&&(<div style={{marginTop:14}}><input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="Pool name…" autoFocus style={{width:"100%",padding:"10px 14px",borderRadius:8,border:"1.5px solid #c9a84c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:14,outline:"none",boxSizing:"border-box",marginBottom:8}}/><div style={{display:"flex",gap:8}}><button onClick={()=>{if(newName.trim()){const id="pool_"+Date.now();setPools(ps=>[...ps,{id,name:newName.trim()}]);setActivePoolId(id);setActivePoolName(newName.trim());setSt(EMPTY);setNewName("");setCreating(false);setShowPoolMgr(false);}}} style={{flex:1,padding:"9px 0",borderRadius:8,border:"none",background:"linear-gradient(135deg,#c9a84c,#a8883a)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>CREATE</button><button onClick={()=>setCreating(false)} style={{padding:"9px 16px",borderRadius:8,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button></div></div>)}</Modal>);
+    return(<Modal open={true} onClose={()=>setShowPoolMgr(false)} title="POOLS"><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16}}>Manage your pools. Each has its own setup, draft and results.</div>{pools.map(p=>{const isActive=p.id===activePoolId;return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:10,background:isActive?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.3)",border:`1px solid ${isActive?"rgba(201,168,76,0.4)":"#2a3a5c"}`,marginBottom:8}}><span style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:isActive?700:400,color:isActive?"var(--accent)":"#e0dcd4",flex:1}}>{p.name}</span>{isActive&&<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"2px 8px",borderRadius:10}}>ACTIVE</span>}{pools.length>1&&<button onClick={()=>{if(window.confirm(`Delete "${p.name}"?`)){const rem=pools.filter(x=>x.id!==p.id);setPools(rem);if(p.id===activePoolId){setActivePoolId(rem[0].id);setActivePoolName(rem[0].name);setSt(EMPTY);}}}} style={{padding:"5px 8px",borderRadius:6,border:"1px solid #3d5070",background:"transparent",color:"#5a6a8a",fontSize:11,cursor:"pointer"}}>✕</button>}</div>);})}{!renaming&&!creating&&(<div style={{display:"flex",gap:8,marginTop:16}}><button onClick={()=>{setRenaming(true);setRenameVal(activePoolName);}} style={{flex:1,padding:"9px 0",borderRadius:8,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Rename</button><button onClick={()=>setCreating(true)} style={{flex:1,padding:"9px 0",borderRadius:8,border:"1px solid #c9a84c44",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,cursor:"pointer"}}>+ New pool</button></div>)}{renaming&&(<div style={{marginTop:14}}><input value={renameVal} onChange={e=>setRenameVal(e.target.value)} autoFocus style={{width:"100%",padding:"10px 14px",borderRadius:8,border:"1.5px solid var(--accent)",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:14,outline:"none",boxSizing:"border-box",marginBottom:8}}/><div style={{display:"flex",gap:8}}><button onClick={()=>{if(renameVal.trim()){setActivePoolName(renameVal.trim());setPools(ps=>ps.map(x=>x.id===activePoolId?{...x,name:renameVal.trim()}:x));setRenaming(false);setShowPoolMgr(false);}}} style={{flex:1,padding:"9px 0",borderRadius:8,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>SAVE</button><button onClick={()=>setRenaming(false)} style={{padding:"9px 16px",borderRadius:8,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button></div></div>)}{creating&&(<div style={{marginTop:14}}><input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="Pool name…" autoFocus style={{width:"100%",padding:"10px 14px",borderRadius:8,border:"1.5px solid var(--accent)",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:14,outline:"none",boxSizing:"border-box",marginBottom:8}}/><div style={{display:"flex",gap:8}}><button onClick={()=>{if(newName.trim()){const id="pool_"+Date.now();setPools(ps=>[...ps,{id,name:newName.trim()}]);setActivePoolId(id);setActivePoolName(newName.trim());setSt(EMPTY);setNewName("");setCreating(false);setShowPoolMgr(false);}}} style={{flex:1,padding:"9px 0",borderRadius:8,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>CREATE</button><button onClick={()=>setCreating(false)} style={{padding:"9px 16px",borderRadius:8,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button></div></div>)}</Modal>);
   };
 
   return(
     <><style>{FONTS}</style>
     <div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628 0%,#0f1e38 40%,#0a1628 100%)",color:"#e0dcd4",fontFamily:"'DM Sans',sans-serif"}}>
       <div style={{position:"relative",textAlign:"center",padding:"26px 20px 4px"}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"#c9a84c",lineHeight:1}}>MUNDIALITO</div>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"var(--accent)",lineHeight:1}}>MUNDIALITO</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>World Cup 2026 · 🇨🇦 🇺🇸 🇲🇽 · June 11 – July 19</div>
-        <button onClick={()=>setShowRules(true)} style={{position:"absolute",top:20,right:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#c9a84c",fontFamily:"'Bebas Neue'",fontSize:18,cursor:"pointer"}}>?</button>
+        <button onClick={()=>setShowRules(true)} style={{position:"absolute",top:20,right:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:18,cursor:"pointer"}}>?</button>
           <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");window.localStorage?.removeItem("mundi_spectator_code");}catch(e){}window.location.reload();}}} style={{position:"absolute",top:20,left:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
       </div>
       <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,padding:"10px 16px 0",flexWrap:"wrap"}}>
-        {isHost?(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)"}}><span style={{fontSize:11}}>🎙️</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#c9a84c",letterSpacing:1}}>HOST</span></div><button onClick={()=>setShowPoolMgr(true)} style={{padding:"4px 12px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4,maxWidth:160,overflow:"hidden"}}>🏆 <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activePoolName}</span> ▾</button><button onClick={()=>setShowSync(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"#c9a84c",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📋 Share update</button>
-            <button onClick={()=>setShowNotify(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.1)",color:"#61a978",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🔔 Notify</button></>):(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(107,155,209,0.1)",border:"1px solid rgba(107,155,209,0.3)"}}><span style={{fontSize:11}}>👀</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#6b9bd1",letterSpacing:1}}>SPECTATOR</span></div><button onClick={()=>setShowLoad(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(107,155,209,0.4)",background:"rgba(107,155,209,0.1)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📥 Load update</button>
-            {spectatorPoolCode&&<button onClick={()=>setShowHostSwitch(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"#c9a84c",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🎙️ Host mode</button>}</>)}
+        {isHost?(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)"}}><span style={{fontSize:11}}>🎙️</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"var(--accent)",letterSpacing:1}}>HOST</span></div><button onClick={()=>setShowPoolMgr(true)} style={{padding:"4px 12px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4,maxWidth:160,overflow:"hidden"}}>🏆 <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activePoolName}</span> ▾</button><button onClick={()=>setShowSync(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📋 Share update</button>
+            <button onClick={()=>setShowNotify(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.1)",color:"#61a978",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🔔 Notify</button>
+            <button onClick={()=>setShowTheme(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>🎨</button></>):(<><div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(107,155,209,0.1)",border:"1px solid rgba(107,155,209,0.3)"}}><span style={{fontSize:11}}>👀</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#6b9bd1",letterSpacing:1}}>SPECTATOR</span></div><button onClick={()=>setShowLoad(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(107,155,209,0.4)",background:"rgba(107,155,209,0.1)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📥 Load update</button>
+            {spectatorPoolCode&&<button onClick={()=>setShowHostSwitch(true)} style={{padding:"4px 14px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🎙️ Host mode</button>}
+            <button onClick={()=>setShowTheme(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>🎨</button></>)}
       </div>
       <div style={{display:"flex",justifyContent:"center",gap:2,padding:"14px 12px 0",marginBottom:26}}>
-        {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);return(<button key={tab.id} onClick={()=>{if(open)setActiveTab(tab.id);}} style={{padding:"9px 6px 11px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid #c9a84c":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"#c9a84c":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tab.label}</div></button>);})}
+        {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);return(<button key={tab.id} onClick={()=>{if(open)setActiveTab(tab.id);}} style={{padding:"9px 6px 11px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tab.label}</div></button>);})}
       </div>
       <div style={{paddingBottom:48}}>{tabContent()}</div>
       <Modal open={showRules} onClose={()=>setShowRules(false)} title="HOW IT WORKS"><RulesList/></Modal>
       <SyncModal open={showSync} onClose={()=>setShowSync(false)} st={st} poolCode={poolCode} setPoolCode={setPoolCode}/>
       <LoadModal open={showLoad} onClose={()=>setShowLoad(false)} onLoad={handleFirebaseLoad}/>
         <NotifyModal open={showNotify} onClose={()=>setShowNotify(false)}/>
-        <SwitchToHostModal open={showHostSwitch} onClose={()=>setShowHostSwitch(false)} poolCode={spectatorPoolCode} onSuccess={()=>{setIsHost(true);setShowHostSwitch(false);}}/>
+        <ThemeModal open={showTheme} onClose={()=>setShowTheme(false)} currentAccent={accentColor} onSelect={setAccent}/>
+        <SelectNameModal
+          open={showSelectName}
+          onClose={()=>setShowSelectName(false)}
+          playerNames={st.config?.playerNames||[]}
+          picks={st.pk||[]}
+          onSelect={(idx)=>{
+            setMyPlayerIdx(idx);
+            try{window.localStorage?.setItem("mundi_my_player",String(idx));}catch(e){}
+            setShowSelectName(false);
+            setProfileSetupIdx(idx);
+            setShowProfileSetup(true);
+          }}
+        />
+        <ProfileSetupModal
+          open={showProfileSetup}
+          onClose={()=>setShowProfileSetup(false)}
+          playerIdx={profileSetupIdx}
+          playerName={profileSetupIdx!==null?(st.config?.playerNames||[])[profileSetupIdx]:""}
+          onDone={()=>setShowProfileSetup(false)}
+        />
+        <SwitchToHostModal open={showHostSwitch} onClose={()=>setShowHostSwitch(false)} poolCode={spectatorPoolCode} onSuccess={()=>{
+          setIsHost(true);
+          setShowHostSwitch(false);
+          setAppState("host");
+          try{window.localStorage?.setItem(LOCAL_KEY,JSON.stringify({st,pools,activePoolId,activePoolName}));}catch(e){}
+        }}/>
       <PoolMgrModal/>
     </div></>
   );

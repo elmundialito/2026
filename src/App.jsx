@@ -1539,18 +1539,33 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
 
   return(
     <Modal open={open} onClose={onClose} title="YOUR PROFILE">
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12,padding:"8px 0 20px"}}>
-        <div style={{position:"relative",cursor:"pointer"}} onClick={()=>fileRef.current?.click()}>
-          <PlayerAvatar idx={playerIdx} name={playerName} size={80}/>
-          <div style={{position:"absolute",bottom:0,right:0,background:"var(--accent)",borderRadius:"50%",width:26,height:26,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>📷</div>
+      <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
+
+      {/* Avatar preview */}
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,marginBottom:20}}>
+        <div style={{position:"relative"}}>
+          <PlayerAvatar idx={playerIdx} name={playerName} size={88}/>
+          {pic&&<div style={{position:"absolute",bottom:2,right:2,background:"#22c55e",borderRadius:"50%",width:24,height:24,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>✓</div>}
         </div>
-        <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color:"#e0dcd4"}}>{playerName}</div>
-        <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
+        <div style={{fontFamily:"'DM Sans'",fontSize:15,fontWeight:700,color:"#e0dcd4"}}>{playerName}</div>
       </div>
-      <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#8899b4",textAlign:"center",marginBottom:20,lineHeight:1.6}}>
-        Tap your avatar to add a photo from your camera roll. It'll show on the standings for everyone.
+
+      {/* Primary action — upload photo */}
+      {!pic?(
+        <button onClick={()=>fileRef.current?.click()} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          <span style={{fontSize:22}}>📷</span> ADD YOUR PHOTO
+        </button>
+      ):(
+        <button onClick={()=>fileRef.current?.click()} style={{width:"100%",padding:"13px 0",borderRadius:12,border:"1.5px solid var(--accent)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",marginBottom:8}}>
+          📷 CHANGE PHOTO
+        </button>
+      )}
+      <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",marginBottom:20,lineHeight:1.5}}>
+        {pic?"Looking good! It'll show on everyone's standings.":"Your photo shows on the standings for everyone in the pool."}
       </div>
-      <div style={{marginBottom:16}}>
+
+      {/* Colour picker */}
+      <div style={{marginBottom:20}}>
         <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",letterSpacing:1,marginBottom:10}}>YOUR COLOUR</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
           {PLAYER_PICK_COLORS.map(c=>{
@@ -1565,12 +1580,11 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
           })}
         </div>
       </div>
-      <button onClick={()=>{onColorChange&&onColorChange(selectedColor);savePlayerColor(playerIdx,selectedColor);onDone();}} style={{width:"100%",padding:"14px 0",borderRadius:12,border:"none",background:`linear-gradient(135deg,${selectedColor},${selectedColor}cc)`,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:"pointer",marginBottom:10}}>
-        {pic?"LOOKS GOOD →":"USE INITIALS →"}
+
+      {/* Done / skip */}
+      <button onClick={()=>{onColorChange&&onColorChange(selectedColor);savePlayerColor(playerIdx,selectedColor);onDone();}} style={{width:"100%",padding:"13px 0",borderRadius:12,border:"none",background:pic?`linear-gradient(135deg,${selectedColor},${selectedColor}cc)`:"rgba(26,39,68,0.6)",color:pic?"#0a1628":"#8899b4",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:"pointer"}}>
+        {pic?"LOOKS GOOD →":"SKIP FOR NOW →"}
       </button>
-      {!pic&&<button onClick={()=>fileRef.current?.click()} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>
-        📷 Add a photo instead
-      </button>}
     </Modal>
   );
 }

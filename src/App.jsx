@@ -1409,9 +1409,20 @@ function NotifyModal({open,onClose}) {
 // ── Profile helpers ───────────────────────────────────────────
 const PLAYER_COLORS = ["#c9a84c","#6b9bd1","#61a978","#d97757","#a855f7","#ec4899","#14b8a6","#f59e0b"];
 
-// In-memory cache of profile pics and colours fetched from Firestore
-const picCache = {};
-const colorCache = {};
+// In-memory cache — pre-populated from localStorage so pics show instantly on reload
+const picCache = (() => {
+  try { return JSON.parse(window.localStorage?.getItem("mundi_pic_cache")||"{}"); } catch { return {}; }
+})();
+const colorCache = (() => {
+  try { return JSON.parse(window.localStorage?.getItem("mundi_color_cache")||"{}"); } catch { return {}; }
+})();
+
+function saveCaches() {
+  try {
+    window.localStorage?.setItem("mundi_pic_cache", JSON.stringify(picCache));
+    window.localStorage?.setItem("mundi_color_cache", JSON.stringify(colorCache));
+  } catch(e) {}
+}
 
 function getPlayerColor(playerIdx, fallback) {
   return colorCache[playerIdx] || fallback || PLAYER_COLORS[playerIdx % PLAYER_COLORS.length];
@@ -1424,6 +1435,7 @@ function getProfilePic(playerIdx) {
 async function saveProfilePicToFirestore(playerIdx, dataUrl) {
   try {
     picCache[playerIdx] = dataUrl;
+    saveCaches();
     const code = window.localStorage?.getItem("mundi_pool_code") ||
                  window.localStorage?.getItem("mundi_spectator_code");
     if (!code) return;
@@ -1446,6 +1458,7 @@ async function loadProfilePics(code) {
     Object.keys(colors).forEach(k => {
       colorCache[parseInt(k)] = colors[k];
     });
+    saveCaches();
     return colors;
   } catch(e) { return {}; }
 }
@@ -1506,6 +1519,7 @@ function SelectNameModal({open, onClose, onSelect, playerNames, picks}) {
 async function savePlayerColor(playerIdx, color) {
   try {
     colorCache[playerIdx] = color;
+    saveCaches();
     const code = window.localStorage?.getItem("mundi_pool_code") ||
                  window.localStorage?.getItem("mundi_spectator_code");
     if (!code) return;
@@ -1864,14 +1878,15 @@ export default function Mundialito() {
       loadProfilePics(code).then(()=>setPicRefresh(n=>n+1));
       loadPool(code).then(fresh=>{
         if(fresh) setSt(prev=>{
-          // Merge match results — keep whichever set has more entries (local wins if equal)
           const localResults = prev.matchResults||{};
           const freshResults = fresh.matchResults||{};
           const localCount = Object.values(localResults).filter(v=>v!=null).length;
           const freshCount = Object.values(freshResults).filter(v=>v!=null).length;
-          // Use Firebase data as base but never drop local scores
           const merged = mergeState(prev, fresh);
+          // Never overwrite local matchResults with fewer entries from Firebase
           merged.matchResults = freshCount > localCount ? {...freshResults, ...localResults} : {...localResults, ...freshResults};
+          // Never overwrite local playerNames with Firebase — local is always newer
+          merged.config = {...merged.config, playerNames: prev.config.playerNames};
           return merged;
         });
       });
@@ -2001,8 +2016,7 @@ export default function Mundialito() {
   const tabContent=()=>{
     const tab=TABS.find(t=>t.id===activeTab);
     if(!isUnlocked(activeTab))return(<div style={{maxWidth:480,margin:"0 auto",padding:"60px 24px 0",textAlign:"center"}}><div style={{fontSize:56,marginBottom:16,opacity:0.3,filter:"grayscale(1)"}}>{tab?.icon}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:3,color:"#5a6a8a",marginBottom:12}}>{tab?.label.toUpperCase()} — LOCKED</div><div style={{fontFamily:"'DM Sans'",fontSize:14,color:"#5a6a8a",lineHeight:1.6}}>{tab?.unlockMsg}</div></div>);
-    if(activeTab==="setup"){if(st.setupLocked&&!readOnly)return(<SetupLockedScreen config={st.config} onRename={(i,name)=>{setSt(p=>{const updated={...p,config:{...p.config,playerNames:p.config.playerNames.map((n,j)=>j===i?name:n)}};// Save to Firebase immediately
-        const code=window.localStorage?.getItem("mundi_pool_code")||poolCode;const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;if(code)savePool(code,updated,pw);return updated;});}} onUnlock={()=>setSt(p=>({...p,setupLocked:false,draftOrder:null,draftMode:null,picks:[],draftLocked:false,matchResults:{},koResults:{},koOverrides:{}}))}/>);
+    if(activeTab==="setup"){if(st.setupLocked&&!readOnly)return(<SetupLockedScreen config={st.config} onRename={(i,name)=>{setSt(p=>{const updated={...p,config:{...p.config,playerNames:p.config.playerNames.map((n,j)=>j===i?name:n)}};const code=window.localStorage?.getItem("mundi_pool_code")||poolCode||window.localStorage?.getItem("mundi_spectator_code");const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;if(code)savePool(code,updated,pw).then(ok=>{if(ok&&code!==poolCode){try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}setPoolCode(code);}});return updated;});}} onUnlock={()=>setSt(p=>({...p,setupLocked:false,draftOrder:null,draftMode:null,picks:[],draftLocked:false,matchResults:{},koResults:{},koOverrides:{}}))}/>);
       return <SetupScreen config={st.config} setConfig={c=>setSt(p=>({...p,config:typeof c==="function"?c(p.config):c}))} onLock={()=>{setSt(p=>({...p,setupLocked:true}));setActiveTab("draft");}} readOnly={readOnly}/>;}
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
     if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx}/>;

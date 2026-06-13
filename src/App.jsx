@@ -1446,9 +1446,11 @@ async function loadProfilePics(code) {
 }
 
 function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
-  const pic = getProfilePic(idx);
+  const [pic, setPic] = useState(()=>getProfilePic(idx));
   const color = getPlayerColor(idx);
   const initials = name ? name.slice(0,2).toUpperCase() : "??";
+  // Re-read from cache whenever idx or refresh signal changes
+  useEffect(()=>{ setPic(getProfilePic(idx)); },[idx, refresh]);
   if(pic) return (
     <div style={{width:size,height:size,borderRadius:"50%",overflow:"hidden",flexShrink:0,...style}}>
       <img src={pic} style={{width:"100%",height:"100%",objectFit:"cover"}} />
@@ -1512,7 +1514,7 @@ async function loadPlayerColors(code) {
   } catch(e) { return {}; }
 }
 
-function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, currentColor, onColorChange}) {
+function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, currentColor, onColorChange, onPicSaved}) {
   const [pic, setPic] = useState(null);
   const [selectedColor, setSelectedColor] = useState(currentColor||PLAYER_COLORS[playerIdx%PLAYER_COLORS.length]);
   const [takenColors, setTakenColors] = useState([]);
@@ -1555,6 +1557,7 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
         const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
         saveProfilePicToFirestore(playerIdx, dataUrl);
         setPic(dataUrl);
+        onPicSaved&&onPicSaved();
       };
       img.src = ev.target.result;
     };
@@ -1565,7 +1568,7 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
     <Modal open={open} onClose={onClose} title="YOUR PROFILE">
       <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,marginBottom:20}}>
-        <PlayerAvatar idx={playerIdx} name={playerName} size={88}/>
+        <PlayerAvatar idx={playerIdx} name={playerName} size={88} refresh={pic?1:0}/>
         <div style={{fontFamily:"'DM Sans'",fontSize:15,fontWeight:700,color:"#e0dcd4"}}>{playerName}</div>
       </div>
       {!pic?(
@@ -1656,6 +1659,7 @@ export default function Mundialito() {
   const [showHostSwitch,setShowHostSwitch]=useState(false);
   const [showNotify,setShowNotify]=useState(false);
   const [showTheme,setShowTheme]=useState(false);
+  const [picRefresh,setPicRefresh]=useState(0);
   const [myPlayerIdx,setMyPlayerIdx]=useState(()=>{try{const v=window.localStorage?.getItem("mundi_my_player");return v!==null?parseInt(v):null;}catch(e){return null;}});
   const [playerColors,setPlayerColors]=useState({});
   const [showSelectName,setShowSelectName]=useState(false);
@@ -1881,7 +1885,7 @@ export default function Mundialito() {
         {myPlayerIdx!==null&&(
           <div onClick={()=>{setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 10px 4px 6px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",cursor:"pointer",flexShrink:0}} title="Edit your profile">
             <div style={{position:"relative"}}>
-              <PlayerAvatar idx={myPlayerIdx} name={(st.config?.playerNames||[])[myPlayerIdx]||""} size={28}/>
+              <PlayerAvatar idx={myPlayerIdx} name={(st.config?.playerNames||[])[myPlayerIdx]||""} size={28} refresh={picRefresh}/>
             </div>
             <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:"#e0dcd4",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(st.config?.playerNames||[])[myPlayerIdx]||""}</span>
             <span style={{fontSize:10,color:"#5a6a8a"}}>✏️</span>
@@ -1891,13 +1895,14 @@ export default function Mundialito() {
       <div style={{display:"flex",justifyContent:"center",gap:2,padding:"14px 12px 0",marginBottom:26}}>
         {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);return(<button key={tab.id} onClick={()=>{if(open)setActiveTab(tab.id);}} style={{padding:"9px 6px 11px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tab.label}</div></button>);})}
       </div>
-      <div style={{paddingBottom:isHost?72:48}}>{tabContent()}</div>
-      {isHost&&(
-        <div style={{position:"fixed",bottom:0,left:0,right:0,background:"rgba(10,22,40,0.96)",borderTop:"1px solid #1e2f50",padding:"10px 16px",display:"flex",gap:8,zIndex:100,backdropFilter:"blur(8px)"}}>
-          <button onClick={()=>setShowSync(true)} style={{flex:1,padding:"10px 0",borderRadius:10,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,cursor:"pointer"}}>📋 SHARE POOL CODE</button>
-          <button onClick={()=>setShowPoolMgr(true)} style={{padding:"10px 14px",borderRadius:10,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>🏆 {activePoolName}</button>
-        </div>
-      )}
+      <div style={{paddingBottom:48}}>{tabContent()}
+        {isHost&&(
+          <div style={{maxWidth:920,margin:"24px auto 0",padding:"0 16px 32px",display:"flex",gap:8}}>
+            <button onClick={()=>setShowSync(true)} style={{flex:1,padding:"12px 0",borderRadius:10,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,cursor:"pointer"}}>📋 SHARE POOL CODE</button>
+            <button onClick={()=>setShowPoolMgr(true)} style={{padding:"12px 14px",borderRadius:10,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.4)",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>🏆 {activePoolName}</button>
+          </div>
+        )}
+      </div>
       <Modal open={showRules} onClose={()=>setShowRules(false)} title="HOW IT WORKS"><RulesList/></Modal>
       <SyncModal open={showSync} onClose={()=>setShowSync(false)} st={st} poolCode={poolCode} setPoolCode={setPoolCode}/>
       <LoadModal open={showLoad} onClose={()=>setShowLoad(false)} onLoad={handleFirebaseLoad}/>
@@ -1922,6 +1927,7 @@ export default function Mundialito() {
           playerIdx={profileSetupIdx}
           playerName={profileSetupIdx!==null?(st.config?.playerNames||[])[profileSetupIdx]:""}
           onDone={()=>setShowProfileSetup(false)}
+          onPicSaved={()=>setPicRefresh(n=>n+1)}
         />
         <SwitchToHostModal open={showHostSwitch} onClose={()=>setShowHostSwitch(false)} poolCode={spectatorPoolCode} onSuccess={()=>{
           setIsHost(true);

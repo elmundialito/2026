@@ -903,19 +903,26 @@ function DraftScreen({config,draftOrder,setDraftOrder,picks,setPicks,onLockDraft
   );
 }
 
-function ScoreEntry({matchId,result,onSet,readOnly}) {
+function ScoreEntry({matchId,result,onSet,readOnly,teamA,teamB,ownership,initials}) {
   const [hv,setHv]=useState(result?.home??"");
   const [av,setAv]=useState(result?.away??"");
   useEffect(()=>{setHv(result?.home??"");setAv(result?.away??"");},[result?.home,result?.away]);
   const trySet=(h,a)=>{const hi=h===""?null:parseInt(h);const ai=a===""?null:parseInt(a);if(hi!=null&&ai!=null&&!isNaN(hi)&&!isNaN(ai))onSet(matchId,{home:Math.max(0,hi),away:Math.max(0,ai)});else if(h===""&&a==="")onSet(matchId,undefined);};
   const inp=(val,setVal,side)=><input type="number" min="0" max="20" value={val} readOnly={readOnly} onChange={e=>{const v=e.target.value;setVal(v);trySet(side==="home"?v:hv,side==="away"?v:av);}} style={{width:40,padding:"6px 0",textAlign:"center",borderRadius:8,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.6)",color:"#e0dcd4",fontFamily:"'Bebas Neue'",fontSize:22,outline:"none",cursor:readOnly?"default":"text"}} onFocus={e=>!readOnly&&(e.target.style.borderColor="var(--accent)")} onBlur={e=>e.target.style.borderColor="#2a3a5c"}/>;
   const out=getMatchOutcome(result);
+  const winTeam=out==="A"?teamA:out==="B"?teamB:null;
+  const winOwner=winTeam&&ownership?ownership[winTeam]:null;
+  const winFlag=winTeam?TBN[winTeam]?.flag:null;
   return(
     <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"center",flexShrink:0}}>
       {inp(hv,setHv,"home")}
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:36}}>
         <span style={{fontFamily:"'Bebas Neue'",fontSize:14,color:"#5a6a8a",letterSpacing:1}}>–</span>
-        {out&&<div style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1}}>{out==="D"?"DRAW":out==="A"?"HOME":"AWAY"}</div>}
+        {out&&(out==="D"?(
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#8899b4",letterSpacing:1}}>DRAW</div>
+        ):(
+          winOwner!=null&&initials&&<div style={{width:18,height:18,borderRadius:4,background:PC[winOwner.playerIdx],color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[winOwner.playerIdx]}</div>
+        ))}
       </div>
       {inp(av,setAv,"away")}
       {result&&!readOnly&&<button onClick={()=>{setHv("");setAv("");onSet(matchId,undefined);}} style={{width:20,height:20,borderRadius:4,border:"1px solid #5a6a8a",background:"transparent",color:"#5a6a8a",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>×</button>}
@@ -958,7 +965,7 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
         {teamRow(a,ta?.flag,oa?.playerIdx!=null?oa:null,true)}
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
           {isMyMatch&&<span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"1px 8px",borderRadius:4,whiteSpace:"nowrap"}}>⭐ YOUR TEAM</span>}
-          <ScoreEntry matchId={match.id} result={result} onSet={onSet} readOnly={readOnly}/>
+          <ScoreEntry matchId={match.id} result={result} onSet={onSet} readOnly={readOnly} teamA={a} teamB={b} ownership={ownership} initials={initials}/>
         </div>
         {teamRow(b,tb?.flag,ob?.playerIdx!=null?ob:null,false)}
       </div>
@@ -1856,7 +1863,17 @@ export default function Mundialito() {
       // Load pics AND fresh scores from Firebase
       loadProfilePics(code).then(()=>setPicRefresh(n=>n+1));
       loadPool(code).then(fresh=>{
-        if(fresh)setSt(prev=>mergeState(prev,fresh));
+        if(fresh) setSt(prev=>{
+          // Merge match results — keep whichever set has more entries (local wins if equal)
+          const localResults = prev.matchResults||{};
+          const freshResults = fresh.matchResults||{};
+          const localCount = Object.values(localResults).filter(v=>v!=null).length;
+          const freshCount = Object.values(freshResults).filter(v=>v!=null).length;
+          // Use Firebase data as base but never drop local scores
+          const merged = mergeState(prev, fresh);
+          merged.matchResults = freshCount > localCount ? {...freshResults, ...localResults} : {...localResults, ...freshResults};
+          return merged;
+        });
       });
     }
     return;}}catch(e){}

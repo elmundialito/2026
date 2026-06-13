@@ -196,8 +196,9 @@ const CODE3 = {"SPAIN":"ESP","FRANCE":"FRA","ENGLAND":"ENG","BRAZIL":"BRA","PORT
 const code3 = n => CODE3[n]||n.slice(0,3);
 const fmtOdds = n => n<100 ? n.toFixed(2) : new Intl.NumberFormat("en-US",{minimumFractionDigits:2}).format(n);
 const fmtDate = dateStr => {
-  const d = new Date(dateStr+"T12:00:00Z");
-  return d.toLocaleDateString("en-US",{weekday:"short",timeZone:"UTC"}).toUpperCase()+" · "+d.toLocaleDateString("en-US",{month:"short",day:"numeric",timeZone:"UTC"}).toUpperCase();
+  // dateStr is already a local date (YYYY-MM-DD) so parse as local noon
+  const d = new Date(dateStr+"T12:00:00");
+  return d.toLocaleDateString("en-US",{weekday:"short"}).toUpperCase()+" · "+d.toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase();
 };
 
 const fmtKickoff = (dateStr, timeUTC) => {
@@ -986,7 +987,22 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
   const [view,setView]=useState("schedule");
   const ownership=useMemo(()=>{const o={};(picks||[]).forEach(p=>{o[p.team]={playerIdx:p.playerIdx,name:config.playerNames[p.playerIdx]};});return o;},[picks,config.playerNames]);
   const playerPts=useMemo(()=>Array.from({length:config.playerCount},(_,i)=>playerGSPts(i,picks||[],matchResults)),[config.playerCount,picks,matchResults]);
-  const matchesByDate=useMemo(()=>{const g={};GM.forEach(m=>{if(!g[m.d])g[m.d]=[];g[m.d].push(m);});return Object.entries(g).sort(([a],[b])=>a.localeCompare(b));},[]);
+  const matchesByDate=useMemo(()=>{
+    const g={};
+    GM.forEach(m=>{
+      // Use local date derived from UTC kickoff time so grouping matches user's timezone
+      let localDate=m.d;
+      if(m.ko){
+        try{
+          const utcDt=new Date(m.d+"T"+m.ko+":00Z");
+          localDate=utcDt.toLocaleDateString("en-CA"); // YYYY-MM-DD in local timezone
+        }catch(e){}
+      }
+      if(!g[localDate])g[localDate]=[];
+      g[localDate].push(m);
+    });
+    return Object.entries(g).sort(([a],[b])=>a.localeCompare(b));
+  },[]);
   const recorded=useMemo(()=>Object.keys(matchResults).filter(id=>matchResults[id]!=null).length,[matchResults]);
   const today=new Date().toISOString().slice(0,10);
 

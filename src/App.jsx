@@ -1006,12 +1006,12 @@ function DraftScreen({config,draftOrder,setDraftOrder,picks,setPicks,onLockDraft
   if(done)return(
     <div style={{maxWidth:920,margin:"0 auto",padding:"0 16px"}}>
       <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:32,color:"var(--accent)",letterSpacing:4}}>DRAFT COMPLETE</div>
-        <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginTop:6}}>{readOnly?"All 48 teams claimed.":"All 48 teams claimed. Lock to begin Group Stage."}</div>
-        <button onClick={()=>setWatching(true)} style={{marginTop:10,padding:"7px 18px",borderRadius:10,border:"1px solid #c9a84c55",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,cursor:"pointer"}}>🎬 Watch the draw</button>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:32,color:"var(--accent)",letterSpacing:4}}>{t(lang,"draftComplete")}</div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginTop:6}}>{readOnly?t(lang,"allTeamsClaimed"):t(lang,"allTeamsClaimed")+" "+( lang==="es"?"Bloquea para comenzar la Fase de Grupos.":"Lock to begin Group Stage.")}</div>
+        <button onClick={()=>setWatching(true)} style={{marginTop:10,padding:"7px 18px",borderRadius:10,border:"1px solid #c9a84c55",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,cursor:"pointer"}}>{t(lang,"watchDraw")}</button>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr",gap:12,marginBottom:28}}>{rosters.map((teams,idx)=><RosterCard key={idx} name={config.playerNames[idx]} color={PC[idx]} initial={initials[idx]} teams={teams} expanded/>)}</div>
-      {!readOnly&&<button onClick={onLockDraft} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer"}}>LOCK DRAFT → BEGIN GROUP STAGE</button>}
+      <div style={{display:"grid",gridTemplateColumns:"1fr",gap:12,marginBottom:28}}>{rosters.map((teams,idx)=><RosterCard key={idx} name={config.playerNames[idx]} color={PC[idx]} initial={initials[idx]} teams={teams} expanded lang={lang}/>)}</div>
+      {!readOnly&&<button onClick={onLockDraft} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer"}}>{t(lang,"lockDraft")}</button>}
     </div>
   );
 
@@ -2414,6 +2414,7 @@ export default function Mundialito() {
         <div style={{position:"absolute",top:14,left:14,display:"flex",flexDirection:"column",gap:4}}>
           <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");window.localStorage?.removeItem("mundi_spectator_code");}catch(e){}window.location.reload();}}} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
           <button onClick={()=>setShowRules(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>?</button>
+          <button onClick={()=>window.location.reload()} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>↻</button>
         </div>
       </div>
 

@@ -1200,7 +1200,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
   const barMax=Math.max(...playerData.map(x=>x.total))||1;
   return(
     <div style={{maxWidth:720,margin:"0 auto",padding:"0 16px"}}>
-      <div style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:4,color:"var(--accent)",textAlign:"center",marginBottom:6}}>STANDINGS</div>
+      <div style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:4,color:"var(--accent)",textAlign:"center",marginBottom:6}}>LEADERBOARD</div>
       {pot>0&&<div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",textAlign:"center",marginBottom:16}}>🏆 Prize pool: <span style={{color:"var(--accent)",fontWeight:700}}>${pot.toLocaleString()}</span> · winner takes all</div>}
       {!pot&&<div style={{marginBottom:10}}/>}
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -1409,17 +1409,16 @@ function NotifyModal({open,onClose}) {
 // ── Profile helpers ───────────────────────────────────────────
 const PLAYER_COLORS = ["#c9a84c","#6b9bd1","#61a978","#d97757","#a855f7","#ec4899","#14b8a6","#f59e0b"];
 
-// In-memory cache — pre-populated from localStorage so pics show instantly on reload
-const picCache = (() => {
-  try { return JSON.parse(window.localStorage?.getItem("mundi_pic_cache")||"{}"); } catch { return {}; }
-})();
+// In-memory cache — pics are too large for localStorage so we use memory only
+// Colors are small so we persist those
+const picCache = {};
 const colorCache = (() => {
   try { return JSON.parse(window.localStorage?.getItem("mundi_color_cache")||"{}"); } catch { return {}; }
 })();
 
 function saveCaches() {
   try {
-    window.localStorage?.setItem("mundi_pic_cache", JSON.stringify(picCache));
+    // Only persist colours — pics are base64 jpegs, too large for localStorage
     window.localStorage?.setItem("mundi_color_cache", JSON.stringify(colorCache));
   } catch(e) {}
 }
@@ -1435,7 +1434,6 @@ function getProfilePic(playerIdx) {
 async function saveProfilePicToFirestore(playerIdx, dataUrl) {
   try {
     picCache[playerIdx] = dataUrl;
-    saveCaches();
     const code = window.localStorage?.getItem("mundi_pool_code") ||
                  window.localStorage?.getItem("mundi_spectator_code");
     if (!code) return;
@@ -1461,6 +1459,13 @@ async function loadProfilePics(code) {
     saveCaches();
     return colors;
   } catch(e) { return {}; }
+}
+
+// Call this after loadProfilePics to guarantee avatars re-render
+// Bumps twice — once immediately, once after 300ms — to catch any render timing gaps
+function bumpPics(setPicRefresh) {
+  setPicRefresh(n=>n+1);
+  setTimeout(()=>setPicRefresh(n=>n+1), 300);
 }
 
 function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
@@ -1875,7 +1880,7 @@ export default function Mundialito() {
     const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(code){
       // Load pics AND fresh scores from Firebase
-      loadProfilePics(code).then(()=>setPicRefresh(n=>n+1));
+      loadProfilePics(code).then(()=>bumpPics(setPicRefresh));
       loadPool(code).then(fresh=>{
         if(fresh) setSt(prev=>{
           const localResults = prev.matchResults||{};
@@ -1902,7 +1907,7 @@ export default function Mundialito() {
             const merged=mergeState(EMPTY,data);
             setSt(merged);setIsHost(false);
             setSpectatorPoolCode(savedCode);
-            loadProfilePics(savedCode).then(()=>setPicRefresh(n=>n+1));
+            loadProfilePics(savedCode).then(()=>bumpPics(setPicRefresh));
             if(merged.draftLocked){
               const seen=window.localStorage?.getItem("mundi_intro_seen");
               if(seen){setAppState("spectator");setActiveTab("standings");}
@@ -1927,7 +1932,7 @@ export default function Mundialito() {
     if(appState!=="host")return;
     const code=window.localStorage?.getItem("mundi_pool_code")||poolCode||window.localStorage?.getItem("mundi_spectator_code");
     if(!code)return;
-    loadProfilePics(code).then(()=>setPicRefresh(n=>n+1));
+    loadProfilePics(code).then(()=>bumpPics(setPicRefresh));
   },[appState,poolCode]);
 
   // Keep a ref to latest st so the debounced save always sends fresh data
@@ -1976,7 +1981,7 @@ export default function Mundialito() {
         setSpectatorPoolCode(upperCode);
         try{window.localStorage?.setItem("mundi_spectator_code",upperCode);}catch(e){}
         // Load profile pics and player colours from Firestore
-        loadProfilePics(upperCode).then(colors=>{setPlayerColors(colors);setPicRefresh(n=>n+1);});
+        loadProfilePics(upperCode).then(colors=>{setPlayerColors(colors);bumpPics(setPicRefresh);});
         // Ask for notification permission now that they've joined
         setTimeout(()=>requestNotificationPermission(), 3000);
         // Show select name if they haven't chosen yet
@@ -2137,7 +2142,7 @@ export default function Mundialito() {
           setAppState("host");
           if(spectatorPoolCode){
             setPoolCode(spectatorPoolCode);
-            loadProfilePics(spectatorPoolCode).then(()=>setPicRefresh(n=>n+1));
+            loadProfilePics(spectatorPoolCode).then(()=>bumpPics(setPicRefresh));
           }
           try{window.localStorage?.setItem(LOCAL_KEY,JSON.stringify({st,pools,activePoolId,activePoolName}));}catch(e){}
         }}/>

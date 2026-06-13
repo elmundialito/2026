@@ -1313,8 +1313,9 @@ function SwitchToHostModal({open,onClose,onSuccess,poolCode}) {
     const ok=await checkPassword(poolCode,pw.trim());
     setLoading(false);
     if(!ok){setErr("Wrong password — try again.");return;}
-    // Save password locally so they don't have to enter it again on this device
+    // Save password AND pool code locally so auto-save and pic loading work
     try{window.localStorage?.setItem("mundi_host_pw",pw.trim());}catch(e){}
+    try{window.localStorage?.setItem("mundi_pool_code",poolCode);}catch(e){}
     setPw("");setErr("");onSuccess();
   };
 
@@ -1850,7 +1851,7 @@ export default function Mundialito() {
     // Fall back to localStorage for host — load local state immediately for speed,
     // then fetch fresh from Firebase in background
     try{const raw=window.localStorage?.getItem(LOCAL_KEY);if(raw){const saved=JSON.parse(raw);setSt(mergeState(EMPTY,saved.st));setPools(saved.pools||[{id:"default",name:"My Pool"}]);setActivePoolId(saved.activePoolId||"default");setActivePoolName(saved.activePoolName||"My Pool");setIsHost(true);setAppState("host");setActiveTab("standings");
-    const code=window.localStorage?.getItem("mundi_pool_code");
+    const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(code){
       // Load pics AND fresh scores from Firebase
       loadProfilePics(code).then(()=>setPicRefresh(n=>n+1));
@@ -1889,13 +1890,13 @@ export default function Mundialito() {
   },[]);
   useEffect(()=>{if(appState!=="host")return;try{window.localStorage?.setItem(LOCAL_KEY,JSON.stringify({st,pools,activePoolId,activePoolName}));}catch(e){};},[st,appState,pools,activePoolId,activePoolName]);
 
-  // Always load profile pics when entering host mode
+  // Always load profile pics when entering host mode — try every possible code source
   useEffect(()=>{
     if(appState!=="host")return;
-    const code=window.localStorage?.getItem("mundi_pool_code")||poolCode;
+    const code=window.localStorage?.getItem("mundi_pool_code")||poolCode||window.localStorage?.getItem("mundi_spectator_code");
     if(!code)return;
     loadProfilePics(code).then(()=>setPicRefresh(n=>n+1));
-  },[appState]);
+  },[appState,poolCode]);
 
   // Keep a ref to latest st so the debounced save always sends fresh data
   const stRef=useRef(st);
@@ -2090,6 +2091,10 @@ export default function Mundialito() {
           setIsHost(true);
           setShowHostSwitch(false);
           setAppState("host");
+          if(spectatorPoolCode){
+            setPoolCode(spectatorPoolCode);
+            loadProfilePics(spectatorPoolCode).then(()=>setPicRefresh(n=>n+1));
+          }
           try{window.localStorage?.setItem(LOCAL_KEY,JSON.stringify({st,pools,activePoolId,activePoolName}));}catch(e){}
         }}/>
       <PoolMgrModal/>

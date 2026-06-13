@@ -936,7 +936,8 @@ function ScoreEntry({matchId,result,onSet,readOnly,teamA,teamB,ownership,initial
 function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=new Set()}) {
   const [a,b]=match.t;const ta=TBN[a],tb=TBN[b];const oa=ownership[a],ob=ownership[b];const out=getMatchOutcome(result);
   const isMyMatch=myTeams.has(a)||myTeams.has(b);
-  const myColor=isMyMatch?(myTeams.has(a)?PC[oa?.playerIdx??0]:PC[ob?.playerIdx??0]):"transparent";
+  const myHasHome=myTeams.has(a),myHasAway=myTeams.has(b),myBoth=myHasHome&&myHasAway;
+  const myColor=isMyMatch?(myHasHome?PC[oa?.playerIdx??0]:PC[ob?.playerIdx??0]):"transparent";
   const teamRow=(name,flag,owner,isHome)=>{
     const winning=out&&((isHome&&out==="A")||(!isHome&&out==="B"));
     const losing=out&&((isHome&&out==="B")||(!isHome&&out==="A"));
@@ -954,19 +955,24 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
       </div>
     );
   };
+  // Build the centre label — kickoff time and/or YOUR TEAM badge
+  const centreLabel=()=>{
+    const ko=match.ko&&!result?<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1}}>{fmtKickoff(match.d,match.ko)}</span>:null;
+    if(!isMyMatch) return ko?<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>{ko}</div>:null;
+    const label=myBoth?"YOUR TEAMS":"YOUR TEAM";
+    const badge=<span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"1px 6px",borderRadius:4,whiteSpace:"nowrap"}}>{myBoth?"⭐ YOUR TEAMS ⭐":myHasHome?"⭐ "+label:label+" ⭐"}</span>;
+    return <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>{ko}{badge}</div>;
+  };
   return(
     <div style={{background:isMyMatch?"rgba(201,168,76,0.06)":"rgba(10,22,40,0.4)",borderRadius:10,padding:"10px 12px",border:isMyMatch?`1px solid ${myColor}44`:"1px solid #1e2f50",marginBottom:6,borderLeft:oa!=null?`3px solid ${PC[oa.playerIdx]}`:ob!=null?`3px solid ${PC[ob.playerIdx]}`:"3px solid transparent"}}>
       <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>GRP {match.g}</span>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {match.ko&&!result&&<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1}}>{fmtKickoff(match.d,match.ko)}</span>}
-          <span style={{fontStyle:"italic",opacity:0.8}}>{match.v}</span>
-        </div>
+        <span style={{fontStyle:"italic",opacity:0.8}}>{match.v}</span>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         {teamRow(a,ta?.flag,oa?.playerIdx!=null?oa:null,true)}
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-          {isMyMatch&&<span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"1px 8px",borderRadius:4,whiteSpace:"nowrap"}}>⭐ YOUR TEAM</span>}
+          {centreLabel()}
           <ScoreEntry matchId={match.id} result={result} onSet={onSet} readOnly={readOnly} teamA={a} teamB={b} ownership={ownership} initials={initials}/>
         </div>
         {teamRow(b,tb?.flag,ob?.playerIdx!=null?ob:null,false)}
@@ -1024,6 +1030,15 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
   const recorded=useMemo(()=>Object.keys(matchResults).filter(id=>matchResults[id]!=null).length,[matchResults]);
   const today=new Date().toLocaleDateString("en-CA");
 
+  // Find the last date that has at least one score entered
+  const lastScoredDate=useMemo(()=>{
+    let last=null;
+    matchesByDate.forEach(([date,matches])=>{
+      if(matches.some(m=>matchResults[m.id]!=null)) last=date;
+    });
+    return last;
+  },[matchesByDate,matchResults]);
+
   // Auto-scroll to today (or nearest upcoming date) when schedule tab loads
   useEffect(()=>{
     if(view!=="schedule")return;
@@ -1047,27 +1062,31 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
 
   return(
     <div style={{maxWidth:920,margin:"0 auto",padding:"0 16px"}}>
-      <div style={{background:"linear-gradient(135deg,rgba(201,168,76,0.06),rgba(26,39,68,0.4))",border:"1px solid rgba(201,168,76,0.15)",borderRadius:12,padding:"12px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-        <span style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#5a6a8a",marginRight:6}}>PLAYERS:</span>
+      <div style={{background:"linear-gradient(135deg,rgba(201,168,76,0.06),rgba(26,39,68,0.4))",border:"1px solid rgba(201,168,76,0.15)",borderRadius:12,padding:"10px 14px",marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <span style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#5a6a8a"}}>PLAYERS</span>
+          <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a"}}>{recorded}/72</span>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
         {config.playerNames.map((n,i)=>{
           const pcolor=getPlayerColor(i,PC[i]);
           return(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:20,background:`${pcolor}15`,border:`1px solid ${pcolor}44`}}>
-            <div style={{width:20,height:20,borderRadius:5,background:pcolor,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[i]}</div>
-            <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:pcolor}}>{n}</span>
-            <span style={{fontFamily:"'Bebas Neue'",fontSize:14,color:pcolor,letterSpacing:1}}>{playerPts[i]}<span style={{fontSize:9,color:`${pcolor}99`,marginLeft:2}}>pts</span></span>
+          <div key={i} style={{display:"flex",alignItems:"center",gap:5,padding:"4px 8px",borderRadius:8,background:`${pcolor}12`,border:`1px solid ${pcolor}33`}}>
+            <div style={{width:18,height:18,borderRadius:4,background:pcolor,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{initials[i]}</div>
+            <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:pcolor,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n}</span>
+            <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,letterSpacing:1,flexShrink:0}}>{playerPts[i]}<span style={{fontSize:8,color:`${pcolor}99`,marginLeft:1}}>pts</span></span>
           </div>
           );
         })}
-        <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",marginLeft:"auto"}}>{recorded}/72</span>
+        </div>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:16}}>
         {[{id:"schedule",icon:"📅",label:"Match Schedule"},{id:"standings",icon:"📊",label:"Group Standings"}].map(v=>{const active=v.id===view;return <button key={v.id} onClick={()=>setView(v.id)} style={{padding:"9px 16px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>{v.icon} {v.label}</button>;})}
       </div>
       {view==="schedule"&&matchesByDate.map(([date,matches])=>{
         const isToday=date===today;const isPast=date<today;
-        // Scroll target: today if it exists, otherwise the first future date
-        const isScrollTarget=isToday||(date>today&&!matchesByDate.some(([d])=>d===today||d>today&&d<date));
+        // Scroll to last date with scores, or today, or first future date
+        const isScrollTarget=date===(lastScoredDate||today)||(date>today&&!lastScoredDate&&!matchesByDate.some(([d])=>d===today||d>today&&d<date));
         return(
           <div key={date} ref={isScrollTarget?scrollTargetRef:null} style={{marginBottom:18}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
@@ -1196,10 +1215,19 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       const r32=KM.filter(m=>m.round==="r32").filter(m=>{const r=koResults[m.id];if(!r)return false;const b=bracket[m.id];if(!b)return false;const w=r==="A"?b.a:b.b;return w&&(picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team).includes(w);}).length;
       const myTeams=(picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);
       const teamBreakdown=myTeams.map(t=>{const tgs=teamGSPts(t,matchResults);const tko=teamKOPts(t,bracket,koResults,config.koPoints);return{team:t,gsPts:tgs,koPts:tko,pts:tgs+tko,eliminated:isEliminated(t,bracket,koResults)};}).sort((a,b)=>b.pts-a.pts||a.team.localeCompare(b.team));
-      // Read colour here so it reacts when picRefresh bumps (colorCache updated)
+      // Calculate goal difference and goals for across all owned teams (for tiebreaking)
+      let gd=0,gf=0;
+      myTeams.forEach(team=>{
+        GM.forEach(m=>{
+          const r=matchResults[m.id];if(!r||r.home==null||r.away==null)return;
+          const isHome=m.t[0]===team,isAway=m.t[1]===team;
+          if(isHome){gf+=r.home;gd+=(r.home-r.away);}
+          else if(isAway){gf+=r.away;gd+=(r.away-r.home);}
+        });
+      });
       const color=getPlayerColor(i,PC[i]);
-      return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,teamBreakdown,color};
-    }).sort((a,b)=>b.total-a.total||b.r32-a.r32||b.gsPts-a.gsPts);
+      return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,teamBreakdown,color,gd,gf};
+    }).sort((a,b)=>b.total-a.total||b.r32-a.r32||b.gsPts-a.gsPts||b.gd-a.gd||b.gf-a.gf);
   },[config,picks,matchResults,bracket,koResults,picRefresh]);
   const pot=(parseFloat(config.entryFee||0))*config.playerCount;
   const barMax=Math.max(...playerData.map(x=>x.total))||1;
@@ -2067,7 +2095,8 @@ export default function Mundialito() {
     <div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628 0%,#0f1e38 40%,#0a1628 100%)",color:"#e0dcd4",fontFamily:"'DM Sans',sans-serif"}}>
       <div style={{position:"relative",textAlign:"center",padding:"26px 20px 4px"}}>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"var(--accent)",lineHeight:1}}>MUNDIALITO</div>
-        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase",paddingRight:44}}>World Cup 2026 · 🇨🇦 🇺🇸 🇲🇽 · June 11 – July 19</div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase",paddingRight:44}}>World Cup 2026 · 🇨🇦 🇺🇸 🇲🇽</div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#4a5a7a",marginTop:2,letterSpacing:1,textTransform:"uppercase"}}>June 11 – July 19</div>
         <div style={{position:"absolute",top:14,right:14,display:"flex",flexDirection:"column",gap:4}}>
           <button onClick={()=>setShowRules(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>?</button>
           <button onClick={()=>setShowTheme(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🎨</button>

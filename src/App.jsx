@@ -1484,10 +1484,12 @@ function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
     setColor(getPlayerColor(idx, PC[idx]));
   },[idx, picVersion, refresh]);
 
-  // If still no pic after context bumps, do a direct fetch as fallback
+  // Fallback fetch if pic or colour hasn't loaded yet from cache
   const bump = useContext(PicBumpContext);
   useEffect(()=>{
-    if(pic) return;
+    const hasPic = !!pic;
+    const hasChosenColor = !!colorCache[idx];
+    if(hasPic && hasChosenColor) return; // already have everything
     const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(!code) return;
     const t=setTimeout(()=>{
@@ -1495,7 +1497,6 @@ function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
         const p=getProfilePic(idx);
         if(p) setPic(p);
         setColor(getPlayerColor(idx,PC[idx]));
-        // Bump global context so OwnerChips and colour chips also update
         if(bump) bump();
       });
     },500);
@@ -2066,10 +2067,10 @@ export default function Mundialito() {
     <div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628 0%,#0f1e38 40%,#0a1628 100%)",color:"#e0dcd4",fontFamily:"'DM Sans',sans-serif"}}>
       <div style={{position:"relative",textAlign:"center",padding:"26px 20px 4px"}}>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"var(--accent)",lineHeight:1}}>MUNDIALITO</div>
-        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>World Cup 2026 · 🇨🇦 🇺🇸 🇲🇽 · June 11 – July 19</div>
-        <div style={{position:"absolute",top:16,right:16,display:"flex",flexDirection:"column",gap:6}}>
-          <button onClick={()=>setShowRules(true)} style={{width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:18,cursor:"pointer"}}>?</button>
-          <button onClick={()=>setShowTheme(true)} style={{width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🎨</button>
+        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase",paddingRight:44}}>World Cup 2026 · 🇨🇦 🇺🇸 🇲🇽 · June 11 – July 19</div>
+        <div style={{position:"absolute",top:14,right:14,display:"flex",flexDirection:"column",gap:4}}>
+          <button onClick={()=>setShowRules(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>?</button>
+          <button onClick={()=>setShowTheme(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🎨</button>
         </div>
         <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");window.localStorage?.removeItem("mundi_spectator_code");}catch(e){}window.location.reload();}}} style={{position:"absolute",top:20,left:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
       </div>

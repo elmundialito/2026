@@ -151,7 +151,7 @@ const TABS = [
   {id:"draft",    label:"Draft",       icon:"🎯",  unlockMsg:"Complete Setup first."},
   {id:"group",    label:"Group Stage", icon:"⚽",  unlockMsg:"Complete the Draft first."},
   {id:"knockout", label:"Knockout",    icon:"🏆",  unlockMsg:"Knockout unlocks once at least one group is fully played."},
-  {id:"standings",label:"Standings",   icon:"📊",  unlockMsg:"Complete the Draft first."},
+  {id:"standings",label:"Leaderboard",   icon:"📊",  unlockMsg:"Complete the Draft first."},
 ];
 
 const EMPTY = {
@@ -1185,20 +1185,6 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       <div style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:4,color:"var(--accent)",textAlign:"center",marginBottom:6}}>STANDINGS</div>
       {pot>0&&<div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",textAlign:"center",marginBottom:16}}>🏆 Prize pool: <span style={{color:"var(--accent)",fontWeight:700}}>${pot.toLocaleString()}</span> · winner takes all</div>}
       {!pot&&<div style={{marginBottom:10}}/>}
-      {myPlayerIdx!==null&&(
-        <div onClick={onEditProfile} style={{display:"flex",alignItems:"center",gap:14,background:"rgba(26,39,68,0.5)",border:"1px solid #2a3a5c",borderRadius:14,padding:"12px 16px",marginBottom:20,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.borderColor="var(--accent)"} onMouseLeave={e=>e.currentTarget.style.borderColor="#2a3a5c"}>
-          <div style={{position:"relative",flexShrink:0}}>
-            <PlayerAvatar idx={myPlayerIdx} name={config.playerNames[myPlayerIdx]} size={52} refresh={picRefresh}/>
-            <div style={{position:"absolute",bottom:0,right:0,background:"var(--accent)",borderRadius:"50%",width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>✏️</div>
-          </div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",letterSpacing:1,marginBottom:2}}>YOUR PROFILE</div>
-            <div style={{fontFamily:"'DM Sans'",fontSize:15,fontWeight:700,color:"#e0dcd4",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{config.playerNames[myPlayerIdx]}</div>
-            <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",marginTop:1}}>Tap to change photo or colour</div>
-          </div>
-          <div style={{fontFamily:"'DM Sans'",fontSize:22,color:"#5a6a8a"}}>›</div>
-        </div>
-      )}
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {playerData.map((p,rank)=>{
           const color=PC[p.idx];const isFirst=rank===0;const expanded=expandedIdx===p.idx;
@@ -1660,6 +1646,7 @@ export default function Mundialito() {
   const [showNotify,setShowNotify]=useState(false);
   const [showTheme,setShowTheme]=useState(false);
   const [picRefresh,setPicRefresh]=useState(0);
+  const [saveStatus,setSaveStatus]=useState(null); // null | "saving" | "saved"
   const [myPlayerIdx,setMyPlayerIdx]=useState(()=>{try{const v=window.localStorage?.getItem("mundi_my_player");return v!==null?parseInt(v):null;}catch(e){return null;}});
   const [playerColors,setPlayerColors]=useState({});
   const [showSelectName,setShowSelectName]=useState(false);
@@ -1766,11 +1753,16 @@ export default function Mundialito() {
   const autoSaveTimerRef=useRef(null);
   useEffect(()=>{
     if(appState!=="host")return;
-    if(!poolCode)return;
+    const code=window.localStorage?.getItem("mundi_pool_code")||poolCode;
+    if(!code)return;
+    setSaveStatus("saving");
     clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current=setTimeout(()=>{
       const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;
-      savePool(poolCode,st,pw);
+      savePool(code,st,pw).then(ok=>{
+        setSaveStatus(ok?"saved":null);
+        if(ok)setTimeout(()=>setSaveStatus(null),2000);
+      });
     },800);
     return()=>clearTimeout(autoSaveTimerRef.current);
   },[st.matchResults,st.koResults,st.koOverrides,appState,poolCode]);
@@ -1869,13 +1861,13 @@ export default function Mundialito() {
               <span style={{fontSize:11}}>🎙️</span>
               <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"var(--accent)",letterSpacing:1}}>HOST</span>
             </div>
-          ):(
-            <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(107,155,209,0.1)",border:"1px solid rgba(107,155,209,0.3)"}}>
-              <span style={{fontSize:11}}>👀</span>
-              <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#6b9bd1",letterSpacing:1}}>SPECTATOR</span>
-            </div>
+          ):null}
+          {isHost&&saveStatus&&(
+            <span style={{fontFamily:"'DM Sans'",fontSize:11,color:saveStatus==="saved"?"#61a978":"#8899b4"}}>
+              {saveStatus==="saving"?"saving…":"✓ saved"}
+            </span>
           )}
-          {/* Spectator: load update + host mode */}
+          {/* Spectator: load + host mode buttons only, no badge */}
           {!isHost&&<button onClick={()=>setShowLoad(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(107,155,209,0.4)",background:"rgba(107,155,209,0.1)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📥 Load</button>}
           {!isHost&&spectatorPoolCode&&<button onClick={()=>setShowHostSwitch(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🎙️ Host</button>}
           {/* Host: notify + theme */}

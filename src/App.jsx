@@ -1923,14 +1923,17 @@ export default function Mundialito() {
   const autoSaveTimerRef=useRef(null);
   useEffect(()=>{
     if(appState!=="host")return;
-    const code=window.localStorage?.getItem("mundi_pool_code")||poolCode;
+    const code=window.localStorage?.getItem("mundi_pool_code")||poolCode||window.localStorage?.getItem("mundi_spectator_code");
     if(!code)return;
     setSaveStatus("saving");
     clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current=setTimeout(()=>{
       const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;
-      // Use ref to get latest st — avoids stale closure
       savePool(code,stRef.current,pw).then(ok=>{
+        if(ok&&code!==poolCode){
+          try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}
+          setPoolCode(code);
+        }
         setSaveStatus(ok?"saved":null);
         if(ok)setTimeout(()=>setSaveStatus(null),2000);
       });
@@ -2040,11 +2043,21 @@ export default function Mundialito() {
               {saveStatus==="saving"?"saving…":"✓ saved"}
             </span>
           )}
-          {isHost&&!saveStatus&&poolCode&&(
+          {isHost&&!saveStatus&&(
             <button onClick={()=>{
+              const code=window.localStorage?.getItem("mundi_pool_code")||poolCode||window.localStorage?.getItem("mundi_spectator_code");
               const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;
+              if(!code){alert("No pool code found — tap Share Pool Code at the bottom first.");return;}
               setSaveStatus("saving");
-              savePool(poolCode,stRef.current,pw).then(ok=>{setSaveStatus(ok?"saved":null);if(ok)setTimeout(()=>setSaveStatus(null),2000);});
+              savePool(code,stRef.current,pw).then(ok=>{
+                if(ok){
+                  // Make sure pool code is saved for future auto-saves
+                  try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}
+                  setPoolCode(code);
+                }
+                setSaveStatus(ok?"saved":null);
+                if(ok)setTimeout(()=>setSaveStatus(null),2000);
+              });
             }} style={{padding:"4px 10px",borderRadius:20,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:11,cursor:"pointer"}}>
               ☁️ sync
             </button>

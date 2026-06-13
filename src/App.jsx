@@ -955,19 +955,20 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
       </div>
     );
   };
-  // Build the centre label — kickoff time and/or YOUR TEAM badge
+  // Build the centre label — only YOUR TEAM badge (kickoff moved to top row)
   const centreLabel=()=>{
-    const ko=match.ko&&!result?<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1}}>{fmtKickoff(match.d,match.ko)}</span>:null;
-    if(!isMyMatch) return ko?<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>{ko}</div>:null;
-    const label=myBoth?"YOUR TEAMS":"YOUR TEAM";
-    const badge=<span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"1px 6px",borderRadius:4,whiteSpace:"nowrap"}}>{myBoth?"⭐ YOUR TEAMS ⭐":myHasHome?"⭐ "+label:label+" ⭐"}</span>;
-    return <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>{ko}{badge}</div>;
+    if(!isMyMatch) return null;
+    const badge=<span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"1px 6px",borderRadius:4,whiteSpace:"nowrap"}}>{myBoth?"⭐ YOUR TEAMS ⭐":myHasHome?"⭐ YOUR TEAM":("YOUR TEAM ⭐")}</span>;
+    return <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}>{badge}</div>;
   };
   return(
     <div style={{background:isMyMatch?"rgba(201,168,76,0.06)":"rgba(10,22,40,0.4)",borderRadius:10,padding:"10px 12px",border:isMyMatch?`1px solid ${myColor}44`:"1px solid #1e2f50",marginBottom:6,borderLeft:oa!=null?`3px solid ${PC[oa.playerIdx]}`:ob!=null?`3px solid ${PC[ob.playerIdx]}`:"3px solid transparent"}}>
       <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>GRP {match.g}</span>
-        <span style={{fontStyle:"italic",opacity:0.8}}>{match.v}</span>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {match.ko&&!result&&<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1}}>{fmtKickoff(match.d,match.ko)}</span>}
+          <span style={{fontStyle:"italic",opacity:0.8}}>{match.v}</span>
+        </div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         {teamRow(a,ta?.flag,oa?.playerIdx!=null?oa:null,true)}
@@ -1068,7 +1069,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
           <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a"}}>{recorded}/72</span>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
-        {config.playerNames.map((n,i)=>{
+        {[...config.playerNames.map((n,i)=>({n,i}))].sort((a,b)=>playerPts[b.i]-playerPts[a.i]).map(({n,i})=>{
           const pcolor=getPlayerColor(i,PC[i]);
           return(
           <div key={i} style={{display:"flex",alignItems:"center",gap:5,padding:"4px 8px",borderRadius:8,background:`${pcolor}12`,border:`1px solid ${pcolor}33`}}>

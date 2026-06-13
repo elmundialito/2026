@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, createContext, useContext } from "react";
 
 // ── Firebase ──────────────────────────────────────────────────
 import { initializeApp } from "firebase/app";
@@ -15,6 +15,9 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
+
+// Global context so every PlayerAvatar reacts when pics/colours load
+const PicContext = createContext(0);
 
 // Generate a random 4-letter code
 function generateCode() {
@@ -947,14 +950,16 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
       <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>GRP {match.g}</span>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {isMyMatch&&!result&&<span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"1px 6px",borderRadius:4}}>⭐ YOUR TEAM</span>}
           {match.ko&&!result&&<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1}}>{fmtKickoff(match.d,match.ko)}</span>}
           <span style={{fontStyle:"italic",opacity:0.8}}>{match.v}</span>
         </div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         {teamRow(a,ta?.flag,oa?.playerIdx!=null?oa:null,true)}
-        <ScoreEntry matchId={match.id} result={result} onSet={onSet} readOnly={readOnly}/>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+          {isMyMatch&&<span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"1px 8px",borderRadius:4,whiteSpace:"nowrap"}}>⭐ YOUR TEAM</span>}
+          <ScoreEntry matchId={match.id} result={result} onSet={onSet} readOnly={readOnly}/>
+        </div>
         {teamRow(b,tb?.flag,ob?.playerIdx!=null?ob:null,false)}
       </div>
     </div>
@@ -1438,11 +1443,15 @@ async function loadProfilePics(code) {
 }
 
 function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
+  const picVersion = useContext(PicContext);
   const [pic, setPic] = useState(()=>getProfilePic(idx));
-  const color = getPlayerColor(idx);
-  const initials = name ? name.slice(0,2).toUpperCase() : "??";
-  // Re-read from cache whenever idx or refresh signal changes
-  useEffect(()=>{ setPic(getProfilePic(idx)); },[idx, refresh]);
+  const [color, setColor] = useState(()=>getPlayerColor(idx, PC[idx]));
+  const initials = nameToInitial(name||"");
+  // Re-read from cache whenever idx, context version, or explicit refresh changes
+  useEffect(()=>{
+    setPic(getProfilePic(idx));
+    setColor(getPlayerColor(idx, PC[idx]));
+  },[idx, picVersion, refresh]);
   if(pic) return (
     <div style={{width:size,height:size,borderRadius:"50%",overflow:"hidden",flexShrink:0,...style}}>
       <img src={pic} style={{width:"100%",height:"100%",objectFit:"cover"}} />
@@ -1555,18 +1564,25 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
     const OUT = 240;
     canvas.width = OUT; canvas.height = OUT;
     const ctx = canvas.getContext("2d");
-    // Clip to circle
     ctx.beginPath(); ctx.arc(OUT/2,OUT/2,OUT/2,0,Math.PI*2); ctx.clip();
-    // Draw scaled+offset image centered in crop window
-    const naturalW = img.naturalWidth, naturalH = img.naturalHeight;
-    const fitScale = Math.max(CROP_SIZE/naturalW, CROP_SIZE/naturalH);
-    const drawW = naturalW*fitScale*cropScale;
-    const drawH = naturalH*fitScale*cropScale;
-    const drawX = (CROP_SIZE-drawW)/2 + cropOffset.x;
-    const drawY = (CROP_SIZE-drawH)/2 + cropOffset.y;
-    // Scale to output size
-    const s = OUT/CROP_SIZE;
-    ctx.drawImage(img, drawX*s, drawY*s, drawW*s, drawH*s);
+    // Image is rendered as CROP_SIZE x CROP_SIZE with object-fit:cover then scaled+offset
+    // Reverse that to find what portion of the natural image is visible
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    // object-fit:cover scale: fill CROP_SIZE square
+    const coverScale = Math.max(CROP_SIZE/nw, CROP_SIZE/nh);
+    // rendered size at scale 1
+    const rw = nw * coverScale, rh = nh * coverScale;
+    // with cropScale applied
+    const sw = rw * cropScale, sh = rh * cropScale;
+    // top-left corner of rendered image in crop window coords
+    const ix = (CROP_SIZE - sw) / 2 + cropOffset.x;
+    const iy = (CROP_SIZE - sh) / 2 + cropOffset.y;
+    // map crop window to natural image coords
+    const sx = (-ix / cropScale) / coverScale;
+    const sy = (-iy / cropScale) / coverScale;
+    const sWidth = (CROP_SIZE / cropScale) / coverScale;
+    const sHeight = (CROP_SIZE / cropScale) / coverScale;
+    ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, OUT, OUT);
     const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
     saveProfilePicToFirestore(playerIdx, dataUrl);
     setPic(dataUrl);
@@ -1583,27 +1599,31 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
   // Crop UI
   if(cropSrc) return(
     <Modal open={open} onClose={()=>setCropSrc(null)} title="CROP YOUR PHOTO">
-      <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#8899b4",textAlign:"center",marginBottom:12}}>Drag to reposition · Pinch or scroll to zoom</div>
+      <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#8899b4",textAlign:"center",marginBottom:12}}>Drag to reposition · Use slider to zoom</div>
       <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
         <div
-          style={{width:CROP_SIZE,height:CROP_SIZE,borderRadius:"50%",overflow:"hidden",border:"3px solid var(--accent)",cursor:"grab",position:"relative",touchAction:"none",flexShrink:0}}
+          style={{width:CROP_SIZE,height:CROP_SIZE,borderRadius:"50%",overflow:"hidden",border:"3px solid var(--accent)",cursor:"grab",position:"relative",touchAction:"none",flexShrink:0,background:"#0a1628"}}
           onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
           onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onMouseUp}
-          onWheel={e=>{e.preventDefault();setCropScale(s=>Math.min(4,Math.max(0.5,s-e.deltaY*0.002)));}}
+          onWheel={e=>{e.preventDefault();setCropScale(s=>Math.min(3,Math.max(1,s-e.deltaY*0.002)));}}
         >
           <img ref={cropImgRef} src={cropSrc} draggable={false}
-            style={{position:"absolute",maxWidth:"none",
-              width:()=>{const img=cropImgRef.current;if(!img)return"100%";const fw=Math.max(CROP_SIZE,img.naturalWidth);return fw+"px";},
-              transform:`translate(${cropOffset.x}px,${cropOffset.y}px) scale(${cropScale})`,
+            style={{
+              position:"absolute",
+              left:"50%", top:"50%",
+              width:CROP_SIZE+"px",
+              height:CROP_SIZE+"px",
+              objectFit:"cover",
+              transform:`translate(calc(-50% + ${cropOffset.x}px), calc(-50% + ${cropOffset.y}px)) scale(${cropScale})`,
               transformOrigin:"center center",
-              left:"50%", top:"50%", translate:"-50% -50%",
-              userSelect:"none",pointerEvents:"none"}}
+              userSelect:"none", pointerEvents:"none"
+            }}
           />
         </div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
         <span style={{fontSize:14}}>🔍</span>
-        <input type="range" min="0.5" max="4" step="0.05" value={cropScale}
+        <input type="range" min="1" max="3" step="0.05" value={cropScale}
           onChange={e=>setCropScale(parseFloat(e.target.value))}
           style={{flex:1,accentColor:"var(--accent)"}}/>
       </div>
@@ -1783,14 +1803,7 @@ export default function Mundialito() {
       if(!snap.exists())return;
       try{
         const decoded=decode(snap.data().state);
-        if(decoded){
-          setSt(prev=>{
-            const newEncoded=snap.data().state;
-            const prevEncoded=encode(prev);
-            if(newEncoded===prevEncoded)return prev;
-            return mergeState(EMPTY,decoded);
-          });
-        }
+        if(decoded) setSt(mergeState(EMPTY,decoded));
       }catch(e){}
     });
     return ()=>unsub();
@@ -1967,7 +1980,8 @@ export default function Mundialito() {
   const tabContent=()=>{
     const tab=TABS.find(t=>t.id===activeTab);
     if(!isUnlocked(activeTab))return(<div style={{maxWidth:480,margin:"0 auto",padding:"60px 24px 0",textAlign:"center"}}><div style={{fontSize:56,marginBottom:16,opacity:0.3,filter:"grayscale(1)"}}>{tab?.icon}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:3,color:"#5a6a8a",marginBottom:12}}>{tab?.label.toUpperCase()} — LOCKED</div><div style={{fontFamily:"'DM Sans'",fontSize:14,color:"#5a6a8a",lineHeight:1.6}}>{tab?.unlockMsg}</div></div>);
-    if(activeTab==="setup"){if(st.setupLocked&&!readOnly)return(<SetupLockedScreen config={st.config} onRename={(i,name)=>setSt(p=>({...p,config:{...p.config,playerNames:p.config.playerNames.map((n,j)=>j===i?name:n)}}))} onUnlock={()=>setSt(p=>({...p,setupLocked:false,draftOrder:null,draftMode:null,picks:[],draftLocked:false,matchResults:{},koResults:{},koOverrides:{}}))}/>);
+    if(activeTab==="setup"){if(st.setupLocked&&!readOnly)return(<SetupLockedScreen config={st.config} onRename={(i,name)=>{setSt(p=>{const updated={...p,config:{...p.config,playerNames:p.config.playerNames.map((n,j)=>j===i?name:n)}};// Save to Firebase immediately
+        const code=window.localStorage?.getItem("mundi_pool_code")||poolCode;const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;if(code)savePool(code,updated,pw);return updated;});}} onUnlock={()=>setSt(p=>({...p,setupLocked:false,draftOrder:null,draftMode:null,picks:[],draftLocked:false,matchResults:{},koResults:{},koOverrides:{}}))}/>);
       return <SetupScreen config={st.config} setConfig={c=>setSt(p=>({...p,config:typeof c==="function"?c(p.config):c}))} onLock={()=>{setSt(p=>({...p,setupLocked:true}));setActiveTab("draft");}} readOnly={readOnly}/>;}
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
     if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx}/>;
@@ -1983,6 +1997,7 @@ export default function Mundialito() {
   };
 
   return(
+    <PicContext.Provider value={picRefresh}>
     <><style>{FONTS}</style>
     <div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628 0%,#0f1e38 40%,#0a1628 100%)",color:"#e0dcd4",fontFamily:"'DM Sans',sans-serif"}}>
       <div style={{position:"relative",textAlign:"center",padding:"26px 20px 4px"}}>
@@ -2078,6 +2093,6 @@ export default function Mundialito() {
           try{window.localStorage?.setItem(LOCAL_KEY,JSON.stringify({st,pools,activePoolId,activePoolName}));}catch(e){}
         }}/>
       <PoolMgrModal/>
-    </div></>
+    </div></>{/* end app */}</PicContext.Provider>
   );
 }

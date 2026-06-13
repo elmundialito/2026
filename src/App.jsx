@@ -191,12 +191,135 @@ function nameToInitial(n) {
 }
 function getInitials(names) { return (names||[]).map(n => nameToInitial(n||"")); }
 
+// ── Language / i18n ───────────────────────────────────────────
+const COUNTRY_ES = {
+  "SPAIN":"ESPAÑA","FRANCE":"FRANCIA","ENGLAND":"INGLATERRA","BRAZIL":"BRASIL",
+  "PORTUGAL":"PORTUGAL","ARGENTINA":"ARGENTINA","GERMANY":"ALEMANIA",
+  "NETHERLANDS":"PAÍSES BAJOS","NORWAY":"NORUEGA","BELGIUM":"BÉLGICA",
+  "COLOMBIA":"COLOMBIA","JAPAN":"JAPÓN","MOROCCO":"MARRUECOS","MEXICO":"MÉXICO",
+  "URUGUAY":"URUGUAY","USA":"EEUU","CROATIA":"CROACIA",
+  "SWITZERLAND":"SUIZA","TÜRKIYE":"TURQUÍA","ECUADOR":"ECUADOR","CANADA":"CANADÁ",
+  "SENEGAL":"SENEGAL","SWEDEN":"SUECIA","AUSTRIA":"AUSTRIA","PARAGUAY":"PARAGUAY",
+  "SCOTLAND":"ESCOCIA","CZECHIA":"CHEQUIA","EGYPT":"EGIPTO","IVORY COAST":"COSTA DE MARFIL",
+  "BOSNIA AND HERZEGOVINA":"BOSNIA Y HERZEGOVINA","ALGERIA":"ARGELIA","GHANA":"GHANA",
+  "SOUTH KOREA":"COREA DEL SUR","AUSTRALIA":"AUSTRALIA","IRAN":"IRÁN","TUNISIA":"TÚNEZ",
+  "DR CONGO":"RD CONGO","SAUDI ARABIA":"ARABIA SAUDITA","SOUTH AFRICA":"SUDÁFRICA",
+  "IRAQ":"IRAK","PANAMA":"PANAMÁ","UZBEKISTAN":"UZBEKISTÁN","CAPE VERDE":"CABO VERDE",
+  "QATAR":"CATAR","HAITI":"HAITÍ","JORDAN":"JORDANIA","NEW ZEALAND":"NUEVA ZELANDA",
+  "CURAÇAO":"CURAZAO","HAITI":"HAITÍ",
+};
+
+const SHORT_ES = {
+  "SOUTH KOREA":"C.Sur","SOUTH AFRICA":"S.África","SAUDI ARABIA":"A.Saudita",
+  "BOSNIA AND HERZEGOVINA":"B&H","IVORY COAST":"C.Marfil","NEW ZEALAND":"N.Zelanda",
+  "CAPE VERDE":"C.Verde","DR CONGO":"RD Congo","CURAÇAO":"Curazao","NETHERLANDS":"P.Bajos",
+  "ESTADOS UNIDOS":"EE.UU.","PAÍSES BAJOS":"P.Bajos","ARABIA SAUDITA":"A.Saudita",
+  "COREA DEL SUR":"C.Sur","COSTA DE MARFIL":"C.Marfil","NUEVA ZELANDA":"N.Zelanda",
+  "CABO VERDE":"C.Verde","BOSNIA Y HERZEGOVINA":"B&H",
+};
+
+const FIXTURE_ES = {
+  "USA":"EEUU",
+  "SOUTH KOREA":"COREA DEL SUR",
+  "SOUTH AFRICA":"SUDÁFRICA",
+  "SAUDI ARABIA":"ARABIA SAUDITA",
+  "BOSNIA AND HERZEGOVINA":"BOSNIA",
+  "NEW ZEALAND":"NUEVA ZELANDA",
+  "CAPE VERDE":"CABO VERDE",
+  "DR CONGO":"RD CONGO",
+  "IVORY COAST":"COSTA DE MARFIL",
+  "CURAÇAO":"CURAZAO",
+  "SWITZERLAND":"SUIZA",
+  "UZBEKISTAN":"UZBEKIS­TÁN",
+  "NETHERLANDS":"PAÍSES BAJOS",
+};
+
+const UI = {
+  en: {
+    setup:"Setup", draft:"Draft", group:"Group Stage", knockout:"Knockout", leaderboard:"Leaderboard",
+    setupUnlock:null, draftUnlock:"Complete Setup first.", groupUnlock:"Complete the Draft first.",
+    knockoutUnlock:"Knockout unlocks once at least one group is fully played.", standingsUnlock:"Complete the Draft first.",
+    host:"HOST", spectator:"SPECTATOR", load:"📥 Load", notify:"🔔 Notify",
+    shareCode:"📋 SHARE POOL CODE", syncBtn:"☁️ sync", saving:"saving…", saved:"✓ saved",
+    players:"PLAYERS", matchSchedule:"Match Schedule", groupStandings:"Group Standings",
+    today:"TODAY", draw:"DRAW", yourTeam:"YOUR TEAM", yourTeams:"YOUR TEAMS",
+    leaderboardTitle:"LEADERBOARD", prizePool:"🏆 Prize pool", winnerTakesAll:"winner takes all",
+    points:"points", group2:"Group", knockout2:"Knockout", pastR32:"Past R32", total:"Total",
+    teamBreakdown:"TEAM BREAKDOWN", tiebreaker:"Tiebreaker: Most teams past R32 → Highest GS total → Coin toss",
+    changeUser:"👤 Change user", howItWorks:"HOW IT WORKS",
+    looksGood:"LOOKS GOOD →", skipForNow:"SKIP FOR NOW →", addPhoto:"📷 ADD YOUR PHOTO",
+    changePhoto:"📷 CHANGE PHOTO", yourColour:"YOUR COLOUR", yourProfile:"YOUR PROFILE",
+    tapToChange:"Tap to change photo or colour", photoCaption:"Your photo shows on the standings for everyone in the pool.",
+    photoCaptionDone:"Looking good! It'll show on everyone's standings.",
+    cropPhoto:"CROP YOUR PHOTO", dragReposition:"Drag to reposition · Use slider to zoom",
+    back:"BACK", usePhoto:"USE THIS PHOTO ✓",
+    selectName:"SELECT YOUR NAME", tapYourName:"Tap your name so we can personalise your experience.",
+    thatSMe:"THAT'S ME →",
+    round32:"Round of 32", round16:"Round of 16", quarterfinals:"Quarterfinals",
+    semifinals:"Semifinals", final:"Final", thirdPlace:"3rd Place",
+    win:"Win", matchday:"matchday",
+  },
+  es: {
+    setup:"Config.", draft:"Sorteo", group:"Fase de Grupos", knockout:"Eliminatorias", leaderboard:"Clasificación",
+    setupUnlock:null, draftUnlock:"Completa la configuración primero.", groupUnlock:"Completa el sorteo primero.",
+    knockoutUnlock:"Se desbloquea cuando al menos un grupo termine.", standingsUnlock:"Completa el sorteo primero.",
+    host:"ANFITRIÓN", spectator:"ESPECTADOR", load:"📥 Cargar", notify:"🔔 Avisar",
+    shareCode:"📋 COMPARTIR CÓDIGO", syncBtn:"☁️ sync", saving:"guardando…", saved:"✓ guardado",
+    players:"JUGADORES", matchSchedule:"Calendario", groupStandings:"Grupos",
+    today:"HOY", draw:"EMPATE", yourTeam:"TU EQUIPO", yourTeams:"TUS EQUIPOS",
+    leaderboardTitle:"CLASIFICACIÓN", prizePool:"🏆 Premio total", winnerTakesAll:"el primero se lo lleva todo",
+    points:"puntos", group2:"Fase Grupos", knockout2:"Eliminatorias", pastR32:"Pasan R32", total:"Total",
+    teamBreakdown:"TUS EQUIPOS", tiebreaker:"Desempate: Más equipos en R32 → Diferencia de goles → Goles a favor",
+    changeUser:"👤 Cambiar usuario", howItWorks:"CÓMO FUNCIONA",
+    looksGood:"¡LISTO! →", skipForNow:"OMITIR POR AHORA →", addPhoto:"📷 AÑADIR FOTO",
+    changePhoto:"📷 CAMBIAR FOTO", yourColour:"TU COLOR", yourProfile:"TU PERFIL",
+    tapToChange:"Toca para cambiar foto o color", photoCaption:"Tu foto aparece en la clasificación para todos.",
+    photoCaptionDone:"¡Qué bien! Aparecerá en la clasificación de todos.",
+    cropPhoto:"RECORTAR FOTO", dragReposition:"Arrastra para reposicionar · Desliza para zoom",
+    back:"VOLVER", usePhoto:"USAR ESTA FOTO ✓",
+    selectName:"SELECCIONA TU NOMBRE", tapYourName:"Toca tu nombre para personalizar tu experiencia.",
+    thatSMe:"¡SOY YO! →",
+    round32:"Ronda de 32", round16:"Ronda de 16", quarterfinals:"Cuartos de final",
+    semifinals:"Semifinales", final:"Final", thirdPlace:"3er Puesto",
+    win:"Gana", matchday:"jornada",
+  },
+};
+
+// Detect language from browser, fall back to saved preference
+function detectLang() {
+  try {
+    const saved = window.localStorage?.getItem("mundi_lang");
+    if(saved) return saved;
+    const bl = navigator.language||"en";
+    return bl.startsWith("es") ? "es" : "en";
+  } catch { return "en"; }
+}
+
+function t(lang, key) { return UI[lang]?.[key] || UI.en[key] || key; }
+
+function countryName(name, lang) {
+  if(lang==="es") return COUNTRY_ES[name] || name;
+  return name;
+}
+function countryShort(name, lang) {
+  if(lang==="es"){const es=COUNTRY_ES[name]||name;return SHORT_ES[es]||SHORT_ES[name]||es;}
+  return SHORT[name]||name;
+}
+function countryFixture(name, lang) {
+  if(lang==="es"){const es=COUNTRY_ES[name]||name;return (FIXTURE_ES[name]||es).toUpperCase();}
+  return FIXTURE_NAME[name]||name.toUpperCase();
+}
+
+
+// Keep these as language-aware wrappers — components pass lang down
 const SHORT = {"SOUTH KOREA":"S.Korea","SOUTH AFRICA":"S.Africa","SAUDI ARABIA":"S.Arabia","BOSNIA AND HERZEGOVINA":"B&H","IVORY COAST":"Ivory Cst","NEW ZEALAND":"N.Zealand","CAPE VERDE":"C.Verde","DR CONGO":"DR Congo","CURAÇAO":"Curaçao","NETHERLANDS":"Neth."};
 const shortName = n => SHORT[n]||n;
 const btnName = n => { const s=SHORT[n]||n; return s.length>10?s.slice(0,10)+"…":s; };
-const FIXTURE_NAME = {"SOUTH KOREA":"S. KOREA","SOUTH AFRICA":"S. AFRICA","SAUDI ARABIA":"S. ARABIA","BOSNIA AND HERZEGOVINA":"BOSNIA","NEW ZEALAND":"N. ZEALAND","CAPE VERDE":"C. VERDE","DR CONGO":"DR CONGO","IVORY COAST":"IVORY COAST","CURAÇAO":"CURAÇAO","SWITZERLAND":"SWITZER­LAND","UZBEKISTAN":"UZBEK­ISTAN","NETHERLANDS":"NETHER­LANDS"};
+const FIXTURE_NAME = {"SOUTH KOREA":"SOUTH KOREA","SOUTH AFRICA":"SOUTH AFRICA","SAUDI ARABIA":"SAUDI ARABIA","BOSNIA AND HERZEGOVINA":"BOSNIA","NEW ZEALAND":"NEW ZEALAND","CAPE VERDE":"C. VERDE","DR CONGO":"DR CONGO","IVORY COAST":"IVORY COAST","CURAÇAO":"CURAÇAO","SWITZERLAND":"SWITZER­LAND","UZBEKISTAN":"UZBEK­ISTAN","NETHERLANDS":"NETHER­LANDS"};
 const fixtureName = n => FIXTURE_NAME[n] || n.toUpperCase();
-const CODE3 = {"SPAIN":"ESP","FRANCE":"FRA","ENGLAND":"ENG","BRAZIL":"BRA","PORTUGAL":"POR","ARGENTINA":"ARG","GERMANY":"GER","NETHERLANDS":"NED","NORWAY":"NOR","BELGIUM":"BEL","COLOMBIA":"COL","JAPAN":"JPN","MOROCCO":"MAR","MEXICO":"MEX","URUGUAY":"URU","USA":"USA","CROATIA":"CRO","SWITZERLAND":"SUI","TÜRKIYE":"TUR","ECUADOR":"ECU","CANADA":"CAN","SENEGAL":"SEN","SWEDEN":"SWE","AUSTRIA":"AUT","PARAGUAY":"PAR","SCOTLAND":"SCO","CZECHIA":"CZE","EGYPT":"EGY","IVORY COAST":"CIV","BOSNIA AND HERZEGOVINA":"BIH","ALGERIA":"ALG","GHANA":"GHA","SOUTH KOREA":"KOR","AUSTRALIA":"AUS","IRAN":"IRN","TUNISIA":"TUN","DR CONGO":"COD","SAUDI ARABIA":"KSA","SOUTH AFRICA":"RSA","IRAQ":"IRQ","PANAMA":"PAN","UZBEKISTAN":"UZB","CAPE VERDE":"CPV","QATAR":"QAT","HAITI":"HAI","JORDAN":"JOR","NEW ZEALAND":"NZL","CURAÇAO":"CUW"};
+
+// Language context — available to all components
+const LangContext = createContext("en");{"SPAIN":"ESP","FRANCE":"FRA","ENGLAND":"ENG","BRAZIL":"BRA","PORTUGAL":"POR","ARGENTINA":"ARG","GERMANY":"GER","NETHERLANDS":"NED","NORWAY":"NOR","BELGIUM":"BEL","COLOMBIA":"COL","JAPAN":"JPN","MOROCCO":"MAR","MEXICO":"MEX","URUGUAY":"URU","USA":"USA","CROATIA":"CRO","SWITZERLAND":"SUI","TÜRKIYE":"TUR","ECUADOR":"ECU","CANADA":"CAN","SENEGAL":"SEN","SWEDEN":"SWE","AUSTRIA":"AUT","PARAGUAY":"PAR","SCOTLAND":"SCO","CZECHIA":"CZE","EGYPT":"EGY","IVORY COAST":"CIV","BOSNIA AND HERZEGOVINA":"BIH","ALGERIA":"ALG","GHANA":"GHA","SOUTH KOREA":"KOR","AUSTRALIA":"AUS","IRAN":"IRN","TUNISIA":"TUN","DR CONGO":"COD","SAUDI ARABIA":"KSA","SOUTH AFRICA":"RSA","IRAQ":"IRQ","PANAMA":"PAN","UZBEKISTAN":"UZB","CAPE VERDE":"CPV","QATAR":"QAT","HAITI":"HAI","JORDAN":"JOR","NEW ZEALAND":"NZL","CURAÇAO":"CUW"};
 const code3 = n => CODE3[n]||n.slice(0,3);
 const fmtOdds = n => n<100 ? n.toFixed(2) : new Intl.NumberFormat("en-US",{minimumFractionDigits:2}).format(n);
 const fmtDate = dateStr => {
@@ -906,6 +1029,7 @@ function DraftScreen({config,draftOrder,setDraftOrder,picks,setPicks,onLockDraft
 }
 
 function ScoreEntry({matchId,result,onSet,readOnly,teamA,teamB,ownership,initials}) {
+  const lang=useContext(LangContext);
   const [hv,setHv]=useState(result?.home??"");
   const [av,setAv]=useState(result?.away??"");
   useEffect(()=>{setHv(result?.home??"");setAv(result?.away??"");},[result?.home,result?.away]);
@@ -921,7 +1045,7 @@ function ScoreEntry({matchId,result,onSet,readOnly,teamA,teamB,ownership,initial
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:36}}>
         <span style={{fontFamily:"'Bebas Neue'",fontSize:14,color:"#5a6a8a",letterSpacing:1}}>–</span>
         {out&&(out==="D"?(
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#8899b4",letterSpacing:1}}>DRAW</div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#8899b4",letterSpacing:1}}>{t(lang,"draw")}</div>
         ):(
           winOwner!=null&&initials&&<div style={{width:18,height:18,borderRadius:4,background:getPlayerColor(winOwner.playerIdx,PC[winOwner.playerIdx]),color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[winOwner.playerIdx]}</div>
         ))}
@@ -934,10 +1058,20 @@ function ScoreEntry({matchId,result,onSet,readOnly,teamA,teamB,ownership,initial
 
 // ── GroupMatchCard — owner chips pinned to far edges ──────────
 function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=new Set()}) {
+  const lang=useContext(LangContext);
   const [a,b]=match.t;const ta=TBN[a],tb=TBN[b];const oa=ownership[a],ob=ownership[b];const out=getMatchOutcome(result);
   const isMyMatch=myTeams.has(a)||myTeams.has(b);
   const myHasHome=myTeams.has(a),myHasAway=myTeams.has(b),myBoth=myHasHome&&myHasAway;
   const myColor=isMyMatch?(myHasHome?PC[oa?.playerIdx??0]:PC[ob?.playerIdx??0]):"transparent";
+  // Persistent result highlight for player's own teams
+  const myOutcome=isMyMatch&&out?(()=>{
+    const wins=(myHasHome&&out==="A")||(myHasAway&&out==="B");
+    const loses=(myHasHome&&out==="B")||(myHasAway&&out==="A");
+    if(myBoth)return "D"; // if you own both, always neutral
+    return wins?"W":loses?"L":out==="D"?"D":null;
+  })():null;
+  const resultBg=myOutcome==="W"?"rgba(97,169,120,0.08)":myOutcome==="L"?"rgba(217,119,87,0.08)":myOutcome==="D"?"rgba(107,155,209,0.06)":isMyMatch?"rgba(201,168,76,0.06)":"rgba(10,22,40,0.4)";
+  const resultBorder=myOutcome==="W"?`1px solid rgba(97,169,120,0.35)`:myOutcome==="L"?`1px solid rgba(217,119,87,0.35)`:myOutcome==="D"?`1px solid rgba(107,155,209,0.25)`:isMyMatch?`1px solid ${myColor}44`:"1px solid #1e2f50";
   const teamRow=(name,flag,owner,isHome)=>{
     const winning=out&&((isHome&&out==="A")||(!isHome&&out==="B"));
     const losing=out&&((isHome&&out==="B")||(!isHome&&out==="A"));
@@ -946,7 +1080,7 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
       <div style={{flex:1,display:"flex",alignItems:"center",minWidth:0,opacity:losing?0.5:1,flexDirection:isHome?"row-reverse":"row",gap:4}}>
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:0,background:winning&&color?`${color}15`:"transparent",border:winning&&color?`1px solid ${color}44`:"1px solid transparent",borderRadius:6,padding:"3px 5px"}}>
           <span style={{fontSize:15,lineHeight:1,flexShrink:0}}>{flag}</span>
-          {(()=>{const fn=fixtureName(name);const fs=fn.length>9?9:10;return <span style={{fontFamily:"'DM Sans'",fontSize:fs,fontWeight:600,color:color||"#e0dcd4",lineHeight:1.2,textAlign:"center",hyphens:"manual"}} dangerouslySetInnerHTML={{__html:fn}}/>;})()}
+          {(()=>{const fn=countryFixture(name,lang);const fs=fn.length>9?9:10;return <span style={{fontFamily:"'DM Sans'",fontSize:fs,fontWeight:600,color:color||"#e0dcd4",lineHeight:1.2,textAlign:"center",hyphens:"manual"}} dangerouslySetInnerHTML={{__html:fn}}/>;})()}
         </div>
         <div style={{flex:1,minWidth:0}}/>
         {owner!=null
@@ -958,17 +1092,15 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
   // Build the centre label — only YOUR TEAM badge (kickoff moved to top row)
   const centreLabel=()=>{
     if(!isMyMatch) return null;
-    const badge=<span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"1px 6px",borderRadius:4,whiteSpace:"nowrap"}}>{myBoth?"⭐ YOUR TEAMS ⭐":myHasHome?"⭐ YOUR TEAM":("YOUR TEAM ⭐")}</span>;
+    const badge=<span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"1px 6px",borderRadius:4,whiteSpace:"nowrap"}}>{myBoth?`⭐ ${t(lang,"yourTeams")} ⭐`:myHasHome?`⭐ ${t(lang,"yourTeam")}`:(`${t(lang,"yourTeam")} ⭐`)}</span>;
     return <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}>{badge}</div>;
   };
   return(
-    <div style={{background:isMyMatch?"rgba(201,168,76,0.06)":"rgba(10,22,40,0.4)",borderRadius:10,padding:"10px 12px",border:isMyMatch?`1px solid ${myColor}44`:"1px solid #1e2f50",marginBottom:6,borderLeft:oa!=null?`3px solid ${PC[oa.playerIdx]}`:ob!=null?`3px solid ${PC[ob.playerIdx]}`:"3px solid transparent"}}>
+    <div style={{background:resultBg,borderRadius:10,padding:"10px 12px",border:resultBorder,marginBottom:6,borderLeft:oa!=null?`3px solid ${PC[oa.playerIdx]}`:ob!=null?`3px solid ${PC[ob.playerIdx]}`:"3px solid transparent"}}>
       <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>GRP {match.g}</span>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {match.ko&&!result&&<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1}}>{fmtKickoff(match.d,match.ko)}</span>}
-          <span style={{fontStyle:"italic",opacity:0.8}}>{match.v}</span>
-        </div>
+        <span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1}}>{match.ko&&!result?fmtKickoff(match.d,match.ko):""}</span>
+        <span style={{fontStyle:"italic",opacity:0.8}}>{match.v}</span>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         {teamRow(a,ta?.flag,oa?.playerIdx!=null?oa:null,true)}
@@ -1007,6 +1139,7 @@ function GroupStandingsAccordion({g,res,ownership,initials}) {
 }
 
 function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx}) {
+  const lang=useContext(LangContext);
   const [flash,setFlash]=useState(null);
   const [view,setView]=useState("schedule");
   const scrollTargetRef=useRef(null);
@@ -1065,11 +1198,18 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
     <div style={{maxWidth:920,margin:"0 auto",padding:"0 16px"}}>
       <div style={{background:"linear-gradient(135deg,rgba(201,168,76,0.06),rgba(26,39,68,0.4))",border:"1px solid rgba(201,168,76,0.15)",borderRadius:12,padding:"10px 14px",marginBottom:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <span style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#5a6a8a"}}>PLAYERS</span>
+          <span style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#5a6a8a"}}>{t(lang,"players")}</span>
           <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a"}}>{recorded}/72</span>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
-        {[...config.playerNames.map((n,i)=>({n,i}))].sort((a,b)=>playerPts[b.i]-playerPts[a.i]).map(({n,i})=>{
+        {[...config.playerNames.map((n,i)=>{
+          const pts=playerPts[i];
+          // Same tiebreakers as main leaderboard: gd then gf across all owned teams
+          let gd=0,gf=0;
+          const mine=new Set((picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team));
+          GM.forEach(m=>{const r=matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]&&mine.has(m.t[0]),isAway=m.t[1]&&mine.has(m.t[1]);if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});
+          return{n,i,pts,gd,gf};
+        })].sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf).map(({n,i})=>{
           const pcolor=getPlayerColor(i,PC[i]);
           return(
           <div key={i} style={{display:"flex",alignItems:"center",gap:5,padding:"4px 8px",borderRadius:8,background:`${pcolor}12`,border:`1px solid ${pcolor}33`}}>
@@ -1092,7 +1232,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
           <div key={date} ref={isScrollTarget?scrollTargetRef:null} style={{marginBottom:18}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
               <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:isToday?"var(--accent)":isPast?"#5a6a8a":"#8899b4"}}>{fmtDate(date)}</div>
-              {isToday&&<div style={{padding:"2px 8px",borderRadius:10,background:"rgba(201,168,76,0.2)",border:"1px solid rgba(201,168,76,0.4)",fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1.5}}>TODAY</div>}
+              {isToday&&<div style={{padding:"2px 8px",borderRadius:10,background:"rgba(201,168,76,0.2)",border:"1px solid rgba(201,168,76,0.4)",fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1.5}}>{t(lang,"today")}</div>}
               <div style={{flex:1,height:1,background:"rgba(26,39,68,0.6)"}}/>
               <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a"}}>{matches.filter(m=>matchResults[m.id]!=null).length}/{matches.length}</span>
             </div>
@@ -1208,6 +1348,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
 }
 
 function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser,onEditProfile,picRefresh=0}) {
+  const lang=useContext(LangContext);
   const [expandedIdx,setExpandedIdx]=useState(null);
   const playerData=useMemo(()=>{
     return Array.from({length:config.playerCount},(_,i)=>{
@@ -1234,7 +1375,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
   const barMax=Math.max(...playerData.map(x=>x.total))||1;
   return(
     <div style={{maxWidth:720,margin:"0 auto",padding:"0 16px"}}>
-      <div style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:4,color:"var(--accent)",textAlign:"center",marginBottom:6}}>LEADERBOARD</div>
+      <div style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:4,color:"var(--accent)",textAlign:"center",marginBottom:6}}>{t(lang,"leaderboardTitle")}</div>
       {pot>0&&<div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",textAlign:"center",marginBottom:16}}>🏆 Prize pool: <span style={{color:"var(--accent)",fontWeight:700}}>${pot.toLocaleString()}</span> · winner takes all</div>}
       {!pot&&<div style={{marginBottom:10}}/>}
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -1252,9 +1393,9 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                     <span style={{fontFamily:"'DM Sans'",fontSize:11,color:`${color}88`,marginLeft:"auto"}}>{expanded?"▲":"▼"}</span>
                   </div>
                   <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-                    <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>Group</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.gsPts} pts</div></div>
-                    <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>Knockout</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.koPts} pts</div></div>
-                    <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>Past R32</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.r32}</div></div>
+                    <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"group2")}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.gsPts} pts</div></div>
+                    <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"knockout2")}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.koPts} pts</div></div>
+                    <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"pastR32")}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.r32}</div></div>
                   </div>
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
@@ -1276,9 +1417,9 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           );
         })}
       </div>
-      <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",marginTop:20,lineHeight:1.7,fontStyle:"italic"}}>Tiebreaker: Most teams past R32 → Highest GS total → Coin toss</div>
+      <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",marginTop:20,lineHeight:1.7,fontStyle:"italic"}}>{t(lang,"tiebreaker")}</div>
       <button onClick={onChangeUser} style={{width:"100%",marginTop:14,padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
-        👤 Change user
+        {t(lang,"changeUser")}
       </button>
     </div>
   );
@@ -1777,6 +1918,83 @@ const THEME_COLORS = [
   {name:"Rose",value:"#fb7185"},
 ];
 
+function ResultOverlay({results, onDone}) {
+  // results = [{team, flag, outcome: "W"|"D"|"L", opponent, opponentFlag, score}]
+  const lang=useContext(LangContext);
+  const [idx,setIdx]=useState(0);
+  const [phase,setPhase]=useState("in"); // in | hold | out
+  const current=results[idx];
+
+  useEffect(()=>{
+    setPhase("in");
+    const t1=setTimeout(()=>setPhase("hold"),400);
+    const t2=setTimeout(()=>setPhase("out"),2600);
+    const t3=setTimeout(()=>{
+      if(idx<results.length-1){setIdx(i=>i+1);}
+      else{onDone();}
+    },3100);
+    return()=>{clearTimeout(t1);clearTimeout(t2);clearTimeout(t3);};
+  },[idx]);
+
+  if(!current)return null;
+  const isWin=current.outcome==="W";
+  const isLoss=current.outcome==="L";
+  const isDraw=current.outcome==="D";
+
+  const bg=isWin?"linear-gradient(165deg,#0a2010,#0f3820)":isLoss?"linear-gradient(165deg,#200a0a,#380f0f)":"linear-gradient(165deg,#0a1020,#0f1a30)";
+  const accent=isWin?"#61a978":isLoss?"#d97757":"#6b9bd1";
+  const emoji=isWin?"🎉":isLoss?"😢":"🤷";
+  const msgEN=isWin?`${current.team} WIN!`:isLoss?`${current.team} LOSE`:lang==="es"?"EMPATE":"DRAW";
+  const msgES=isWin?`¡${current.team} GANA!`:isLoss?`${current.team} PIERDE`:"EMPATE";
+  const msg=lang==="es"?msgES:msgEN;
+  const score=`${current.score.home} – ${current.score.away}`;
+  const opacity=phase==="in"?0:phase==="hold"?1:0;
+  const scale=phase==="in"?0.8:phase==="hold"?1:0.9;
+
+  // Confetti particles for wins
+  const confettiColors=["#61a978","#c9a84c","#6b9bd1","#d97757","#b67ad6","#e0b834"];
+  const confetti=isWin?Array.from({length:28},(_,i)=>({
+    id:i, x:Math.random()*100, delay:Math.random()*0.6,
+    color:confettiColors[i%confettiColors.length],
+    size:6+Math.random()*8, rotation:Math.random()*360,
+  })):[];
+
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:999,background:bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"opacity 0.4s, transform 0.4s",opacity,transform:`scale(${scale})`}}>
+      <style>{`
+        @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+        @keyframes sadFall{0%{transform:translateY(-20px);opacity:0}20%{opacity:1}100%{transform:translateY(110vh);opacity:0}}
+        @keyframes shrug{0%,100%{transform:rotate(0deg)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+        @keyframes resultPop{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+      `}</style>
+
+      {/* Falling particles */}
+      {isWin&&confetti.map(c=>(
+        <div key={c.id} style={{position:"absolute",left:`${c.x}%`,top:-20,width:c.size,height:c.size,background:c.color,borderRadius:2,animation:`confettiFall ${1.8+Math.random()*1.2}s ${c.delay}s linear forwards`,transform:`rotate(${c.rotation}deg)`}}/>
+      ))}
+      {isLoss&&Array.from({length:8},(_,i)=>(
+        <div key={i} style={{position:"absolute",left:`${10+i*11}%`,top:-20,fontSize:28,animation:`sadFall ${2+i*0.15}s ${i*0.15}s linear forwards`}}>😢</div>
+      ))}
+
+      {/* Main content */}
+      <div style={{textAlign:"center",animation:"resultPop 0.4s ease-out forwards",padding:"0 32px"}}>
+        <div style={{fontSize:isDraw?64:72,marginBottom:12,animation:isDraw?"shrug 0.8s ease-in-out 0.4s 2":"none"}}>{emoji}</div>
+        <div style={{fontSize:20,marginBottom:8,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          <span style={{fontSize:36}}>{current.flag}</span>
+          <span style={{fontSize:24}}>vs</span>
+          <span style={{fontSize:36}}>{current.opponentFlag}</span>
+        </div>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:52,color:accent,letterSpacing:4,lineHeight:1,marginBottom:8}}>{score}</div>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:24,color:"#e0dcd4",letterSpacing:3}}>{msg}</div>
+        {results.length>1&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",marginTop:12}}>{idx+1} / {results.length}</div>}
+      </div>
+
+      <div style={{position:"absolute",bottom:40,fontFamily:"'DM Sans'",fontSize:12,color:"#3a4a6a"}}>{lang==="es"?"Toca para continuar":"Tap to continue"}</div>
+      <div style={{position:"absolute",inset:0}} onClick={()=>{setPhase("out");setTimeout(()=>{if(idx<results.length-1)setIdx(i=>i+1);else onDone();},300);}}/>
+    </div>
+  );
+}
+
 function ThemeModal({open, onClose, currentAccent, onSelect}) {
   if(!open) return null;
   return(
@@ -1861,6 +2079,8 @@ export default function Mundialito() {
   const [isHost,setIsHost]=useState(false);
   const [st,setSt]=useState(EMPTY);
   const [activeTab,setActiveTab]=useState("setup");
+  const [lang,setLang]=useState(detectLang);
+  const setLanguage=(l)=>{setLang(l);try{window.localStorage?.setItem("mundi_lang",l);}catch(e){}};
   const [showRules,setShowRules]=useState(false);
   const [showSync,setShowSync]=useState(false);
   const [showLoad,setShowLoad]=useState(false);
@@ -1868,7 +2088,8 @@ export default function Mundialito() {
   const [showNotify,setShowNotify]=useState(false);
   const [showTheme,setShowTheme]=useState(false);
   const [picRefresh,setPicRefresh]=useState(0);
-  const [saveStatus,setSaveStatus]=useState(null); // null | "saving" | "saved"
+  const [saveStatus,setSaveStatus]=useState(null);
+  const [resultOverlay,setResultOverlay]=useState(null); // array of result objects to show
   const [myPlayerIdx,setMyPlayerIdx]=useState(()=>{try{const v=window.localStorage?.getItem("mundi_my_player");return v!==null?parseInt(v):null;}catch(e){return null;}});
   const [playerColors,setPlayerColors]=useState({});
   const [showSelectName,setShowSelectName]=useState(false);
@@ -1992,6 +2213,48 @@ export default function Mundialito() {
   const stRef=useRef(st);
   useEffect(()=>{stRef.current=st;},[st]);
 
+  // Detect new results for this player's teams and show overlay
+  const seenResultsRef=useRef(null);
+  useEffect(()=>{
+    if(myPlayerIdx===null||!st.draftLocked)return;
+    const myTeams=new Set((st.picks||[]).filter(p=>p.playerIdx===myPlayerIdx).map(p=>p.team));
+    if(myTeams.size===0)return;
+    // Build key of all current results for my teams
+    const currentSeen={};
+    GM.forEach(m=>{
+      const r=st.matchResults[m.id];
+      if(!r||r.home==null||r.away==null)return;
+      if(!myTeams.has(m.t[0])&&!myTeams.has(m.t[1]))return;
+      currentSeen[m.id]=`${r.home}-${r.away}`;
+    });
+    // On first load, just store seen results without showing overlay
+    if(seenResultsRef.current===null){
+      seenResultsRef.current=currentSeen;
+      return;
+    }
+    // Find newly seen results
+    const newResults=[];
+    Object.entries(currentSeen).forEach(([matchId,score])=>{
+      if(seenResultsRef.current[matchId]===score)return; // already seen
+      const match=GM.find(m=>m.id===matchId);
+      if(!match)return;
+      const r=st.matchResults[matchId];
+      const isHomeTeam=myTeams.has(match.t[0]);
+      const myTeamName=isHomeTeam?match.t[0]:match.t[1];
+      const opponentName=isHomeTeam?match.t[1]:match.t[0];
+      const myScore=isHomeTeam?r.home:r.away;
+      const oppScore=isHomeTeam?r.away:r.home;
+      const outcome=myScore>oppScore?"W":myScore<oppScore?"L":"D";
+      newResults.push({
+        team:myTeamName, flag:TBN[myTeamName]?.flag||"⚽",
+        opponent:opponentName, opponentFlag:TBN[opponentName]?.flag||"⚽",
+        outcome, score:{home:r.home,away:r.away},
+      });
+    });
+    seenResultsRef.current=currentSeen;
+    if(newResults.length>0) setResultOverlay(newResults);
+  },[st.matchResults, myPlayerIdx]);
+
   // Auto-save to Firebase whenever host changes scores — debounced 800ms
   const autoSaveTimerRef=useRef(null);
   useEffect(()=>{
@@ -2090,19 +2353,25 @@ export default function Mundialito() {
   };
 
   return(
+    <LangContext.Provider value={lang}>
     <PicContext.Provider value={picRefresh}>
     <PicBumpContext.Provider value={()=>bumpPics(setPicRefresh)}>
     <><style>{FONTS}</style>
     <div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628 0%,#0f1e38 40%,#0a1628 100%)",color:"#e0dcd4",fontFamily:"'DM Sans',sans-serif"}}>
       <div style={{position:"relative",textAlign:"center",padding:"26px 20px 4px"}}>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"var(--accent)",lineHeight:1}}>MUNDIALITO</div>
-        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase",paddingRight:44}}>World Cup 2026 · 🇨🇦 🇺🇸 🇲🇽</div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>World Cup 2026 · 🇨🇦 🇺🇸 🇲🇽</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#4a5a7a",marginTop:2,letterSpacing:1,textTransform:"uppercase"}}>June 11 – July 19</div>
+        {/* Right: 🎨 and 🌐 stacked */}
         <div style={{position:"absolute",top:14,right:14,display:"flex",flexDirection:"column",gap:4}}>
-          <button onClick={()=>setShowRules(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>?</button>
           <button onClick={()=>setShowTheme(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🎨</button>
+          <button onClick={()=>setLanguage(lang==="en"?"es":"en")} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{lang==="en"?"ES":"EN"}</button>
         </div>
-        <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");window.localStorage?.removeItem("mundi_spectator_code");}catch(e){}window.location.reload();}}} style={{position:"absolute",top:20,left:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
+        {/* Left: ⏏ and ? stacked */}
+        <div style={{position:"absolute",top:14,left:14,display:"flex",flexDirection:"column",gap:4}}>
+          <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");window.localStorage?.removeItem("mundi_spectator_code");}catch(e){}window.location.reload();}}} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
+          <button onClick={()=>setShowRules(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>?</button>
+        </div>
       </div>
 
       {/* Slim status + profile row */}
@@ -2112,12 +2381,12 @@ export default function Mundialito() {
           {isHost?(
             <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)"}}>
               <span style={{fontSize:11}}>🎙️</span>
-              <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"var(--accent)",letterSpacing:1}}>HOST</span>
+              <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"var(--accent)",letterSpacing:1}}>{t(lang,"host")}</span>
             </div>
           ):null}
           {isHost&&saveStatus&&(
             <span style={{fontFamily:"'DM Sans'",fontSize:11,color:saveStatus==="saved"?"#61a978":"#8899b4"}}>
-              {saveStatus==="saving"?"saving…":"✓ saved"}
+              {saveStatus==="saving"?t(lang,"saving"):t(lang,"saved")}
             </span>
           )}
           {isHost&&!saveStatus&&(
@@ -2155,17 +2424,17 @@ export default function Mundialito() {
         );})()}
       </div>
       <div style={{display:"flex",justifyContent:"center",gap:2,padding:"14px 12px 0",marginBottom:26}}>
-        {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);return(<button key={tab.id} onClick={()=>{if(open)setActiveTab(tab.id);}} style={{padding:"9px 6px 11px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tab.label}</div></button>);})}
+        {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);const tabLabel=t(lang,tab.id==="standings"?"leaderboard":tab.id);return(<button key={tab.id} onClick={()=>{if(open)setActiveTab(tab.id);}} style={{padding:"9px 6px 11px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tabLabel}</div></button>);})}
       </div>
       <div style={{paddingBottom:48}}>{tabContent()}
         {isHost&&(
           <div style={{maxWidth:920,margin:"24px auto 0",padding:"0 16px 32px",display:"flex",gap:8}}>
-            <button onClick={()=>setShowSync(true)} style={{flex:1,padding:"12px 0",borderRadius:10,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,cursor:"pointer"}}>📋 SHARE POOL CODE</button>
+            <button onClick={()=>setShowSync(true)} style={{flex:1,padding:"12px 0",borderRadius:10,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,cursor:"pointer"}}>{t(lang,"shareCode")}</button>
             <button onClick={()=>setShowPoolMgr(true)} style={{padding:"12px 14px",borderRadius:10,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.4)",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>🏆 {activePoolName}</button>
           </div>
         )}
       </div>
-      <Modal open={showRules} onClose={()=>setShowRules(false)} title="HOW IT WORKS"><RulesList/></Modal>
+      <Modal open={showRules} onClose={()=>setShowRules(false)} title={t(lang,"howItWorks")}><RulesList/></Modal>
       <SyncModal open={showSync} onClose={()=>setShowSync(false)} st={st} poolCode={poolCode} setPoolCode={setPoolCode}/>
       <LoadModal open={showLoad} onClose={()=>setShowLoad(false)} onLoad={handleFirebaseLoad}/>
         <NotifyModal open={showNotify} onClose={()=>setShowNotify(false)}/>
@@ -2202,6 +2471,7 @@ export default function Mundialito() {
           try{window.localStorage?.setItem(LOCAL_KEY,JSON.stringify({st,pools,activePoolId,activePoolName}));}catch(e){}
         }}/>
       <PoolMgrModal/>
-    </div></>{/* end app */}</PicBumpContext.Provider></PicContext.Provider>
+      {resultOverlay&&<ResultOverlay results={resultOverlay} onDone={()=>setResultOverlay(null)}/>}
+    </div></>{/* end app */}</PicBumpContext.Provider></PicContext.Provider></LangContext.Provider>
   );
 }

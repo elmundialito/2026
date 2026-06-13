@@ -1166,7 +1166,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   );
 }
 
-function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser,onEditProfile}) {
+function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser,onEditProfile,picRefresh=0}) {
   const [expandedIdx,setExpandedIdx]=useState(null);
   const playerData=useMemo(()=>{
     return Array.from({length:config.playerCount},(_,i)=>{
@@ -1188,7 +1188,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       {myPlayerIdx!==null&&(
         <div onClick={onEditProfile} style={{display:"flex",alignItems:"center",gap:14,background:"rgba(26,39,68,0.5)",border:"1px solid #2a3a5c",borderRadius:14,padding:"12px 16px",marginBottom:20,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.borderColor="var(--accent)"} onMouseLeave={e=>e.currentTarget.style.borderColor="#2a3a5c"}>
           <div style={{position:"relative",flexShrink:0}}>
-            <PlayerAvatar idx={myPlayerIdx} name={config.playerNames[myPlayerIdx]} size={52}/>
+            <PlayerAvatar idx={myPlayerIdx} name={config.playerNames[myPlayerIdx]} size={52} refresh={picRefresh}/>
             <div style={{position:"absolute",bottom:0,right:0,background:"var(--accent)",borderRadius:"50%",width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>✏️</div>
           </div>
           <div style={{flex:1,minWidth:0}}>
@@ -1209,7 +1209,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                 <div style={{fontFamily:"'Bebas Neue'",fontSize:38,color,letterSpacing:1,width:36,textAlign:"center",flexShrink:0}}>#{rank+1}</div>
                 <div style={{flex:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                    <PlayerAvatar idx={p.idx} name={p.name} size={44} style={{borderRadius:"50%",flexShrink:0}}/>
+                    <PlayerAvatar idx={p.idx} name={p.name} size={44} style={{borderRadius:"50%",flexShrink:0}} refresh={picRefresh}/>
                     <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color,display:"flex",alignItems:"center",gap:6}}>{p.name}{myPlayerIdx===p.idx&&<span style={{fontSize:10,color:"var(--accent)",background:"rgba(201,168,76,0.15)",padding:"1px 7px",borderRadius:8,fontFamily:"'DM Sans'",fontWeight:600}}>you</span>}</div>
                     <span style={{fontFamily:"'DM Sans'",fontSize:11,color:`${color}88`,marginLeft:"auto"}}>{expanded?"▲":"▼"}</span>
                   </div>
@@ -1718,7 +1718,7 @@ export default function Mundialito() {
           clearUrlCode();
           if(merged.draftLocked){
             const seen=window.localStorage?.getItem("mundi_intro_seen");
-            if(seen){setAppState("spectator");setActiveTab("group");}
+            if(seen){setAppState("spectator");setActiveTab("standings");}
             else{setAppState("spectator_intro");}
           }else if(merged.setupLocked){setAppState("spectator");setActiveTab("draft");}
           else{setAppState("spectator");setActiveTab("setup");}
@@ -1728,9 +1728,9 @@ export default function Mundialito() {
     }
     // Fall back to localStorage for host
     try{const raw=window.localStorage?.getItem(LOCAL_KEY);if(raw){const saved=JSON.parse(raw);setSt(mergeState(EMPTY,saved.st));setPools(saved.pools||[{id:"default",name:"My Pool"}]);setActivePoolId(saved.activePoolId||"default");setActivePoolName(saved.activePoolName||"My Pool");setIsHost(true);setAppState("host");
-    // Load profile pics
+    // Load profile pics then bump refresh so avatars re-render
     const code=window.localStorage?.getItem("mundi_pool_code");
-    if(code)loadProfilePics(code).then(colors=>setPlayerColors(colors));
+    if(code)loadProfilePics(code).then(colors=>{setPlayerColors(colors);setPicRefresh(n=>n+1);});
     return;}}catch(e){}
     // Check for saved spectator code — auto-load their pool
     try{
@@ -1742,9 +1742,10 @@ export default function Mundialito() {
             const merged=mergeState(EMPTY,data);
             setSt(merged);setIsHost(false);
             setSpectatorPoolCode(savedCode);
+            loadProfilePics(savedCode).then(()=>setPicRefresh(n=>n+1));
             if(merged.draftLocked){
               const seen=window.localStorage?.getItem("mundi_intro_seen");
-              if(seen){setAppState("spectator");setActiveTab("group");}
+              if(seen){setAppState("spectator");setActiveTab("standings");}
               else{setAppState("spectator_intro");}
             }else if(merged.setupLocked){setAppState("spectator");setActiveTab("draft");}
             else{setAppState("spectator");setActiveTab("setup");}
@@ -1794,7 +1795,7 @@ export default function Mundialito() {
         setSpectatorPoolCode(upperCode);
         try{window.localStorage?.setItem("mundi_spectator_code",upperCode);}catch(e){}
         // Load profile pics and player colours from Firestore
-        loadProfilePics(upperCode).then(colors=>setPlayerColors(colors));
+        loadProfilePics(upperCode).then(colors=>{setPlayerColors(colors);setPicRefresh(n=>n+1);});
         // Ask for notification permission now that they've joined
         setTimeout(()=>requestNotificationPermission(), 3000);
         // Show select name if they haven't chosen yet
@@ -1805,7 +1806,7 @@ export default function Mundialito() {
       }
       if(merged.draftLocked){
         const seen=window.localStorage?.getItem("mundi_intro_seen");
-        if(seen){setAppState("spectator");setActiveTab("group");}
+        if(seen){setAppState("spectator");setActiveTab("standings");}
         else{setAppState("spectator_intro");}
       }else if(merged.setupLocked){setAppState("spectator");setActiveTab("draft");}
       else{setAppState("spectator");setActiveTab("setup");}
@@ -1828,7 +1829,7 @@ export default function Mundialito() {
 
   if(appState==="loading")return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}><div style={{fontFamily:"'Bebas Neue'",fontSize:48,color:"var(--accent)",letterSpacing:10}}>MUNDIALITO</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#5a6a8a"}}>Loading…</div></div></>);
   if(appState==="welcome")return(<><style>{FONTS}</style><div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628,#0f1e38,#0a1628)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div style={{maxWidth:420,width:"100%",background:"linear-gradient(165deg,#0f1e38,#0a1628)",borderRadius:20,border:"1px solid rgba(201,168,76,0.35)",padding:"32px 28px",textAlign:"center"}}><div style={{fontSize:52,marginBottom:12}}>⚽</div><div style={{fontFamily:"'Bebas Neue'",fontSize:32,color:"var(--accent)",letterSpacing:4,marginBottom:6}}>MUNDIALITO</div><div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:28,lineHeight:1.6}}>Welcome! Are you running this pool or joining to watch?</div><div style={{display:"flex",flexDirection:"column",gap:10}}><button onClick={()=>setAppState("join")} style={{padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:"pointer"}}>👀 I'M WATCHING — JOIN POOL</button><button onClick={handleBeHost} style={{padding:"14px 0",borderRadius:12,border:"2px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>🎙️ I'M THE HOST</button></div></div></div></>);
-  if(appState==="spectator_intro")return(<SpectatorIntro st={st} initials={initials} onComplete={()=>{setAppState("spectator");setActiveTab("group");}}/>);
+  if(appState==="spectator_intro")return(<SpectatorIntro st={st} initials={initials} onComplete={()=>{setAppState("spectator");setActiveTab("standings");}}/>);
   if(appState==="join")return <JoinScreen onJoin={handleJoinAttempt} onBack={()=>setAppState("welcome")}/>;
 
   const tabContent=()=>{
@@ -1839,7 +1840,7 @@ export default function Mundialito() {
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
     if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials}/>;
     if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly}/>;
-    if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}}/>;
+    if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} picRefresh={picRefresh}/>;
     return null;
   };
 

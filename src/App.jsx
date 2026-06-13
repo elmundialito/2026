@@ -388,7 +388,7 @@ function SyncModal({open,onClose,st,poolCode,setPoolCode}) {
 
   useEffect(()=>{
     if(open){
-      if(poolCode){
+      if(poolCode&&savedPw){
         doSave(poolCode, savedPw);
       } else {
         setStatus("choosing");
@@ -1012,16 +1012,6 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
     if(match&&val){const out=getMatchOutcome(val);const fp=[];const[a,b]=match.t;const oA=ownership[a],oB=ownership[b];if(out==="A"&&oA)fp.push(`+3 pts · ${config.playerNames[oA.playerIdx]}`);else if(out==="B"&&oB)fp.push(`+3 pts · ${config.playerNames[oB.playerIdx]}`);else if(out==="D"){if(oA)fp.push(`+1 · ${config.playerNames[oA.playerIdx]}`);if(oB)fp.push(`+1 · ${config.playerNames[oB.playerIdx]}`);}if(fp.length){setFlash(fp.join("  ·  "));setTimeout(()=>setFlash(null),2500);}}
     setMatchResults(r=>{
       const newResults=val==null?{...r,[matchId]:undefined}:{...r,[matchId]:val};
-      // Auto-save to Firebase if we have a pool code
-      try{
-        const code=window.localStorage?.getItem("mundi_pool_code");
-        const pw=window.localStorage?.getItem("mundi_host_pw");
-        if(code){
-          // Merge new results into current state and save
-          const newSt={...st,mr:{...st.mr,...newResults}};
-          savePool(code,newSt,pw||undefined);
-        }
-      }catch(e){}
       return newResults;
     });
   };
@@ -1163,7 +1153,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   );
 }
 
-function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser}) {
+function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser,onEditProfile}) {
   const [expandedIdx,setExpandedIdx]=useState(null);
   const playerData=useMemo(()=>{
     return Array.from({length:config.playerCount},(_,i)=>{
@@ -1180,8 +1170,22 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
   return(
     <div style={{maxWidth:720,margin:"0 auto",padding:"0 16px"}}>
       <div style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:4,color:"var(--accent)",textAlign:"center",marginBottom:6}}>STANDINGS</div>
-      {pot>0&&<div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",textAlign:"center",marginBottom:24}}>🏆 Prize pool: <span style={{color:"var(--accent)",fontWeight:700}}>${pot.toLocaleString()}</span> · winner takes all</div>}
-      {!pot&&<div style={{marginBottom:24}}/>}
+      {pot>0&&<div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",textAlign:"center",marginBottom:16}}>🏆 Prize pool: <span style={{color:"var(--accent)",fontWeight:700}}>${pot.toLocaleString()}</span> · winner takes all</div>}
+      {!pot&&<div style={{marginBottom:10}}/>}
+      {myPlayerIdx!==null&&(
+        <div onClick={onEditProfile} style={{display:"flex",alignItems:"center",gap:14,background:"rgba(26,39,68,0.5)",border:"1px solid #2a3a5c",borderRadius:14,padding:"12px 16px",marginBottom:20,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.borderColor="var(--accent)"} onMouseLeave={e=>e.currentTarget.style.borderColor="#2a3a5c"}>
+          <div style={{position:"relative",flexShrink:0}}>
+            <PlayerAvatar idx={myPlayerIdx} name={config.playerNames[myPlayerIdx]} size={52}/>
+            <div style={{position:"absolute",bottom:0,right:0,background:"var(--accent)",borderRadius:"50%",width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>✏️</div>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",letterSpacing:1,marginBottom:2}}>YOUR PROFILE</div>
+            <div style={{fontFamily:"'DM Sans'",fontSize:15,fontWeight:700,color:"#e0dcd4",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{config.playerNames[myPlayerIdx]}</div>
+            <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",marginTop:1}}>Tap to change photo or colour</div>
+          </div>
+          <div style={{fontFamily:"'DM Sans'",fontSize:22,color:"#5a6a8a"}}>›</div>
+        </div>
+      )}
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {playerData.map((p,rank)=>{
           const color=PC[p.idx];const isFirst=rank===0;const expanded=expandedIdx===p.idx;
@@ -1192,7 +1196,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                 <div style={{fontFamily:"'Bebas Neue'",fontSize:38,color,letterSpacing:1,width:36,textAlign:"center",flexShrink:0}}>#{rank+1}</div>
                 <div style={{flex:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                    <PlayerAvatar idx={p.idx} name={p.name} size={28} style={{borderRadius:7}}/>
+                    <PlayerAvatar idx={p.idx} name={p.name} size={44} style={{borderRadius:"50%",flexShrink:0}}/>
                     <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color,display:"flex",alignItems:"center",gap:6}}>{p.name}{myPlayerIdx===p.idx&&<span style={{fontSize:10,color:"var(--accent)",background:"rgba(201,168,76,0.15)",padding:"1px 7px",borderRadius:8,fontFamily:"'DM Sans'",fontWeight:600}}>you</span>}</div>
                     <span style={{fontFamily:"'DM Sans'",fontSize:11,color:`${color}88`,marginLeft:"auto"}}>{expanded?"▲":"▼"}</span>
                   </div>
@@ -1540,17 +1544,10 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
   return(
     <Modal open={open} onClose={onClose} title="YOUR PROFILE">
       <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
-
-      {/* Avatar preview */}
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,marginBottom:20}}>
-        <div style={{position:"relative"}}>
-          <PlayerAvatar idx={playerIdx} name={playerName} size={88}/>
-          {pic&&<div style={{position:"absolute",bottom:2,right:2,background:"#22c55e",borderRadius:"50%",width:24,height:24,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>✓</div>}
-        </div>
+        <PlayerAvatar idx={playerIdx} name={playerName} size={88}/>
         <div style={{fontFamily:"'DM Sans'",fontSize:15,fontWeight:700,color:"#e0dcd4"}}>{playerName}</div>
       </div>
-
-      {/* Primary action — upload photo */}
       {!pic?(
         <button onClick={()=>fileRef.current?.click()} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,var(--accent),var(--accent-dark))",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
           <span style={{fontSize:22}}>📷</span> ADD YOUR PHOTO
@@ -1563,8 +1560,6 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
       <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",marginBottom:20,lineHeight:1.5}}>
         {pic?"Looking good! It'll show on everyone's standings.":"Your photo shows on the standings for everyone in the pool."}
       </div>
-
-      {/* Colour picker */}
       <div style={{marginBottom:20}}>
         <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",letterSpacing:1,marginBottom:10}}>YOUR COLOUR</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
@@ -1580,8 +1575,6 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
           })}
         </div>
       </div>
-
-      {/* Done / skip */}
       <button onClick={()=>{onColorChange&&onColorChange(selectedColor);savePlayerColor(playerIdx,selectedColor);onDone();}} style={{width:"100%",padding:"13px 0",borderRadius:12,border:"none",background:pic?`linear-gradient(135deg,${selectedColor},${selectedColor}cc)`:"rgba(26,39,68,0.6)",color:pic?"#0a1628":"#8899b4",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:"pointer"}}>
         {pic?"LOOKS GOOD →":"SKIP FOR NOW →"}
       </button>
@@ -1744,6 +1737,18 @@ export default function Mundialito() {
   },[]);
   useEffect(()=>{if(appState!=="host")return;try{window.localStorage?.setItem(LOCAL_KEY,JSON.stringify({st,pools,activePoolId,activePoolName}));}catch(e){};},[st,appState,pools,activePoolId,activePoolName]);
 
+  // Auto-save to Firebase whenever host changes scores — debounced 800ms
+  const autoSaveTimerRef=useRef(null);
+  useEffect(()=>{
+    if(appState!=="host")return;
+    if(!poolCode)return;
+    clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current=setTimeout(()=>{
+      const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;
+      savePool(poolCode,st,pw);
+    },800);
+    return()=>clearTimeout(autoSaveTimerRef.current);
+  },[st.matchResults,st.koResults,st.koOverrides,appState,poolCode]);
   const initials=useMemo(()=>getInitials(st.config.playerNames||[]),[st.config.playerNames]);
   const anyGroupDone=useMemo(()=>Object.keys(GROUPS).some(g=>GM.filter(m=>m.g===g).every(m=>st.matchResults[m.id]!=null)),[st.matchResults]);
   const resolvedBracket=useMemo(()=>resolveKOBracket(st.matchResults,st.koResults,st.koOverrides),[st.matchResults,st.koResults,st.koOverrides]);
@@ -1809,7 +1814,7 @@ export default function Mundialito() {
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
     if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials}/>;
     if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly}/>;
-    if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)}/>;
+    if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}}/>;
     return null;
   };
 

@@ -355,7 +355,8 @@ function Modal({open,onClose,title,children}) {
 
 function OwnerChip({playerIdx,initials,size=18}) {
   if(playerIdx==null)return null;
-  return <div style={{width:size,height:size,borderRadius:4,background:PC[playerIdx],color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:size-6,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0,lineHeight:1}}>{initials[playerIdx]}</div>;
+  const color=getPlayerColor(playerIdx,PC[playerIdx]);
+  return <div style={{width:size,height:size,borderRadius:4,background:color,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:size-6,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0,lineHeight:1}}>{initials[playerIdx]}</div>;
 }
 
 const RULES_DATA = [
@@ -921,7 +922,7 @@ function ScoreEntry({matchId,result,onSet,readOnly,teamA,teamB,ownership,initial
         {out&&(out==="D"?(
           <div style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#8899b4",letterSpacing:1}}>DRAW</div>
         ):(
-          winOwner!=null&&initials&&<div style={{width:18,height:18,borderRadius:4,background:PC[winOwner.playerIdx],color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[winOwner.playerIdx]}</div>
+          winOwner!=null&&initials&&<div style={{width:18,height:18,borderRadius:4,background:getPlayerColor(winOwner.playerIdx,PC[winOwner.playerIdx]),color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[winOwner.playerIdx]}</div>
         ))}
       </div>
       {inp(av,setAv,"away")}
@@ -1047,13 +1048,16 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
     <div style={{maxWidth:920,margin:"0 auto",padding:"0 16px"}}>
       <div style={{background:"linear-gradient(135deg,rgba(201,168,76,0.06),rgba(26,39,68,0.4))",border:"1px solid rgba(201,168,76,0.15)",borderRadius:12,padding:"12px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
         <span style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#5a6a8a",marginRight:6}}>PLAYERS:</span>
-        {config.playerNames.map((n,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:20,background:`${PC[i]}15`,border:`1px solid ${PC[i]}44`}}>
-            <div style={{width:20,height:20,borderRadius:5,background:PC[i],color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[i]}</div>
-            <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:PC[i]}}>{n}</span>
-            <span style={{fontFamily:"'Bebas Neue'",fontSize:14,color:PC[i],letterSpacing:1}}>{playerPts[i]}<span style={{fontSize:9,color:`${PC[i]}99`,marginLeft:2}}>pts</span></span>
+        {config.playerNames.map((n,i)=>{
+          const pcolor=getPlayerColor(i,PC[i]);
+          return(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:20,background:`${pcolor}15`,border:`1px solid ${pcolor}44`}}>
+            <div style={{width:20,height:20,borderRadius:5,background:pcolor,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[i]}</div>
+            <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:pcolor}}>{n}</span>
+            <span style={{fontFamily:"'Bebas Neue'",fontSize:14,color:pcolor,letterSpacing:1}}>{playerPts[i]}<span style={{fontSize:9,color:`${pcolor}99`,marginLeft:2}}>pts</span></span>
           </div>
-        ))}
+          );
+        })}
         <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",marginLeft:"auto"}}>{recorded}/72</span>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:16}}>
@@ -2043,7 +2047,8 @@ export default function Mundialito() {
       <div style={{position:"relative",textAlign:"center",padding:"26px 20px 4px"}}>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"var(--accent)",lineHeight:1}}>MUNDIALITO</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>World Cup 2026 · 🇨🇦 🇺🇸 🇲🇽 · June 11 – July 19</div>
-        <button onClick={()=>setShowRules(true)} style={{position:"absolute",top:20,right:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:18,cursor:"pointer"}}>?</button>
+        <button onClick={()=>setShowRules(true)} style={{position:"absolute",top:20,right:52,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:18,cursor:"pointer"}}>?</button>
+        <button onClick={()=>setShowTheme(true)} style={{position:"absolute",top:20,right:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🎨</button>
         <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");window.localStorage?.removeItem("mundi_spectator_code");}catch(e){}window.location.reload();}}} style={{position:"absolute",top:20,left:16,width:32,height:32,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
       </div>
 
@@ -2086,18 +2091,15 @@ export default function Mundialito() {
           {!isHost&&spectatorPoolCode&&<button onClick={()=>setShowHostSwitch(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🎙️ Host</button>}
           {/* Host: notify + theme */}
           {isHost&&<button onClick={()=>setShowNotify(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.1)",color:"#61a978",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🔔 Notify</button>}
-          <button onClick={()=>setShowTheme(true)} style={{padding:"4px 8px",borderRadius:20,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>🎨</button>
         </div>
         {/* Right: avatar — always visible, opens profile */}
-        {myPlayerIdx!==null&&(
-          <div onClick={()=>{setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 10px 4px 6px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",cursor:"pointer",flexShrink:0}} title="Edit your profile">
-            <div style={{position:"relative"}}>
-              <PlayerAvatar idx={myPlayerIdx} name={(st.config?.playerNames||[])[myPlayerIdx]||""} size={28} refresh={picRefresh}/>
-            </div>
-            <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:"#e0dcd4",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(st.config?.playerNames||[])[myPlayerIdx]||""}</span>
-            <span style={{fontSize:10,color:"#5a6a8a"}}>✏️</span>
+        {myPlayerIdx!==null&&(()=>{const pc=getPlayerColor(myPlayerIdx,PC[myPlayerIdx]);return(
+          <div onClick={()=>{setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 10px 4px 6px",borderRadius:20,border:`1px solid ${pc}55`,background:`${pc}11`,cursor:"pointer",flexShrink:0}} title="Edit your profile">
+            <PlayerAvatar idx={myPlayerIdx} name={(st.config?.playerNames||[])[myPlayerIdx]||""} size={28} refresh={picRefresh}/>
+            <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:pc,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(st.config?.playerNames||[])[myPlayerIdx]||""}</span>
+            <span style={{fontSize:10,color:`${pc}88`}}>✏️</span>
           </div>
-        )}
+        );})()}
       </div>
       <div style={{display:"flex",justifyContent:"center",gap:2,padding:"14px 12px 0",marginBottom:26}}>
         {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);return(<button key={tab.id} onClick={()=>{if(open)setActiveTab(tab.id);}} style={{padding:"9px 6px 11px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tab.label}</div></button>);})}

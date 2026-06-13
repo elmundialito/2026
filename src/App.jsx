@@ -1422,6 +1422,8 @@ export default function Mundialito() {
       if(upperCode){
         setSpectatorPoolCode(upperCode);
         try{window.localStorage?.setItem("mundi_spectator_code",upperCode);}catch(e){}
+        // Ask for notification permission now that they've joined
+        setTimeout(()=>requestNotificationPermission(), 3000);
       }
       if(merged.draftLocked){
         const seen=window.localStorage?.getItem("mundi_intro_seen");

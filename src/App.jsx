@@ -1246,10 +1246,6 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
         ctx.font=`700 30px BebasNeue,Arial`;
         ctx.fillStyle="#e0dcd4";
         ctx.fillText(`${result.home} – ${result.away}`,W/2,y+MH/2+10);
-        if(out==="D"){
-          ctx.font=`600 9px DMSans,Arial`;ctx.fillStyle="#6b9bd1";
-          ctx.fillText(lang==="es"?"EMPATE":"DRAW",W/2,y+MH/2+22);
-        }
       } else if(m.ko){
         ctx.font=`700 16px BebasNeue,Arial`;ctx.fillStyle="#c9a84c";
         ctx.fillText(fmtKickoff(m.d,m.ko)+" SGT",W/2,y+MH/2+6);
@@ -1270,18 +1266,17 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
         // Outer initials chip
         if(owner!=null){
           const chipColor=getPlayerColor(owner.playerIdx,PC[owner.playerIdx]);
-          const chipX=isHome?PAD+6:W-PAD-22;
-          const chipY=y+MH/2-8;
+          const chipX=isHome?PAD+6:W-PAD-26;
+          const chipY=y+MH/2-13;
           ctx.fillStyle=chipColor;
-          ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,20,20,4):ctx.rect(chipX,chipY,20,20);ctx.fill();
-          ctx.fillStyle="#0a1628";ctx.font=`700 10px BebasNeue,Arial`;ctx.textAlign="center";
-          ctx.fillText((initials[owner.playerIdx]||"?"),chipX+10,chipY+14);
-          // Points earned
+          ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,26,26,5):ctx.rect(chipX,chipY,26,26);ctx.fill();
+          ctx.fillStyle="#0a1628";ctx.font=`700 13px BebasNeue,Arial`;ctx.textAlign="center";
+          ctx.fillText((initials[owner.playerIdx]||"?"),chipX+13,chipY+18);
           if(ptsEarned>0){
             ctx.globalAlpha=1;
-            ctx.fillStyle=chipColor;ctx.font=`700 9px DMSans,Arial`;
+            ctx.fillStyle=chipColor;ctx.font=`700 10px DMSans,Arial`;
             ctx.textAlign=isHome?"left":"right";
-            ctx.fillText(`+${ptsEarned}`,isHome?chipX+24:chipX-4,chipY+14);
+            ctx.fillText(`+${ptsEarned}`,isHome?chipX+30:chipX-4,chipY+18);
           }
         }
 
@@ -2065,17 +2060,18 @@ function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
   const [color, setColor] = useState(()=>getPlayerColor(idx, PC[idx]));
   const initials = nameToInitial(name||"");
 
+  // Re-read from cache whenever picVersion bumps (covers main load + fallback)
   useEffect(()=>{
     setPic(getProfilePic(idx));
-    setColor(getPlayerColor(idx, PC[idx]));
+    setColor(getPlayerColor(idx,PC[idx]));
   },[idx, picVersion, refresh]);
 
-  // Fallback fetch if pic or colour hasn't loaded yet from cache
+  // Fallback fetch if pic or colour still missing after context bumps
   const bump = useContext(PicBumpContext);
   useEffect(()=>{
     const hasPic = !!pic;
     const hasChosenColor = !!colorCache[idx];
-    if(hasPic && hasChosenColor) return; // already have everything
+    if(hasPic && hasChosenColor) return;
     const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(!code) return;
     const t=setTimeout(()=>{
@@ -2631,9 +2627,11 @@ function ThemeModal({open, onClose, currentAccent, onSelect}) {
 }
 
 
-function SetupLockedScreen({config, onRename, onUnlock}) {
+function SetupLockedScreen({config, onRename, onColorChange, onUnlock}) {
+  const lang=useContext(LangContext);
   const [editingIdx, setEditingIdx] = useState(null);
   const [editVal, setEditVal] = useState("");
+  const [colorPickerIdx, setColorPickerIdx] = useState(null);
   const inputRef = useRef(null);
 
   const startEdit = (i) => {
@@ -2653,30 +2651,50 @@ function SetupLockedScreen({config, onRename, onUnlock}) {
     <div style={{maxWidth:720,margin:"0 auto",padding:"0 16px"}}>
       <div style={{background:"rgba(201,168,76,0.08)",borderRadius:14,padding:"20px 24px",border:"1px solid rgba(201,168,76,0.2)"}}>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"var(--accent)",marginBottom:4,textAlign:"center"}}>✓ SETUP LOCKED</div>
-        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",marginBottom:16}}>Tap any name to rename them</div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",marginBottom:16}}>Rename or change colours for any player</div>
         <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-          {(config.playerNames||[]).map((n,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,background:`${PC[i]}11`,border:`1px solid ${PC[i]}44`}}>
-              <div style={{width:28,height:28,borderRadius:7,background:PC[i],color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{nameToInitial(n||"")}</div>
-              {editingIdx===i?(
-                <input
-                  ref={inputRef}
-                  value={editVal}
-                  onChange={e=>setEditVal(e.target.value)}
-                  onBlur={confirmEdit}
-                  onKeyDown={e=>{if(e.key==="Enter")confirmEdit();if(e.key==="Escape")setEditingIdx(null);}}
-                  style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1.5px solid ${PC[i]}`,background:"rgba(10,22,40,0.6)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:14,fontWeight:600,outline:"none"}}
-                />
-              ):(
-                <span style={{flex:1,fontFamily:"'DM Sans'",fontSize:14,fontWeight:600,color:PC[i]}}>{n}</span>
-              )}
-              {editingIdx===i?(
-                <button onClick={confirmEdit} style={{padding:"4px 10px",borderRadius:6,border:"none",background:PC[i],color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:12,cursor:"pointer"}}>SAVE</button>
-              ):(
-                <button onClick={()=>startEdit(i)} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${PC[i]}44`,background:"transparent",color:PC[i],fontFamily:"'DM Sans'",fontSize:11,cursor:"pointer"}}>✏️ Rename</button>
+          {(config.playerNames||[]).map((n,i)=>{
+            const color=getPlayerColor(i,PC[i]);
+            return(
+            <div key={i}>
+              <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,background:`${color}11`,border:`1px solid ${color}44`}}>
+                {/* Colour swatch — tap to open picker */}
+                <div onClick={()=>setColorPickerIdx(colorPickerIdx===i?null:i)} style={{width:28,height:28,borderRadius:7,background:color,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer",border:"2px solid rgba(255,255,255,0.2)"}}>{nameToInitial(n||"")}</div>
+                {editingIdx===i?(
+                  <input
+                    ref={inputRef}
+                    value={editVal}
+                    onChange={e=>setEditVal(e.target.value)}
+                    onBlur={confirmEdit}
+                    onKeyDown={e=>{if(e.key==="Enter")confirmEdit();if(e.key==="Escape")setEditingIdx(null);}}
+                    style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1.5px solid ${color}`,background:"rgba(10,22,40,0.6)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:14,fontWeight:600,outline:"none"}}
+                  />
+                ):(
+                  <span style={{flex:1,fontFamily:"'DM Sans'",fontSize:14,fontWeight:600,color}}>{n}</span>
+                )}
+                {editingIdx===i?(
+                  <button onClick={confirmEdit} style={{padding:"4px 10px",borderRadius:6,border:"none",background:color,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:12,cursor:"pointer"}}>SAVE</button>
+                ):(
+                  <button onClick={()=>startEdit(i)} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${color}44`,background:"transparent",color,fontFamily:"'DM Sans'",fontSize:11,cursor:"pointer"}}>✏️</button>
+                )}
+              </div>
+              {/* Inline colour picker */}
+              {colorPickerIdx===i&&(
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"10px 14px",background:"rgba(10,22,40,0.5)",borderRadius:"0 0 10px 10px",border:`1px solid ${color}44`,borderTop:"none"}}>
+                  {PLAYER_PICK_COLORS.map(c=>{
+                    const takenByOther=(config.playerNames||[]).some((_,j)=>j!==i&&getPlayerColor(j,PC[j])===c);
+                    return(
+                      <div key={c} onClick={()=>{if(!takenByOther){onColorChange(i,c);setColorPickerIdx(null);}}}
+                        style={{width:28,height:28,borderRadius:7,background:takenByOther?"#1a2744":c,border:`3px solid ${color===c?"white":takenByOther?"#2a3a5c":c}`,cursor:takenByOther?"not-allowed":"pointer",opacity:takenByOther?0.4:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {takenByOther&&<span style={{fontSize:10}}>🔒</span>}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
         <div style={{background:"rgba(107,155,209,0.08)",borderRadius:10,padding:"12px 16px",marginBottom:14,border:"1px solid rgba(107,155,209,0.2)"}}>
           <div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#6b9bd1",marginBottom:4}}>SHARING</div>
@@ -3014,7 +3032,7 @@ export default function Mundialito() {
   const tabContent=()=>{
     const tab=TABS.find(t=>t.id===activeTab);
     if(!isUnlocked(activeTab))return(<div style={{maxWidth:480,margin:"0 auto",padding:"60px 24px 0",textAlign:"center"}}><div style={{fontSize:56,marginBottom:16,opacity:0.3,filter:"grayscale(1)"}}>{tab?.icon}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:3,color:"#5a6a8a",marginBottom:12}}>{tab?.label.toUpperCase()} — LOCKED</div><div style={{fontFamily:"'DM Sans'",fontSize:14,color:"#5a6a8a",lineHeight:1.6}}>{tab?.unlockMsg}</div></div>);
-    if(activeTab==="setup"){if(st.setupLocked&&!readOnly)return(<SetupLockedScreen config={st.config} onRename={(i,name)=>{setSt(p=>{const updated={...p,config:{...p.config,playerNames:p.config.playerNames.map((n,j)=>j===i?name:n)}};const code=window.localStorage?.getItem("mundi_pool_code")||poolCode||window.localStorage?.getItem("mundi_spectator_code");const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;if(code)savePool(code,updated,pw).then(ok=>{if(ok&&code!==poolCode){try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}setPoolCode(code);}});return updated;});}} onUnlock={()=>setSt(p=>({...p,setupLocked:false,draftOrder:null,draftMode:null,picks:[],draftLocked:false,matchResults:{},koResults:{},koOverrides:{}}))}/>);
+    if(activeTab==="setup"){if(st.setupLocked&&!readOnly)return(<SetupLockedScreen config={st.config} onRename={(i,name)=>{setSt(p=>{const updated={...p,config:{...p.config,playerNames:p.config.playerNames.map((n,j)=>j===i?name:n)}};const code=window.localStorage?.getItem("mundi_pool_code")||poolCode||window.localStorage?.getItem("mundi_spectator_code");const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;if(code)savePool(code,updated,pw).then(ok=>{if(ok&&code!==poolCode){try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}setPoolCode(code);}});return updated;});}} onColorChange={(i,color)=>{colorCache[i]=color;saveCaches();savePlayerColor(i,color);bumpPics(setPicRefresh);}} onUnlock={()=>setSt(p=>({...p,setupLocked:false,draftOrder:null,draftMode:null,picks:[],draftLocked:false,matchResults:{},koResults:{},koOverrides:{}}))}/>);
       return <SetupScreen config={st.config} setConfig={c=>setSt(p=>({...p,config:typeof c==="function"?c(p.config):c}))} onLock={()=>{setSt(p=>({...p,setupLocked:true}));setActiveTab("draft");}} readOnly={readOnly}/>;}
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
     if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx}/>;

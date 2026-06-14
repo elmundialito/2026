@@ -1605,7 +1605,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   );
 }
 
-function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser,onEditProfile,picRefresh=0}) {
+function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser,onEditProfile,onSuggestions,picRefresh=0}) {
   const lang=useContext(LangContext);
   const [expandedIdx,setExpandedIdx]=useState(null);
   const today=new Date().toLocaleDateString("en-CA");
@@ -1730,6 +1730,9 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",marginTop:20,lineHeight:1.7,fontStyle:"italic"}}>{t(lang,"tiebreaker")}</div>
       <button onClick={onChangeUser} style={{width:"100%",marginTop:14,padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
         {t(lang,"changeUser")}
+      </button>
+      <button onClick={onSuggestions} style={{width:"100%",marginTop:8,padding:"10px 0",borderRadius:10,border:"1px solid rgba(107,155,209,0.3)",background:"rgba(107,155,209,0.06)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
+        💡 {lang==="es"?"Sugerir una función":"Suggest a feature"}
       </button>
       <button onClick={async()=>{
         try {
@@ -2171,6 +2174,40 @@ function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
 const PRESET_REACTIONS = ["🔥","😭","😱","🥳","😤","🙃"];
 // Preset phrases are now defined in the UI translation object
 
+// ── Suggestion Box ────────────────────────────────────────────
+async function addSuggestion(poolCode, playerIdx, playerName, text) {
+  try {
+    const ref=doc(db,"pools",poolCode);
+    const snap=await getDoc(ref);
+    const suggestions=(snap.exists()?snap.data().suggestions:[])||[];
+    suggestions.push({id:Date.now(),playerIdx,playerName,text,votes:{up:[],down:[]},ts:Date.now()});
+    await setDoc(ref,{suggestions},{merge:true});
+  } catch(e){console.error("suggestion failed",e);}
+}
+
+async function voteSuggestion(poolCode, suggestionId, playerIdx, type) {
+  try {
+    const ref=doc(db,"pools",poolCode);
+    const snap=await getDoc(ref);
+    if(!snap.exists())return;
+    const suggestions=(snap.data().suggestions||[]).map(s=>{
+      if(s.id!==suggestionId)return s;
+      const votes={...s.votes};
+      const other=type==="up"?"down":"up";
+      // Remove from other side if exists
+      votes[other]=(votes[other]||[]).filter(i=>i!==playerIdx);
+      // Toggle on this side
+      if((votes[type]||[]).includes(playerIdx)){
+        votes[type]=(votes[type]||[]).filter(i=>i!==playerIdx);
+      } else {
+        votes[type]=[...(votes[type]||[]),playerIdx];
+      }
+      return{...s,votes};
+    });
+    await setDoc(ref,{suggestions},{merge:true});
+  } catch(e){}
+}
+
 async function toggleReaction(poolCode, matchId, emoji, playerIdx) {
   try {
     const ref = doc(db, "pools", poolCode);
@@ -2202,6 +2239,108 @@ async function sendChatMessage(poolCode, matchId, playerIdx, playerName, text) {
       matchChat: { [matchId]: { messages } }
     }, { merge: true });
   } catch(e) { console.error("chat failed", e); }
+}
+
+function SuggestionModal({open, onClose, poolCode, myPlayerIdx, playerNames, initials}) {
+  const lang=useContext(LangContext);
+  const [suggestions,setSuggestions]=useState([]);
+  const [input,setInput]=useState("");
+  const [sending,setSending]=useState(false);
+  const messagesEndRef=useRef(null);
+  const myName=playerNames?.[myPlayerIdx]||`Player ${(myPlayerIdx||0)+1}`;
+  const code=poolCode||window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
+
+  useEffect(()=>{
+    if(!open||!code)return;
+    const unsub=onSnapshot(doc(db,"pools",code),(snap)=>{
+      if(snap.exists()) setSuggestions(snap.data().suggestions||[]);
+    });
+    return()=>unsub();
+  },[open,code]);
+
+  useEffect(()=>{
+    if(open) setTimeout(()=>messagesEndRef.current?.scrollIntoView({behavior:"smooth"}),100);
+  },[open,suggestions.length]);
+
+  if(!open)return null;
+
+  const doSend=async()=>{
+    if(!input.trim()||!code||myPlayerIdx===null)return;
+    setSending(true);
+    await addSuggestion(code,myPlayerIdx,myName,input.trim());
+    setSending(false);
+    setInput("");
+  };
+
+  const doVote=(id,type)=>{
+    if(!code||myPlayerIdx===null)return;
+    voteSuggestion(code,id,myPlayerIdx,type);
+  };
+
+  const sorted=[...suggestions].sort((a,b)=>((b.votes?.up||[]).length-(b.votes?.down||[]).length)-((a.votes?.up||[]).length-(a.votes?.down||[]).length));
+
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxHeight:"82vh",background:"linear-gradient(165deg,#0a1628,#0f1e38)",borderRadius:"20px 20px 0 0",display:"flex",flexDirection:"column",overflow:"hidden",border:"1px solid #2a3a5c"}}>
+        {/* Header */}
+        <div style={{padding:"14px 16px 10px",borderBottom:"1px solid #1e2f50",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,color:"var(--accent)"}}>💡 {lang==="es"?"SUGERENCIAS":"SUGGESTIONS"}</div>
+            <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",marginTop:2}}>{lang==="es"?"¿Qué te gustaría ver en la app?":"What features would you like to see?"}</div>
+          </div>
+          <button onClick={onClose} style={{width:28,height:28,borderRadius:"50%",border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+
+        {/* Suggestions list */}
+        <div style={{flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10}}>
+          {sorted.length===0&&(
+            <div style={{textAlign:"center",color:"#3a4a6a",fontFamily:"'DM Sans'",fontSize:13,fontStyle:"italic",marginTop:24}}>
+              {lang==="es"?"Sé el primero en sugerir algo 💡":"Be the first to suggest something 💡"}
+            </div>
+          )}
+          {sorted.map(s=>{
+            const color=getPlayerColor(s.playerIdx,PC[s.playerIdx]||"#c9a84c");
+            const upCount=(s.votes?.up||[]).length;
+            const downCount=(s.votes?.down||[]).length;
+            const myUp=myPlayerIdx!==null&&(s.votes?.up||[]).includes(myPlayerIdx);
+            const myDown=myPlayerIdx!==null&&(s.votes?.down||[]).includes(myPlayerIdx);
+            const score=upCount-downCount;
+            return(
+              <div key={s.id} style={{background:"rgba(26,39,68,0.5)",borderRadius:12,padding:"12px 14px",border:"1px solid #1e2f50"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                  <div style={{width:22,height:22,borderRadius:6,background:color,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{(initials?.[s.playerIdx]||"?")}</div>
+                  <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color}}>{s.playerName}</span>
+                  <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#3a4a6a",marginLeft:"auto"}}>{new Date(s.ts).toLocaleDateString([],{day:"numeric",month:"short"})}</span>
+                </div>
+                <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#e0dcd4",lineHeight:1.5,marginBottom:10}}>{s.text}</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <button onClick={()=>doVote(s.id,"up")} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:16,border:`1.5px solid ${myUp?"#61a978":"#2a3a5c"}`,background:myUp?"rgba(97,169,120,0.15)":"transparent",color:myUp?"#61a978":"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
+                    👍 {upCount>0&&<span style={{fontWeight:600}}>{upCount}</span>}
+                  </button>
+                  <button onClick={()=>doVote(s.id,"down")} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:16,border:`1.5px solid ${myDown?"#d97757":"#2a3a5c"}`,background:myDown?"rgba(217,119,87,0.15)":"transparent",color:myDown?"#d97757":"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
+                    👎 {downCount>0&&<span style={{fontWeight:600}}>{downCount}</span>}
+                  </button>
+                  {score!==0&&<span style={{fontFamily:"'DM Sans'",fontSize:11,color:score>0?"#61a978":"#d97757",marginLeft:"auto",fontWeight:600}}>{score>0?"+":""}{score}</span>}
+                </div>
+              </div>
+            );
+          })}
+          <div ref={messagesEndRef}/>
+        </div>
+
+        {/* Input */}
+        <div style={{padding:"10px 16px 28px",borderTop:"1px solid #1e2f50",display:"flex",gap:8,flexShrink:0}}>
+          <input
+            value={input} onChange={e=>setInput(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&doSend()}
+            placeholder={lang==="es"?"Escribe tu sugerencia…":"Type your suggestion…"}
+            style={{flex:1,padding:"10px 14px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.6)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:13,outline:"none"}}
+          />
+          <button onClick={doSend} disabled={!input.trim()||sending} style={{width:40,height:40,borderRadius:"50%",border:"none",background:input.trim()?"var(--accent)":"#2a3a5c",color:"#0a1628",fontSize:18,cursor:input.trim()?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>➤</button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ReactionRow({reactions, allEmojis, myPlayerIdx, playerNames, onReact, onAddEmoji}) {
@@ -2822,6 +2961,7 @@ export default function Mundialito() {
   const [showHostSwitch,setShowHostSwitch]=useState(false);
   const [showNotify,setShowNotify]=useState(false);
   const [showTheme,setShowTheme]=useState(false);
+  const [showSuggestions,setShowSuggestions]=useState(false);
   const [picRefresh,setPicRefresh]=useState(0);
   const [saveStatus,setSaveStatus]=useState(null);
   const [resultOverlay,setResultOverlay]=useState(null); // array of result objects to show
@@ -3108,7 +3248,7 @@ export default function Mundialito() {
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
     if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx}/>;
     if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly}/>;
-    if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} picRefresh={picRefresh}/>;
+    if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} onSuggestions={()=>setShowSuggestions(true)} picRefresh={picRefresh}/>;
     return null;
   };
 
@@ -3181,6 +3321,8 @@ export default function Mundialito() {
           {!isHost&&spectatorPoolCode&&<button onClick={()=>setShowHostSwitch(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🎙️ Host</button>}
           {/* Host: notify + theme */}
           {isHost&&<button onClick={()=>setShowNotify(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.1)",color:"#61a978",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🔔 Notify</button>}
+          {/* 💡 Suggestions — everyone */}
+          <button onClick={()=>setShowSuggestions(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(107,155,209,0.3)",background:"rgba(107,155,209,0.06)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>💡</button>
         </div>
         {/* Right: avatar — always visible, opens profile */}
         {myPlayerIdx!==null&&(()=>{const pc=getPlayerColor(myPlayerIdx,PC[myPlayerIdx]);return(
@@ -3240,6 +3382,7 @@ export default function Mundialito() {
         }}/>
       <PoolMgrModal/>
       {resultOverlay&&<ResultOverlay results={resultOverlay} onDone={()=>setResultOverlay(null)}/>}
+      {showSuggestions&&<SuggestionModal open={true} onClose={()=>setShowSuggestions(false)} poolCode={poolCode||window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code")} myPlayerIdx={myPlayerIdx} playerNames={st.config?.playerNames||[]} initials={initials}/>}
     </div></>{/* end app */}</PicBumpContext.Provider></PicContext.Provider></LangContext.Provider>
   );
 }

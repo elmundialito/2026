@@ -1479,15 +1479,14 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         {t(lang,"changeUser")}
       </button>
       <button onClick={async()=>{
-        // Load fonts before drawing
         try {
-          const bebas = new FontFace("BebasNeue","url(https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9WdhyyTh89ZNpQ.woff2)");
-          const dm = new FontFace("DMSans","url(https://fonts.gstatic.com/s/dmsans/v15/rP2Hp2ywxg089UriCZa4ET-DNl0.woff2)");
+          const bebas=new FontFace("BebasNeue","url(https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9WdhyyTh89ZNpQ.woff2)");
+          const dm=new FontFace("DMSans","url(https://fonts.gstatic.com/s/dmsans/v15/rP2Hp2ywxg089UriCZa4ET-DNl0.woff2)");
           await Promise.all([bebas.load(),dm.load()]);
           document.fonts.add(bebas);document.fonts.add(dm);
         } catch(e){}
 
-        const W=420,HEADER=100,ROW=72,PAD=16,FOOT=44;
+        const W=420,HEADER=108,ROW=80,PAD=14,FOOT=44;
         const H=HEADER+ROW*playerData.length+FOOT;
         const canvas=document.createElement("canvas");
         const DPR=2;
@@ -1495,74 +1494,73 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         const ctx=canvas.getContext("2d");
         ctx.scale(DPR,DPR);
 
-        // Background gradient
-        const bg=ctx.createLinearGradient(0,0,W,H);
+        // Background
+        const bg=ctx.createLinearGradient(0,0,0,H);
         bg.addColorStop(0,"#0a1628");bg.addColorStop(0.5,"#0f1e38");bg.addColorStop(1,"#0a1628");
         ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
 
         // Gold top bar
         ctx.fillStyle="#c9a84c";ctx.fillRect(0,0,W,4);
 
-        // Header — MUNDIALITO
+        // Title
         ctx.fillStyle="#c9a84c";
-        ctx.font=`700 36px BebasNeue,Arial`;
+        ctx.font=`700 38px BebasNeue,Arial`;
         ctx.textAlign="center";
-        ctx.letterSpacing="8px";
-        ctx.fillText("MUNDIALITO 2026",W/2,48);
-        ctx.letterSpacing="0px";
+        ctx.fillText("⚽ MUNDIALITO 2026 🏆",W/2,52);
 
-        // Subheader
+        // Subtitle
         ctx.fillStyle="#4a5a7a";
         ctx.font=`400 12px DMSans,Arial`;
         const now=new Date();
-        ctx.fillText(`${lang==="es"?"Clasificación":"Leaderboard"} · ${now.toLocaleDateString(lang==="es"?"es-ES":"en-AU",{day:"numeric",month:"short"})}`,W/2,68);
+        ctx.fillText(`${lang==="es"?"Clasificación":"Leaderboard"} · ${now.toLocaleDateString(lang==="es"?"es-ES":"en-AU",{day:"numeric",month:"short"})}`,W/2,72);
 
         // Divider
-        ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.3;
-        ctx.fillRect(PAD*2,80,W-PAD*4,1);
+        ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.25;
+        ctx.fillRect(PAD*3,86,W-PAD*6,1);
         ctx.globalAlpha=1;
 
-        // Rows
         for(let ri=0;ri<playerData.length;ri++){
           const p=playerData[ri];
           const y=HEADER+ri*ROW;
           const color=p.color||"#c9a84c";
+          const isTop3=ri<3;
 
-          // Row bg — subtle colour tint
-          ctx.fillStyle=`${color}${ri===0?"22":"14"}`;
+          // Row card background
+          ctx.fillStyle=`${color}${isTop3?"1e":"12"}`;
+          ctx.strokeStyle=`${color}${isTop3?"44":"22"}`;
+          ctx.lineWidth=1;
           ctx.beginPath();
-          ctx.roundRect?ctx.roundRect(PAD,y+4,W-PAD*2,ROW-8,10):ctx.rect(PAD,y+4,W-PAD*2,ROW-8);
-          ctx.fill();
+          ctx.roundRect?ctx.roundRect(PAD,y+3,W-PAD*2,ROW-6,10):ctx.rect(PAD,y+3,W-PAD*2,ROW-6);
+          ctx.fill();ctx.stroke();
 
-          // Left colour accent bar
-          ctx.fillStyle=color;ctx.globalAlpha=0.8;
+          // Left colour bar
+          ctx.fillStyle=color;ctx.globalAlpha=isTop3?0.9:0.5;
           ctx.beginPath();
-          ctx.roundRect?ctx.roundRect(PAD,y+4,3,ROW-8,2):ctx.rect(PAD,y+4,3,ROW-8);
-          ctx.fill();
-          ctx.globalAlpha=1;
+          ctx.roundRect?ctx.roundRect(PAD,y+3,3,ROW-6,2):ctx.rect(PAD,y+3,3,ROW-6);
+          ctx.fill();ctx.globalAlpha=1;
 
-          // Rank
-          const medals=["🥇","🥈","🥉"];
-          if(ri<3){
-            ctx.font=`400 24px Arial`;
+          // Rank — medals for top 3, plain number for rest
+          if(isTop3){
+            const medals=["🥇","🥈","🥉"];
+            ctx.font=`400 26px Arial`;
             ctx.textAlign="center";
-            ctx.fillText(medals[ri],PAD+22,y+ROW/2+9);
+            ctx.fillText(medals[ri],PAD+26,y+ROW/2+10);
           } else {
-            ctx.font=`700 16px BebasNeue,Arial`;
-            ctx.fillStyle="#5a6a8a";
+            ctx.font=`700 18px BebasNeue,Arial`;
+            ctx.fillStyle="#4a5a7a";
             ctx.textAlign="center";
-            ctx.fillText(`${ri+1}`,PAD+22,y+ROW/2+6);
+            ctx.fillText(`${ri+1}`,PAD+26,y+ROW/2+7);
           }
 
-          // Avatar
-          const ax=PAD+58,ay=y+ROW/2;const AR=22;
+          // Avatar — bigger
+          const ax=PAD+72,ay=y+ROW/2;const AR=26;
           ctx.save();
+          // Ring
+          ctx.beginPath();ctx.arc(ax,ay,AR+2,0,Math.PI*2);
+          ctx.fillStyle=color;ctx.globalAlpha=0.3;ctx.fill();ctx.globalAlpha=1;
+          // Circle clip
           ctx.beginPath();ctx.arc(ax,ay,AR,0,Math.PI*2);
-          ctx.fillStyle=color;ctx.fill();
-          // Coloured ring
-          ctx.strokeStyle=color;ctx.lineWidth=2;ctx.globalAlpha=0.6;ctx.stroke();
-          ctx.globalAlpha=1;
-          ctx.clip();
+          ctx.fillStyle=color;ctx.fill();ctx.clip();
           const pic=getProfilePic(p.idx);
           if(pic){
             try{
@@ -1572,52 +1570,44 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                 img.onerror=rej;img.src=pic;
               });
             }catch{
-              ctx.font=`700 13px BebasNeue,Arial`;
+              ctx.font=`700 14px BebasNeue,Arial`;
               ctx.fillStyle="#0a1628";ctx.textAlign="center";
               ctx.fillText((initials[p.idx]||"?"),ax,ay+5);
             }
           } else {
-            ctx.font=`700 13px BebasNeue,Arial`;
+            ctx.font=`700 14px BebasNeue,Arial`;
             ctx.fillStyle="#0a1628";ctx.textAlign="center";
             ctx.fillText((initials[p.idx]||"?"),ax,ay+5);
           }
           ctx.restore();
 
-          // Name
+          // Player name — bigger, in their colour
           ctx.textAlign="left";
-          ctx.font=`600 ${ri===0?17:15}px DMSans,Arial`;
-          ctx.fillStyle=ri===0?color:"#e0dcd4";
-          let name=p.name;
-          const maxNameW=W-PAD*2-90-80;
-          while(ctx.measureText(name).width>maxNameW&&name.length>3) name=name.slice(0,-1)+"…";
-          ctx.fillText(name,PAD+88,y+ROW/2+6);
-
-          // Points — big number
-          ctx.textAlign="right";
-          ctx.font=`700 32px BebasNeue,Arial`;
+          ctx.font=`600 ${isTop3?18:16}px DMSans,Arial`;
           ctx.fillStyle=color;
-          ctx.fillText(p.total,W-PAD-8,y+ROW/2+10);
-          ctx.font=`400 10px DMSans,Arial`;
-          ctx.fillStyle=`${color}99`;
-          ctx.fillText(lang==="es"?(p.total===1?"punto":"puntos"):(p.total===1?"pt":"pts"),W-PAD-8,y+ROW/2+22);
+          let name=p.name;
+          const maxNameW=W-PAD*2-106-70;
+          while(ctx.measureText(name).width>maxNameW&&name.length>3) name=name.slice(0,-1)+"…";
+          ctx.fillText(name,PAD+106,y+ROW/2+6);
 
-          // Row divider
-          if(ri<playerData.length-1){
-            ctx.fillStyle="#1e2f50";ctx.globalAlpha=0.6;
-            ctx.fillRect(PAD+80,y+ROW-1,W-PAD*2-80,1);
-            ctx.globalAlpha=1;
-          }
+          // Points — big
+          ctx.textAlign="right";
+          ctx.font=`700 ${isTop3?36:30}px BebasNeue,Arial`;
+          ctx.fillStyle=color;
+          ctx.fillText(p.total,W-PAD-10,y+ROW/2+12);
+          ctx.font=`400 10px DMSans,Arial`;
+          ctx.fillStyle=`${color}88`;
+          ctx.fillText(lang==="es"?(p.total===1?"punto":"puntos"):(p.total===1?"pt":"pts"),W-PAD-10,y+ROW/2+24);
         }
 
         // Footer
         ctx.fillStyle="#2a3a5c";
         ctx.font=`400 11px DMSans,Arial`;
         ctx.textAlign="center";
-        ctx.fillText("elmundialito.github.io/2026",W/2,HEADER+ROW*playerData.length+28);
+        ctx.fillText("elmundialito.github.io/2026",W/2,HEADER+ROW*playerData.length+26);
 
-        // Bottom gold line
-        ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.3;
-        ctx.fillRect(PAD*2,H-4,W-PAD*4,1);
+        ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.2;
+        ctx.fillRect(PAD*3,H-5,W-PAD*6,1);
         ctx.globalAlpha=1;
 
         canvas.toBlob(async blob=>{

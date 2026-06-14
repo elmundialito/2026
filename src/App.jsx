@@ -49,7 +49,13 @@ async function loadPool(code) {
   try {
     const snap = await getDoc(doc(db, 'pools', code.toUpperCase()));
     if (!snap.exists()) return null;
-    return decode(snap.data().state);
+    const data = snap.data();
+    const decoded = decode(data.state);
+    if (!decoded) return null;
+    // Attach pics/colours so caller can populate cache from same fetch
+    decoded._profiles = data.profiles || {};
+    decoded._playerColors = data.playerColors || {};
+    return decoded;
   } catch(e) { console.error('Load failed:', e); return null; }
 }
 
@@ -2989,12 +2995,18 @@ export default function Mundialito() {
     const unsub=onSnapshot(doc(db,'pools',spectatorPoolCode),(snap)=>{
       if(!snap.exists())return;
       try{
-        const decoded=decode(snap.data().state);
+        const data=snap.data();
+        const decoded=decode(data.state);
         if(decoded) setSt(mergeState(EMPTY,decoded));
-        // Load pics on first snapshot, then whenever profiles change
+        // Extract pics/colours directly from snapshot — no extra getDoc needed
         if(!picsLoaded){
           picsLoaded=true;
-          loadProfilePics(spectatorPoolCode).then(()=>bumpPics(setPicRefresh));
+          const profiles=data.profiles||{};
+          Object.keys(profiles).forEach(k=>{picCache[parseInt(k)]=profiles[k];});
+          const colors=data.playerColors||{};
+          Object.keys(colors).forEach(k=>{colorCache[parseInt(k)]=colors[k];});
+          saveCaches();
+          bumpPics(setPicRefresh);
         }
       }catch(e){}
     });
@@ -3046,21 +3058,24 @@ export default function Mundialito() {
     setTimeout(()=>requestNotificationPermission(), 2000);
     const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(code){
-      // Load pics AND fresh scores from Firebase
-      loadProfilePics(code).then(()=>bumpPics(setPicRefresh));
+      // Load fresh scores from Firebase, and extract pics from same response
       loadPool(code).then(fresh=>{
-        if(fresh) setSt(prev=>{
+        if(fresh){
+          // Extract pics/colours from the same document fetch
+          if(fresh._profiles){Object.keys(fresh._profiles).forEach(k=>{picCache[parseInt(k)]=fresh._profiles[k];});}
+          if(fresh._playerColors){Object.keys(fresh._playerColors).forEach(k=>{colorCache[parseInt(k)]=fresh._playerColors[k];});saveCaches();}
+          bumpPics(setPicRefresh);
+          setSt(prev=>{
           const localResults = prev.matchResults||{};
           const freshResults = fresh.matchResults||{};
           const localCount = Object.values(localResults).filter(v=>v!=null).length;
           const freshCount = Object.values(freshResults).filter(v=>v!=null).length;
           const merged = mergeState(prev, fresh);
-          // Never overwrite local matchResults with fewer entries from Firebase
           merged.matchResults = freshCount > localCount ? {...freshResults, ...localResults} : {...localResults, ...freshResults};
-          // Never overwrite local playerNames with Firebase — local is always newer
           merged.config = {...merged.config, playerNames: prev.config.playerNames};
           return merged;
         });
+        }
       });
     }
     return;}}catch(e){}

@@ -19,6 +19,8 @@
         await OneSignal.init({
           appId: "cc413549-cd70-4710-ae6f-de41d69f5b26",
           safari_web_id: "web.onesignal.auto.40785b5b-169b-4884-a5e0-8aeabe17c634",
+          serviceWorkerPath: "OneSignalSDKWorker.js",
+          serviceWorkerParam: { scope: "/2026/" },
           notifyButton: {
             enable: false,
           },

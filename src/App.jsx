@@ -1253,26 +1253,30 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
       ctx.roundRect?ctx.roundRect(PAD,y+4,W-PAD*2,MH-8,8):ctx.rect(PAD,y+4,W-PAD*2,MH-8);
       ctx.fill();ctx.stroke();
 
-      // Group badge top left
+      // Group badge — centred at top
       ctx.fillStyle="#1e2f50";
-      ctx.beginPath();ctx.roundRect?ctx.roundRect(PAD+8,y+8,44,16,4):ctx.rect(PAD+8,y+8,44,16);ctx.fill();
-      ctx.fillStyle="#8899b4";ctx.font=`700 10px BebasNeue,Arial`;ctx.textAlign="left";
-      ctx.fillText(`GRP ${m.g}`,PAD+12,y+20);
+      const badgeW=52,badgeH=16,badgeX=W/2-badgeW/2;
+      ctx.beginPath();ctx.roundRect?ctx.roundRect(badgeX,y+8,badgeW,badgeH,4):ctx.rect(badgeX,y+8,badgeW,badgeH);ctx.fill();
+      ctx.fillStyle="#8899b4";ctx.font=`700 10px BebasNeue,Arial`;ctx.textAlign="center";
+      ctx.fillText(`GRP ${m.g}`,W/2,y+20);
+
+      // Content shifted down 6px for balance under the centred badge
+      const OFFSET=6;
 
       // Score or kickoff — dead centre
       ctx.textAlign="center";
       if(result&&result.home!=null&&result.away!=null){
         ctx.font=`700 30px BebasNeue,Arial`;
         ctx.fillStyle="#e0dcd4";
-        ctx.fillText(`${result.home} – ${result.away}`,W/2,y+MH/2+10);
+        ctx.fillText(`${result.home} – ${result.away}`,W/2,y+MH/2+10+OFFSET);
       } else if(m.ko){
         ctx.font=`700 16px BebasNeue,Arial`;ctx.fillStyle="#c9a84c";
-        ctx.fillText(fmtKickoff(m.d,m.ko),W/2,y+MH/2+2);
+        ctx.fillText(fmtKickoff(m.d,m.ko),W/2,y+MH/2+2+OFFSET);
         ctx.font=`400 9px DMSans,Arial`;ctx.fillStyle="#4a5a7a";
-        ctx.fillText("SGT",W/2,y+MH/2+14);
+        ctx.fillText("SGT",W/2,y+MH/2+14+OFFSET);
       } else {
         ctx.font=`700 20px BebasNeue,Arial`;ctx.fillStyle="#4a5a7a";
-        ctx.fillText("–",W/2,y+MH/2+8);
+        ctx.fillText("–",W/2,y+MH/2+8+OFFSET);
       }
 
       // Draw each team — flag above name close to score, initials on outer edge
@@ -1286,7 +1290,7 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
         if(owner!=null){
           const chipColor=getPlayerColor(owner.playerIdx,PC[owner.playerIdx]);
           const chipX=isHome?PAD+6:W-PAD-6-26;
-          const chipY=y+MH/2-13;
+          const chipY=y+MH/2-13+OFFSET;
           ctx.fillStyle=chipColor;
           ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,26,26,5):ctx.rect(chipX,chipY,26,26);ctx.fill();
           ctx.fillStyle="#0a1628";ctx.font=`700 13px BebasNeue,Arial`;ctx.textAlign="center";
@@ -1303,13 +1307,13 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
         const cx=isHome?W/2-72:W/2+72;
         ctx.globalAlpha=isLoss?0.4:1;
         ctx.font=`400 22px Arial`;ctx.textAlign="center";
-        ctx.fillText(flag||"",cx,y+MH/2-6);
+        ctx.fillText(flag||"",cx,y+MH/2-6+OFFSET);
 
         // Country name below flag
         ctx.fillStyle=isWin?(col||"#e0dcd4"):"#c8c0b0";
         ctx.font=`600 10px DMSans,Arial`;
         const fn=countryFixture(name,lang);
-        ctx.fillText(fn,cx,y+MH/2+10);
+        ctx.fillText(fn,cx,y+MH/2+10+OFFSET);
         ctx.globalAlpha=1;
       };
 

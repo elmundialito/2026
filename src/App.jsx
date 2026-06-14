@@ -2330,6 +2330,30 @@ function SetupLockedScreen({config, onRename, onUnlock}) {
 }
 
 
+function NotifBell() {
+  const [status, setStatus] = useState("unknown"); // unknown | granted | denied
+
+  useEffect(()=>{
+    if("Notification" in window) setStatus(Notification.permission);
+  },[]);
+
+  const handleTap = async () => {
+    if(status === "granted") return; // already subscribed, do nothing
+    try {
+      await requestNotificationPermission();
+      if("Notification" in window) setStatus(Notification.permission);
+    } catch(e) {}
+  };
+
+  if(status === "granted") return (
+    <div style={{width:26,height:26,borderRadius:"50%",border:"1px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}} title="Notifications on">🔔</div>
+  );
+
+  return (
+    <button onClick={handleTap} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}} title="Enable notifications">🔔</button>
+  );
+}
+
 export default function Mundialito() {
   const [appState,setAppState]=useState("loading");
   const [isHost,setIsHost]=useState(false);
@@ -2659,6 +2683,7 @@ export default function Mundialito() {
           <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");window.localStorage?.removeItem("mundi_spectator_code");}catch(e){}window.location.reload();}}} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
           <button onClick={()=>setShowRules(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>?</button>
           <button onClick={()=>window.location.reload()} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>↻</button>
+          <NotifBell/>
         </div>
       </div>
 

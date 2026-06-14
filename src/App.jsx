@@ -3268,10 +3268,10 @@ export default function Mundialito() {
         <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"var(--accent)",lineHeight:1}}>MUNDIALITO</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>{lang==="es"?"Copa Mundial 2026":"World Cup 2026"} · 🇨🇦 🇺🇸 🇲🇽</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#4a5a7a",marginTop:2,letterSpacing:1,textTransform:"uppercase"}}>{lang==="es"?"11 de junio – 19 de julio":"June 11 – July 19"}</div>
-        {/* Right: 🎨 and 🌐 stacked */}
+        {/* Right: 🌐 on top, 🎨 below */}
         <div style={{position:"absolute",top:14,right:14,display:"flex",flexDirection:"column",gap:4}}>
+          <button onClick={()=>setLanguage(lang==="en"?"es":"en")} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🌐</button>
           <button onClick={()=>setShowTheme(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🎨</button>
-          <button onClick={()=>setLanguage(lang==="en"?"es":"en")} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{lang==="en"?"ES":"EN"}</button>
           <NotifBell/>
         </div>
         {/* Left: ⏏ and ? stacked */}
@@ -3283,15 +3283,20 @@ export default function Mundialito() {
       </div>
 
       {/* Slim status + profile row */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px 0",gap:8}}>
-        {/* Left: mode badge */}
-        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px 0",gap:6}}>
+        {/* Left: compact buttons */}
+        <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0,flexWrap:"wrap"}}>
+          {/* Mode icon — 🎙️ host (tap to switch to spectator), 👀 spectator (tap for info) */}
           {isHost?(
-            <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)"}}>
-              <span style={{fontSize:11}}>🎙️</span>
-              <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"var(--accent)",letterSpacing:1}}>{t(lang,"host")}</span>
-            </div>
-          ):null}
+            <button onClick={()=>{if(window.confirm(lang==="es"?"¿Cambiar a modo espectador?":"Switch to spectator mode?")){setIsHost(false);setAppState("spectator");}}} style={{width:28,height:28,borderRadius:"50%",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,cursor:"pointer"}}>🎙️</button>
+          ):(
+            <button onClick={()=>{
+              if(window.confirm(lang==="es"?"Estás en modo espectador 👀\n\nContacta al anfitrión del juego con cualquier cambio necesario.\n\n¿Cambiar a modo anfitrión?":"You're in spectator mode 👀\n\nContact the game host with any changes needed.\n\nSwitch to host mode?")){
+                setShowHostSwitch(true);
+              }
+            }} style={{width:28,height:28,borderRadius:"50%",background:"rgba(107,155,209,0.08)",border:"1px solid rgba(107,155,209,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,cursor:"pointer",outline:"none"}}>👀</button>
+          )}
+          {/* Save status or ☁️ sync (host only, no label) */}
           {isHost&&saveStatus&&(
             <span style={{fontFamily:"'DM Sans'",fontSize:11,color:saveStatus==="saved"?"#61a978":"#8899b4"}}>
               {saveStatus==="saving"?t(lang,"saving"):t(lang,"saved")}
@@ -3304,25 +3309,19 @@ export default function Mundialito() {
               if(!code){alert("No pool code found — tap Share Pool Code at the bottom first.");return;}
               setSaveStatus("saving");
               savePool(code,stRef.current,pw).then(ok=>{
-                if(ok){
-                  // Make sure pool code is saved for future auto-saves
-                  try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}
-                  setPoolCode(code);
-                }
+                if(ok){try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}setPoolCode(code);}
                 setSaveStatus(ok?"saved":null);
                 if(ok)setTimeout(()=>setSaveStatus(null),2000);
               });
-            }} style={{padding:"4px 10px",borderRadius:20,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:11,cursor:"pointer"}}>
-              ☁️ sync
-            </button>
+            }} style={{width:28,height:28,borderRadius:"50%",border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>☁️</button>
           )}
-          {/* Spectator: load + host mode buttons only, no badge */}
-          {!isHost&&<button onClick={()=>setShowLoad(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(107,155,209,0.4)",background:"rgba(107,155,209,0.1)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>📥 Load</button>}
-          {!isHost&&spectatorPoolCode&&<button onClick={()=>setShowHostSwitch(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🎙️ Host</button>}
-          {/* Host: notify + theme */}
-          {isHost&&<button onClick={()=>setShowNotify(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.1)",color:"#61a978",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>🔔 Notify</button>}
+          {/* Host only: 🔔 Notify */}
+          {isHost&&<button onClick={()=>setShowNotify(true)} style={{width:28,height:28,borderRadius:"50%",border:"1px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.1)",color:"#61a978",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🔔</button>}
+          {/* Spectator: 📥 info popup */}
+          {!isHost&&<button onClick={()=>{const code=window.localStorage?.getItem("mundi_spectator_code")||window.localStorage?.getItem("mundi_pool_code");alert((lang==="es"?"Liga: ":"League: ")+(activePoolName||"Mundialito")+"\n"+(lang==="es"?"Código: ":"Code: ")+(code||"—"));}} style={{width:28,height:28,borderRadius:"50%",border:"1px solid rgba(107,155,209,0.3)",background:"rgba(107,155,209,0.06)",color:"#6b9bd1",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📥</button>}
           {/* 💡 Suggestions — everyone */}
-          <button onClick={()=>setShowSuggestions(true)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid rgba(107,155,209,0.3)",background:"rgba(107,155,209,0.06)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,cursor:"pointer"}}>💡</button>
+          <button onClick={()=>setShowSuggestions(true)} style={{width:28,height:28,borderRadius:"50%",border:"1px solid rgba(107,155,209,0.3)",background:"rgba(107,155,209,0.06)",color:"#6b9bd1",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>💡</button>
+        </div>
         </div>
         {/* Right: avatar — always visible, opens profile */}
         {myPlayerIdx!==null&&(()=>{const pc=getPlayerColor(myPlayerIdx,PC[myPlayerIdx]);return(

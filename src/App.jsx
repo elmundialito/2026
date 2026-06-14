@@ -1456,11 +1456,11 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
         // Scroll to last date with scores, or today, or first future date
         const isScrollTarget=date===(lastScoredDate||today)||(date>today&&!lastScoredDate&&!matchesByDate.some(([d])=>d===today||d>today&&d<date));
         return(
-          <div key={date} ref={isScrollTarget?scrollTargetRef:null} style={{marginBottom:18}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:isToday?"var(--accent)":isPast?"#5a6a8a":"#8899b4"}}>{fmtDate(date,lang)}</div>
+          <div key={date} ref={isScrollTarget?scrollTargetRef:null} style={{marginBottom:18,marginTop:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingTop:4}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,color:isToday?"var(--accent)":isPast?"#5a6a8a":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
               {isToday&&<div style={{padding:"2px 8px",borderRadius:10,background:"rgba(201,168,76,0.2)",border:"1px solid rgba(201,168,76,0.4)",fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1.5}}>{t(lang,"today")}</div>}
-              <div style={{flex:1,height:1,background:"rgba(26,39,68,0.6)"}}/>
+              <div style={{flex:1,height:1,background:isToday?"rgba(201,168,76,0.3)":isPast?"rgba(26,39,68,0.8)":"rgba(138,153,180,0.2)"}}/>
               <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a"}}>{matches.filter(m=>matchResults[m.id]!=null).length}/{matches.length}</span>
             </div>
             {matches.map(m=><GroupMatchCard key={m.id} match={m} result={matchResults[m.id]} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} onOpenChat={()=>setOpenChatId(m.id)} chatCount={(matchChat[m.id]?.messages||[]).length} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)}/>)}
@@ -2349,7 +2349,7 @@ async function loadPlayerColors(code) {
 function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, currentColor, onColorChange, onPicSaved}) {
   const lang=useContext(LangContext);
   const [pic, setPic] = useState(null);
-  const [selectedColor, setSelectedColor] = useState(currentColor||PLAYER_COLORS[playerIdx%PLAYER_COLORS.length]);
+  const [selectedColor, setSelectedColor] = useState(null); // null = no selection yet
   const [takenColors, setTakenColors] = useState([]);
   const [cropSrc, setCropSrc] = useState(null); // raw image src for crop UI
   const [cropScale, setCropScale] = useState(1);
@@ -2500,7 +2500,7 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
           })}
         </div>
       </div>
-      <button onClick={()=>{onColorChange&&onColorChange(selectedColor);savePlayerColor(playerIdx,selectedColor);onDone();}} style={{width:"100%",padding:"13px 0",borderRadius:12,border:"none",background:pic?`linear-gradient(135deg,${selectedColor},${selectedColor}cc)`:"rgba(26,39,68,0.6)",color:pic?"#0a1628":"#8899b4",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:"pointer"}}>
+      <button onClick={()=>{if(!selectedColor)return;onColorChange&&onColorChange(selectedColor);savePlayerColor(playerIdx,selectedColor);onDone();}} style={{width:"100%",padding:"13px 0",borderRadius:12,border:"none",background:selectedColor?(pic?`linear-gradient(135deg,${selectedColor},${selectedColor}cc)`:`linear-gradient(135deg,${selectedColor},${selectedColor}cc)`):"rgba(26,39,68,0.6)",color:selectedColor?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:selectedColor?"pointer":"default"}}>
         {pic?t(lang,"looksGood"):t(lang,"skipForNow")}
       </button>
     </Modal>

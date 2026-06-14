@@ -274,6 +274,12 @@ const UI = {
     rulesTitle4:"Knockout Stage", rulesBody4:"Bonus points every time one of your teams wins a KO match. Stakes rise each round: R32=3, R16=5, QF=7, SF=9, 3rd Place=6, Final=11.",
     rulesTitle5:"Winning", rulesBody5:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams past R32 → higher GS total → coin toss.",
     tapToContinue:"Tap to continue",
+    hostAccess:"HOST ACCESS", hostPwPlaceholder:"Host password",
+    unlockHost:"UNLOCK HOST ACCESS", checking:"CHECKING…", cancel:"Cancel",
+    hostPwDesc:"Enter your host password to unlock full edit access on this device.",
+    notifyAll:"Notify everyone", notifyMsg:"Message", send:"Send",
+    players2:"Players", entryFee:"Entry fee $",
+    presetPhrases:["Unlucky 😂","Told you so 👑","Let's go!! 🙌","Too easy 😏","Robbed!! 😤","What a game 🔥"],
   },
   es: {
     setup:"Config.", draft:"Sorteo", group:"Fase de Grupos", knockout:"Eliminatorias", leaderboard:"Clasificación",
@@ -314,6 +320,12 @@ const UI = {
     rulesTitle4:"Fase Eliminatoria", rulesBody4:"Puntos extra cada vez que uno de tus equipos gana un partido eliminatorio. Las apuestas suben cada ronda: R32=3, R16=5, CF=7, SF=9, 3er Puesto=6, Final=11.",
     rulesTitle5:"Ganar", rulesBody5:"El TOTAL más alto (Grupos + Eliminatorias) se lleva el premio. Desempate: más equipos que pasan R32 → mayor total de grupos → sorteo.",
     tapToContinue:"Toca para continuar",
+    hostAccess:"ACCESO ANFITRIÓN", hostPwPlaceholder:"Contraseña del anfitrión",
+    unlockHost:"DESBLOQUEAR ACCESO", checking:"VERIFICANDO…", cancel:"Cancelar",
+    hostPwDesc:"Ingresa tu contraseña para acceder como anfitrión en este dispositivo.",
+    notifyAll:"Notificar a todos", notifyMsg:"Mensaje", send:"Enviar",
+    players2:"Jugadores", entryFee:"Cuota $",
+    presetPhrases:["Qué mala suerte 😂","Te lo dije 👑","¡Vamos!! 🙌","Pan comido 😏","¡Nos robaron!! 😤","¡Qué partidazo! 🔥"],
   },
 };
 
@@ -921,6 +933,7 @@ function RosterCard({name,color,initial,teams,isCurrent,total,expanded,lang="en"
 }
 
 function SetupScreen({config,setConfig,onLock,readOnly}) {
+  const lang=useContext(LangContext);
   const canLock=config.playerNames.filter(n=>n.trim()).length===config.playerCount;
   return(
     <div style={{maxWidth:720,margin:"0 auto",padding:"0 16px"}}>
@@ -932,7 +945,7 @@ function SetupScreen({config,setConfig,onLock,readOnly}) {
           {RULES_DATA.map(r=><div key={r.n} style={{display:"flex",gap:10}}><div style={{width:22,height:22,borderRadius:"50%",flexShrink:0,background:"rgba(201,168,76,0.15)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue'",fontSize:13}}>{r.n}</div><div><span style={{fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"#e0dcd4"}}>{r.title}: </span><span style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4"}}>{r.body}</span></div></div>)}
         </div>
       </div>
-      <SL>How many players?</SL>
+      <SL>{lang==="es"?"¿Cuántos jugadores?":"How many players?"}</SL>
       <div style={{display:"flex",gap:8,marginBottom:32}}>
         {PLAYER_COUNTS.map(n=>(
           <button key={n} disabled={readOnly} onClick={()=>!readOnly&&setConfig(c=>({...c,playerCount:n,playerNames:Array.from({length:n},(_,i)=>c.playerNames[i]||"")}))} style={{flex:1,padding:"14px 0",borderRadius:10,border:config.playerCount===n?"2px solid var(--accent)":"2px solid #2a3a5c",background:config.playerCount===n?"rgba(201,168,76,0.12)":"rgba(26,39,68,0.5)",color:config.playerCount===n?"var(--accent)":"#8899b4",fontFamily:"'Bebas Neue'",fontSize:26,letterSpacing:2,cursor:readOnly?"default":"pointer",opacity:readOnly&&config.playerCount!==n?0.4:1}}>
@@ -940,7 +953,7 @@ function SetupScreen({config,setConfig,onLock,readOnly}) {
           </button>
         ))}
       </div>
-      <SL>Player names</SL>
+      <SL>{lang==="es"?"Nombres de jugadores":"Player names"}</SL>
       <div style={{display:"grid",gridTemplateColumns:config.playerCount<=4?"1fr 1fr":"1fr 1fr 1fr",gap:10,marginBottom:32}}>
         {config.playerNames.map((name,i)=>(
           <div key={i} style={{position:"relative"}}>
@@ -949,13 +962,13 @@ function SetupScreen({config,setConfig,onLock,readOnly}) {
           </div>
         ))}
       </div>
-      <SL>Entry fee per player</SL>
+      <SL>{lang==="es"?"Cuota por jugador":"Entry fee per player"}</SL>
       <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:24}}>
         <span style={{color:"#5a6a8a",fontSize:22}}>$</span>
         <input type="number" value={config.entryFee||""} readOnly={readOnly} onChange={e=>!readOnly&&setConfig(c=>({...c,entryFee:e.target.value}))} placeholder="0" style={{width:120,padding:"10px 14px",borderRadius:8,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'Bebas Neue'",fontSize:24,letterSpacing:2,outline:"none"}} onFocus={e=>!readOnly&&(e.target.style.borderColor="var(--accent)")} onBlur={e=>e.target.style.borderColor="#2a3a5c"}/>
-        <span style={{color:"#5a6a8a",fontSize:13}}> × {config.playerCount} players</span>
+        <span style={{color:"#5a6a8a",fontSize:13}}> × {config.playerCount} {lang==="es"?"jugadores":"players"}</span>
       </div>
-      {config.entryFee&&<div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"var(--accent)",letterSpacing:2,marginBottom:32}}>Total pot: ${(parseFloat(config.entryFee)||0)*config.playerCount} · winner takes all</div>}
+      {config.entryFee&&<div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"var(--accent)",letterSpacing:2,marginBottom:32}}>{lang==="es"?"Premio total":"Total pot"}: ${(parseFloat(config.entryFee)||0)*config.playerCount} · {lang==="es"?"el primero se lo lleva todo":"winner takes all"}</div>}
       {!readOnly&&(
         <button onClick={onLock} disabled={!canLock} style={{width:"100%",padding:"16px 0",borderRadius:12,border:"none",background:canLock?"linear-gradient(135deg,var(--accent),var(--accent-dark))":"rgba(26,39,68,0.5)",color:canLock?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,cursor:canLock?"pointer":"default",marginBottom:8}}>
           {canLock?"LOCK SETUP → BEGIN DRAFT":`ENTER ALL ${config.playerCount} NAMES TO CONTINUE`}
@@ -1248,9 +1261,9 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
         ctx.fillText(`${result.home} – ${result.away}`,W/2,y+MH/2+10);
       } else if(m.ko){
         ctx.font=`700 16px BebasNeue,Arial`;ctx.fillStyle="#c9a84c";
-        ctx.fillText(fmtKickoff(m.d,m.ko)+" SGT",W/2,y+MH/2+6);
-        ctx.font=`400 10px DMSans,Arial`;ctx.fillStyle="#4a5a7a";
-        ctx.fillText("–",W/2,y+MH/2+20);
+        ctx.fillText(fmtKickoff(m.d,m.ko),W/2,y+MH/2+2);
+        ctx.font=`400 9px DMSans,Arial`;ctx.fillStyle="#4a5a7a";
+        ctx.fillText("SGT",W/2,y+MH/2+14);
       } else {
         ctx.font=`700 20px BebasNeue,Arial`;ctx.fillStyle="#4a5a7a";
         ctx.fillText("–",W/2,y+MH/2+8);
@@ -1688,8 +1701,10 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                     <span style={{fontFamily:"'DM Sans'",fontSize:11,color:`${color}88`,marginLeft:"auto"}}>{expanded?"▲":"▼"}</span>
                   </div>
                   <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-                    <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"group2")}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.gsPts} pts</div></div>
-                    <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"knockout2")}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.koPts} pts</div></div>
+                    {playerData.some(x=>x.koPts>0)&&<>
+                      <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"group2")}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.gsPts} pts</div></div>
+                      <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"knockout2")}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.koPts} pts</div></div>
+                    </>}
                   </div>
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
@@ -1761,24 +1776,26 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           const p=playerDataWithRanks[ri];
           const y=HEADER+ri*ROW;
           const color=p.color||"#c9a84c";
-          const isTop3=ri<3;
+          const isFirst=ri===0;
 
-          // Row card — dark neutral background like the app
-          ctx.fillStyle=isTop3?"rgba(26,39,68,0.7)":"rgba(16,28,52,0.6)";
-          ctx.strokeStyle=isTop3?"rgba(201,168,76,0.2)":"rgba(30,47,80,0.8)";
+          // Row card — highlight only 1st place
+          ctx.fillStyle=isFirst?"rgba(26,39,68,0.9)":"rgba(16,28,52,0.6)";
+          ctx.strokeStyle=isFirst?"rgba(201,168,76,0.35)":"rgba(30,47,80,0.8)";
           ctx.lineWidth=1;
           ctx.beginPath();
           ctx.roundRect?ctx.roundRect(PAD,y+3,W-PAD*2,ROW-6,10):ctx.rect(PAD,y+3,W-PAD*2,ROW-6);
           ctx.fill();ctx.stroke();
 
-          // Left colour bar
-          ctx.fillStyle=color;ctx.globalAlpha=0.9;
-          ctx.beginPath();
-          ctx.roundRect?ctx.roundRect(PAD,y+3,3,ROW-6,2):ctx.rect(PAD,y+3,3,ROW-6);
-          ctx.fill();ctx.globalAlpha=1;
+          // Left colour bar — only 1st place
+          if(isFirst){
+            ctx.fillStyle=color;ctx.globalAlpha=0.9;
+            ctx.beginPath();
+            ctx.roundRect?ctx.roundRect(PAD,y+3,3,ROW-6,2):ctx.rect(PAD,y+3,3,ROW-6);
+            ctx.fill();ctx.globalAlpha=1;
+          }
 
           // Rank — medals for top 3, plain number for rest
-          if(isTop3){
+          if(ri<3){
             const medals=["🥇","🥈","🥉"];
             ctx.font=`400 26px Arial`;
             ctx.textAlign="center";
@@ -1830,7 +1847,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
 
           // Player name — in their colour
           ctx.textAlign="left";
-          ctx.font=`600 ${isTop3?17:15}px DMSans,Arial`;
+          ctx.font=`600 ${isFirst?17:15}px DMSans,Arial`;
           ctx.fillStyle=color;
           let name=p.name;
           const maxNameW=W-PAD*2-106-70;
@@ -1846,7 +1863,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
 
           // Points — big, in their colour
           ctx.textAlign="right";
-          ctx.font=`700 ${isTop3?36:30}px BebasNeue,Arial`;
+          ctx.font=`700 ${isFirst?36:30}px BebasNeue,Arial`;
           ctx.fillStyle=color;
           ctx.fillText(p.total,W-PAD-10,y+ROW/2+8);
           ctx.font=`400 10px DMSans,Arial`;
@@ -1940,6 +1957,7 @@ function JoinScreen({onJoin,onBack}) {
 }
 
 function SwitchToHostModal({open,onClose,onSuccess,poolCode}) {
+  const lang=useContext(LangContext);
   const [pw,setPw]=useState("");
   const [err,setErr]=useState("");
   const [loading,setLoading]=useState(false);
@@ -1959,9 +1977,9 @@ function SwitchToHostModal({open,onClose,onSuccess,poolCode}) {
   };
 
   return(
-    <Modal open={open} onClose={()=>{setPw("");setErr("");onClose();}} title="HOST ACCESS">
+    <Modal open={open} onClose={()=>{setPw("");setErr("");onClose();}} title={t(lang,"hostAccess")}>
       <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>
-        Enter your host password to unlock full edit access on this device.
+        {t(lang,"hostPwDesc")}
       </div>
       <div style={{position:"relative",marginBottom:err?6:16}}>
         <input
@@ -1969,7 +1987,7 @@ function SwitchToHostModal({open,onClose,onSuccess,poolCode}) {
           value={pw}
           onChange={e=>{setPw(e.target.value);setErr("");}}
           onKeyDown={e=>e.key==="Enter"&&doSwitch()}
-          placeholder="Host password"
+          placeholder={t(lang,"hostPwPlaceholder")}
           autoFocus
           style={{width:"100%",padding:"12px 44px 12px 14px",borderRadius:10,border:err?"1.5px solid #d97757":"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:15,outline:"none",boxSizing:"border-box"}}
         />
@@ -1977,22 +1995,29 @@ function SwitchToHostModal({open,onClose,onSuccess,poolCode}) {
       </div>
       {err&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#d97757",marginBottom:12}}>{err}</div>}
       <button onClick={doSwitch} disabled={!pw.trim()||loading} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:pw.trim()?"linear-gradient(135deg,var(--accent),var(--accent-dark))":"rgba(26,39,68,0.5)",color:pw.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:pw.trim()?"pointer":"default",marginBottom:8}}>
-        {loading?"CHECKING…":"UNLOCK HOST ACCESS"}
+        {loading?t(lang,"checking"):t(lang,"unlockHost")}
       </button>
-      <button onClick={()=>{setPw("");setErr("");onClose();}} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button>
+      <button onClick={()=>{setPw("");setErr("");onClose();}} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>{t(lang,"cancel")}</button>
     </Modal>
   );
 }
 
 
 function NotifyModal({open,onClose}) {
+  const lang=useContext(LangContext);
   const [status,setStatus]=useState("idle");
   const [custom,setCustom]=useState("");
 
   useEffect(()=>{
     if(open) requestNotificationPermission();
   },[open]);
-  const presets=[
+
+  const presets=lang==="es"?[
+    "⚽ ¡Partido terminado — revisa los marcadores!",
+    "🏁 ¡Actualización de grupos — la clasificación cambió!",
+    "🏆 ¡Resultado eliminatorio — mira quién avanzó!",
+    "📊 ¡Marcadores actualizados — revisa la clasificación!",
+  ]:[
     "⚽ Match just finished — check the scores!",
     "🏁 Group stage update — standings have changed!",
     "🏆 Knockout result in — see who's through!",
@@ -2012,13 +2037,13 @@ function NotifyModal({open,onClose}) {
 
   if(!open)return null;
   return(
-    <Modal open={open} onClose={onClose} title="NOTIFY GROUP">
-      {status==="sending"&&<div style={{textAlign:"center",padding:"24px 0",fontFamily:"'Bebas Neue'",fontSize:18,color:"var(--accent)",letterSpacing:2}}>Sending…</div>}
-      {status==="done"&&<div style={{textAlign:"center",padding:"24px 0",fontFamily:"'Bebas Neue'",fontSize:18,color:"#61a978",letterSpacing:2}}>✓ Sent!</div>}
-      {status==="error"&&<div style={{textAlign:"center",padding:"24px 0"}}><div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"#d97757",letterSpacing:2,marginBottom:12}}>Failed to send</div><button onClick={()=>setStatus("idle")} style={{padding:"10px 20px",borderRadius:8,border:"none",background:"#d97757",color:"white",fontFamily:"'Bebas Neue'",fontSize:14,cursor:"pointer"}}>TRY AGAIN</button></div>}
+    <Modal open={open} onClose={onClose} title={lang==="es"?"NOTIFICAR GRUPO":"NOTIFY GROUP"}>
+      {status==="sending"&&<div style={{textAlign:"center",padding:"24px 0",fontFamily:"'Bebas Neue'",fontSize:18,color:"var(--accent)",letterSpacing:2}}>{lang==="es"?"Enviando…":"Sending…"}</div>}
+      {status==="done"&&<div style={{textAlign:"center",padding:"24px 0",fontFamily:"'Bebas Neue'",fontSize:18,color:"#61a978",letterSpacing:2}}>✓ {lang==="es"?"¡Enviado!":"Sent!"}</div>}
+      {status==="error"&&<div style={{textAlign:"center",padding:"24px 0"}}><div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"#d97757",letterSpacing:2,marginBottom:12}}>{lang==="es"?"Error al enviar":"Failed to send"}</div><button onClick={()=>setStatus("idle")} style={{padding:"10px 20px",borderRadius:8,border:"none",background:"#d97757",color:"white",fontFamily:"'Bebas Neue'",fontSize:14,cursor:"pointer"}}>{lang==="es"?"REINTENTAR":"TRY AGAIN"}</button></div>}
       {status==="idle"&&(
         <>
-          <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>Send a push notification to everyone who has enabled alerts.</div>
+          <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:16,lineHeight:1.6}}>{lang==="es"?"Envía una notificación a todos los que tienen alertas activadas.":"Send a push notification to everyone who has enabled alerts."}</div>
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
             {presets.map((p,i)=>(
               <button key={i} onClick={()=>send(p)} style={{padding:"11px 14px",borderRadius:10,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.4)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer",textAlign:"left"}}>
@@ -2026,10 +2051,10 @@ function NotifyModal({open,onClose}) {
               </button>
             ))}
           </div>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:"#5a6a8a",marginBottom:6}}>OR CUSTOM MESSAGE</div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:"#5a6a8a",marginBottom:6}}>{lang==="es"?"O MENSAJE PERSONALIZADO":"OR CUSTOM MESSAGE"}</div>
           <div style={{display:"flex",gap:8}}>
-            <input value={custom} onChange={e=>setCustom(e.target.value)} placeholder="Type a message…" style={{flex:1,padding:"10px 12px",borderRadius:8,border:"1px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:13,outline:"none"}}/>
-            <button onClick={()=>custom.trim()&&send(custom.trim())} disabled={!custom.trim()} style={{padding:"10px 16px",borderRadius:8,border:"none",background:custom.trim()?"linear-gradient(135deg,var(--accent),var(--accent-dark))":"rgba(26,39,68,0.5)",color:custom.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:custom.trim()?"pointer":"default"}}>SEND</button>
+            <input value={custom} onChange={e=>setCustom(e.target.value)} placeholder={lang==="es"?"Escribe un mensaje…":"Type a message…"} style={{flex:1,padding:"10px 12px",borderRadius:8,border:"1px solid #2a3a5c",background:"rgba(10,22,40,0.7)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:13,outline:"none"}}/>
+            <button onClick={()=>custom.trim()&&send(custom.trim())} disabled={!custom.trim()} style={{padding:"10px 16px",borderRadius:8,border:"none",background:custom.trim()?"linear-gradient(135deg,var(--accent),var(--accent-dark))":"rgba(26,39,68,0.5)",color:custom.trim()?"#0a1628":"#3d5070",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:custom.trim()?"pointer":"default"}}>{lang==="es"?"ENVIAR":"SEND"}</button>
           </div>
         </>
       )}
@@ -2144,7 +2169,7 @@ function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
 
 // ── Match Chat ────────────────────────────────────────────────
 const PRESET_REACTIONS = ["🔥","😭","😱","🥳","😤","🙃"];
-const PRESET_PHRASES = ["Unlucky 😂","Told you so 👑","Let's go!! 🙌","Too easy 😏","Robbed!! 😤","What a game 🔥"];
+// Preset phrases are now defined in the UI translation object
 
 async function toggleReaction(poolCode, matchId, emoji, playerIdx) {
   try {
@@ -2317,7 +2342,7 @@ function MatchChatModal({open, onClose, match, poolCode, myPlayerIdx, playerName
         {/* Pre-set phrases */}
         <div style={{padding:"8px 16px 4px",borderTop:"1px solid #1e2f50",flexShrink:0}}>
           <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
-            {PRESET_PHRASES.map(phrase=>(
+            {(UI[lang]?.presetPhrases||UI.en.presetPhrases).map(phrase=>(
               <button key={phrase} onClick={()=>doSend(phrase)} style={{padding:"5px 10px",borderRadius:16,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:11,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>
                 {phrase}
               </button>

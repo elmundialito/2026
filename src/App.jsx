@@ -1234,59 +1234,69 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
       ctx.roundRect?ctx.roundRect(PAD,y+4,W-PAD*2,MH-8,8):ctx.rect(PAD,y+4,W-PAD*2,MH-8);
       ctx.fill();ctx.stroke();
 
-      // Group badge
+      // Group badge top left
       ctx.fillStyle="#1e2f50";
-      ctx.beginPath();ctx.roundRect?ctx.roundRect(PAD+8,y+10,44,16,4):ctx.rect(PAD+8,y+10,44,16);ctx.fill();
+      ctx.beginPath();ctx.roundRect?ctx.roundRect(PAD+8,y+8,44,16,4):ctx.rect(PAD+8,y+8,44,16);ctx.fill();
       ctx.fillStyle="#8899b4";ctx.font=`700 10px BebasNeue,Arial`;ctx.textAlign="left";
-      ctx.fillText(`GRP ${m.g}`,PAD+12,y+22);
+      ctx.fillText(`GRP ${m.g}`,PAD+12,y+20);
 
-      // Kickoff or result centre
+      // Score or kickoff — dead centre
       ctx.textAlign="center";
       if(result&&result.home!=null&&result.away!=null){
-        ctx.font=`700 28px BebasNeue,Arial`;
+        ctx.font=`700 30px BebasNeue,Arial`;
         ctx.fillStyle="#e0dcd4";
-        ctx.fillText(`${result.home} – ${result.away}`,W/2,y+MH/2+6);
+        ctx.fillText(`${result.home} – ${result.away}`,W/2,y+MH/2+10);
         if(out==="D"){
           ctx.font=`600 9px DMSans,Arial`;ctx.fillStyle="#6b9bd1";
-          ctx.fillText(lang==="es"?"EMPATE":"DRAW",W/2,y+MH/2+18);
+          ctx.fillText(lang==="es"?"EMPATE":"DRAW",W/2,y+MH/2+22);
         }
       } else if(m.ko){
-        ctx.font=`700 18px BebasNeue,Arial`;ctx.fillStyle="var(--accent,#c9a84c)";
+        ctx.font=`700 16px BebasNeue,Arial`;ctx.fillStyle="#c9a84c";
         ctx.fillText(fmtKickoff(m.d,m.ko),W/2,y+MH/2+6);
+        ctx.font=`400 10px DMSans,Arial`;ctx.fillStyle="#4a5a7a";
+        ctx.fillText("–",W/2,y+MH/2+20);
       } else {
-        ctx.font=`400 13px DMSans,Arial`;ctx.fillStyle="#4a5a7a";
-        ctx.fillText("–",W/2,y+MH/2+6);
+        ctx.font=`700 20px BebasNeue,Arial`;ctx.fillStyle="#4a5a7a";
+        ctx.fillText("–",W/2,y+MH/2+8);
       }
 
-      // Home team
+      // Draw each team like the app - flag above name, close to score boxes
       const drawTeam=(name,flag,owner,isHome,ptsEarned)=>{
-        const tx=isHome?PAD+8:W-PAD-8;
-        const align=isHome?"left":"right";
         const isWin=out&&((isHome&&out==="A")||(!isHome&&out==="B"));
         const isLoss=out&&((isHome&&out==="B")||(!isHome&&out==="A"));
-        ctx.textAlign=align;
-        ctx.font=`400 22px Arial`;
-        ctx.fillText(flag||"",isHome?PAD+14:W-PAD-14,y+MH/2-4);
         const col=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):"#8899b4";
+        const dimmed=isLoss?0.4:1;
+        ctx.globalAlpha=dimmed;
+
+        // Flag — centred above team name, close to score
+        const flagX=isHome?W/2-80:W/2+80;
+        ctx.font=`400 22px Arial`;ctx.textAlign="center";
+        ctx.fillText(flag||"",flagX,y+28);
+
+        // Country name below flag
+        ctx.font=`600 10px DMSans,Arial`;
         ctx.fillStyle=isLoss?"#4a5a7a":col||"#e0dcd4";
-        ctx.font=`600 11px DMSans,Arial`;
         const fn=countryFixture(name,lang);
-        ctx.fillText(fn,isHome?PAD+40:W-PAD-40,y+MH/2-4);
-        // Owner chip + points
+        ctx.textAlign="center";
+        ctx.fillText(fn,flagX,y+42);
+
+        // Owner chip + points at bottom
         if(owner!=null){
           const chipColor=getPlayerColor(owner.playerIdx,PC[owner.playerIdx]);
+          const chipX=isHome?flagX-8:flagX-8;
+          const chipY=y+50;
+          ctx.globalAlpha=1;
           ctx.fillStyle=chipColor;
-          const chipX=isHome?PAD+40:W-PAD-40-16;
-          const chipY=y+MH/2+8;
           ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,16,16,3):ctx.rect(chipX,chipY,16,16);ctx.fill();
           ctx.fillStyle="#0a1628";ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="center";
           ctx.fillText((initials[owner.playerIdx]||"?"),chipX+8,chipY+11);
           if(ptsEarned>0){
             ctx.fillStyle=chipColor;ctx.font=`700 10px DMSans,Arial`;
-            ctx.textAlign=isHome?"left":"right";
-            ctx.fillText(`+${ptsEarned}`,isHome?chipX+20:chipX-4,chipY+11);
+            ctx.textAlign="left";
+            ctx.fillText(`+${ptsEarned}`,chipX+20,chipY+11);
           }
         }
+        ctx.globalAlpha=1;
       };
 
       // Calculate pts earned per team
@@ -1611,7 +1621,8 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       let todayPts=0;
       myTeams.forEach(team=>{
         GM.filter(m=>m.d===today&&m.t.includes(team)).forEach(m=>{
-          const out=getMatchOutcome(matchResults[m.id]);if(!out)return;
+          const r=matchResults[m.id];
+          const out=getMatchOutcome(r);if(!out)return;
           const isHome=m.t[0]===team;
           if((isHome&&out==="A")||(!isHome&&out==="B"))todayPts+=3;
           else if(out==="D")todayPts+=1;
@@ -1780,12 +1791,13 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           let name=p.name;
           const maxNameW=W-PAD*2-106-70;
           while(ctx.measureText(name).width>maxNameW&&name.length>3) name=name.slice(0,-1)+"…";
-          ctx.fillText(name,PAD+106,y+ROW/2);
-          // Today's pts under name
+          const nameY=p.todayPts>0?y+ROW/2-2:y+ROW/2+6;
+          ctx.fillText(name,PAD+106,nameY);
+          // Today's pts under name — only if earned
           if(p.todayPts>0){
             ctx.font=`600 11px DMSans,Arial`;
             ctx.fillStyle=`${color}cc`;
-            ctx.fillText(`+${p.todayPts} ${lang==="es"?"hoy":"today"}`,PAD+106,y+ROW/2+16);
+            ctx.fillText(`+${p.todayPts} ${lang==="es"?"hoy":"today"}`,PAD+106,nameY+16);
           }
 
           // Points — big

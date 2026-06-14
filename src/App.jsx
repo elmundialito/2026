@@ -1631,6 +1631,42 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,teamBreakdown,color,gd,gf,todayPts};
     }).sort((a,b)=>b.total-a.total||b.r32-a.r32||b.gsPts-a.gsPts||b.gd-a.gd||b.gf-a.gf);
   },[config,picks,matchResults,bracket,koResults,picRefresh]);
+
+  // Track rank movements — compare live ranking vs ranking excluding today's SGT results
+  const playerDataWithRanks=useMemo(()=>{
+    const todaySGT=new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
+    // Build matchResults excluding today's SGT games
+    const yesterdayResults={};
+    Object.entries(matchResults).forEach(([id,r])=>{
+      const m=GM.find(x=>x.id===id);
+      if(!m||!m.ko)return;
+      const kickoffUTC=new Date(m.d+"T"+m.ko+":00Z");
+      const sgtDate=new Date(kickoffUTC.getTime()+8*60*60*1000).toISOString().slice(0,10);
+      if(sgtDate!==todaySGT) yesterdayResults[id]=r;
+    });
+    // Calculate yesterday's ranking
+    const yesterdayRanks=Array.from({length:config.playerCount},(_,i)=>{
+      const gs=playerGSPts(i,picks||[],yesterdayResults);
+      const ko=playerKOPts(i,picks||[],bracket,koResults,config.koPoints);
+      let gd=0,gf=0;
+      (picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team).forEach(team=>{
+        GM.forEach(m=>{
+          const r=yesterdayResults[m.id];if(!r||r.home==null||r.away==null)return;
+          const isHome=m.t[0]===team,isAway=m.t[1]===team;
+          if(isHome){gf+=r.home;gd+=(r.home-r.away);}
+          else if(isAway){gf+=r.away;gd+=(r.away-r.home);}
+        });
+      });
+      return{idx:i,total:gs+ko,gd,gf};
+    }).sort((a,b)=>b.total-a.total||b.gd-a.gd||b.gf-a.gf);
+    const yesterdayRankMap={};
+    yesterdayRanks.forEach((p,ri)=>{yesterdayRankMap[p.idx]=ri;});
+    return playerData.map((p,ri)=>({
+      ...p,
+      prevRank:yesterdayRankMap[p.idx]!=null?yesterdayRankMap[p.idx]:ri,
+      movement:yesterdayRankMap[p.idx]!=null?yesterdayRankMap[p.idx]-ri:0,
+    }));
+  },[playerData,matchResults,config,picks,bracket,koResults]);
   const pot=(parseFloat(config.entryFee||0))*config.playerCount;
   const barMax=Math.max(...playerData.map(x=>x.total))||1;
   return(
@@ -1689,7 +1725,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         } catch(e){}
 
         const W=420,HEADER=108,ROW=80,PAD=14,FOOT=44;
-        const H=HEADER+ROW*playerData.length+FOOT;
+        const H=HEADER+ROW*playerDataWithRanks.length+FOOT;
         const canvas=document.createElement("canvas");
         const DPR=2;
         canvas.width=W*DPR;canvas.height=H*DPR;
@@ -1721,22 +1757,22 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         ctx.fillRect(PAD*3,86,W-PAD*6,1);
         ctx.globalAlpha=1;
 
-        for(let ri=0;ri<playerData.length;ri++){
-          const p=playerData[ri];
+        for(let ri=0;ri<playerDataWithRanks.length;ri++){
+          const p=playerDataWithRanks[ri];
           const y=HEADER+ri*ROW;
           const color=p.color||"#c9a84c";
           const isTop3=ri<3;
 
-          // Row card background
-          ctx.fillStyle=`${color}${isTop3?"1e":"12"}`;
-          ctx.strokeStyle=`${color}${isTop3?"44":"22"}`;
+          // Row card — dark neutral background like the app
+          ctx.fillStyle=isTop3?"rgba(26,39,68,0.7)":"rgba(16,28,52,0.6)";
+          ctx.strokeStyle=isTop3?"rgba(201,168,76,0.2)":"rgba(30,47,80,0.8)";
           ctx.lineWidth=1;
           ctx.beginPath();
           ctx.roundRect?ctx.roundRect(PAD,y+3,W-PAD*2,ROW-6,10):ctx.rect(PAD,y+3,W-PAD*2,ROW-6);
           ctx.fill();ctx.stroke();
 
           // Left colour bar
-          ctx.fillStyle=color;ctx.globalAlpha=isTop3?0.9:0.5;
+          ctx.fillStyle=color;ctx.globalAlpha=0.9;
           ctx.beginPath();
           ctx.roundRect?ctx.roundRect(PAD,y+3,3,ROW-6,2):ctx.rect(PAD,y+3,3,ROW-6);
           ctx.fill();ctx.globalAlpha=1;
@@ -1754,13 +1790,22 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
             ctx.fillText(`${ri+1}`,PAD+26,y+ROW/2+7);
           }
 
-          // Avatar — bigger
+          // Movement arrow with number — neutral grey, compact
+          const movement=p.movement||0;
+          if(movement!==0){
+            const absMove=Math.abs(movement);
+            const arrow=movement>0?"▲":"▼";
+            ctx.font=`700 9px DMSans,Arial`;
+            ctx.fillStyle="#8899b4";
+            ctx.textAlign="center";
+            ctx.fillText(`${arrow}${absMove}`,PAD+26,y+ROW/2+22);
+          }
+
+          // Avatar
           const ax=PAD+72,ay=y+ROW/2;const AR=26;
           ctx.save();
-          // Ring
           ctx.beginPath();ctx.arc(ax,ay,AR+2,0,Math.PI*2);
           ctx.fillStyle=color;ctx.globalAlpha=0.3;ctx.fill();ctx.globalAlpha=1;
-          // Circle clip
           ctx.beginPath();ctx.arc(ax,ay,AR,0,Math.PI*2);
           ctx.fillStyle=color;ctx.fill();ctx.clip();
           const pic=getProfilePic(p.idx);
@@ -1783,7 +1828,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           }
           ctx.restore();
 
-          // Player name — in their colour, same size always
+          // Player name — in their colour
           ctx.textAlign="left";
           ctx.font=`600 ${isTop3?17:15}px DMSans,Arial`;
           ctx.fillStyle=color;
@@ -1792,13 +1837,14 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           while(ctx.measureText(name).width>maxNameW&&name.length>3) name=name.slice(0,-1)+"…";
           const nameY=p.todayPts>0?y+ROW/2-4:y+ROW/2+6;
           ctx.fillText(name,PAD+106,nameY);
+          // Today's pts — in their colour, subtle
           if(p.todayPts>0){
-            ctx.font=`600 11px DMSans,Arial`;
-            ctx.fillStyle=`${color}cc`;
-            ctx.fillText(`+${p.todayPts} ${lang==="es"?"hoy":"today"}`,PAD+106,nameY+17);
+            ctx.font=`600 10px DMSans,Arial`;
+            ctx.fillStyle=`${color}aa`;
+            ctx.fillText(`+${p.todayPts} ${lang==="es"?"hoy":"today"}`,PAD+106,nameY+15);
           }
 
-          // Points — big
+          // Points — big, in their colour
           ctx.textAlign="right";
           ctx.font=`700 ${isTop3?36:30}px BebasNeue,Arial`;
           ctx.fillStyle=color;
@@ -1812,7 +1858,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         ctx.fillStyle="#2a3a5c";
         ctx.font=`400 11px DMSans,Arial`;
         ctx.textAlign="center";
-        ctx.fillText("elmundialito.github.io/2026",W/2,HEADER+ROW*playerData.length+26);
+        ctx.fillText("elmundialito.github.io/2026",W/2,HEADER+ROW*playerDataWithRanks.length+26);
 
         ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.2;
         ctx.fillRect(PAD*3,H-5,W-PAD*6,1);

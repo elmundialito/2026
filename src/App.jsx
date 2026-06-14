@@ -1452,7 +1452,6 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                   <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
                     <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"group2")}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.gsPts} pts</div></div>
                     <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"knockout2")}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.koPts} pts</div></div>
-                    <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"pastR32")}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.r32}</div></div>
                   </div>
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
@@ -1466,8 +1465,9 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                 <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(26,39,68,0.6)"}}>
                   <div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:`${color}99`,marginBottom:8}}>{t(lang,"teamBreakdownLabel")}</div>
                   <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                    {p.teamBreakdown.map(({team,gsPts,koPts,eliminated})=>{const tm=TBN[team];const tp=gsPts+koPts;const displayName=countryName(team,lang);return(<div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:"rgba(10,22,40,0.3)",opacity:eliminated?0.45:1}}><span style={{fontSize:15,flexShrink:0}}>{tm?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,flex:1,color:eliminated?"#5a6a8a":"#e0dcd4",textDecoration:eliminated?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>{eliminated&&<span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",background:"rgba(26,39,68,0.5)",padding:"1px 5px",borderRadius:4,flexShrink:0}}>{t(lang,"out")}</span>}<div style={{textAlign:"right",flexShrink:0}}><div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:tp>0?color:"#5a6a8a",letterSpacing:1,lineHeight:1}}>{tp}<span style={{fontSize:8,opacity:0.7}}>pts</span></div>{koPts>0&&<div style={{fontFamily:"'DM Sans'",fontSize:9,color:`${color}88`}}>GS {gsPts} + KO {koPts}</div>}</div></div>);})}
+                    {p.teamBreakdown.map(({team,gsPts,koPts,eliminated})=>{const tm=TBN[team];const tp=gsPts+koPts;const displayName=countryName(team,lang);const pastR32=koPts>0||eliminated;return(<div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:"rgba(10,22,40,0.3)",opacity:eliminated?0.45:1}}><span style={{fontSize:15,flexShrink:0}}>{tm?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,flex:1,color:eliminated?"#5a6a8a":"#e0dcd4",textDecoration:eliminated?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>{pastR32&&!eliminated&&<span style={{fontFamily:"'Bebas Neue'",fontSize:9,color:"#61a978",background:"rgba(97,169,120,0.15)",border:"1px solid rgba(97,169,120,0.3)",padding:"1px 5px",borderRadius:4,flexShrink:0,letterSpacing:1}}>R32</span>}{eliminated&&<span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",background:"rgba(26,39,68,0.5)",padding:"1px 5px",borderRadius:4,flexShrink:0}}>{t(lang,"out")}</span>}<div style={{textAlign:"right",flexShrink:0}}><div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:tp>0?color:"#5a6a8a",letterSpacing:1,lineHeight:1}}>{tp}<span style={{fontSize:8,opacity:0.7}}>pts</span></div>{koPts>0&&<div style={{fontFamily:"'DM Sans'",fontSize:9,color:`${color}88`}}>GS {gsPts} + KO {koPts}</div>}</div></div>);})}
                   </div>
+                  {p.r32>0&&<div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginTop:8,fontStyle:"italic"}}>{lang==="es"?`${p.r32} equipo${p.r32>1?"s":""} pasó a eliminatorias`:`${p.r32} team${p.r32>1?"s":""} past R32 · tiebreaker`}</div>}
                 </div>
               )}
             </div>
@@ -1779,7 +1779,16 @@ async function sendChatMessage(poolCode, matchId, playerIdx, playerName, text) {
 }
 
 function ReactionRow({reactions, allEmojis, myPlayerIdx, playerNames, onReact, onAddEmoji}) {
-  const [popover, setPopover] = useState(null); // emoji string or null
+  const [popover, setPopover] = useState(null);
+  const longPressTimer = useRef(null);
+
+  const handlePressStart = (emoji) => {
+    longPressTimer.current = setTimeout(() => setPopover(emoji), 400);
+  };
+  const handlePressEnd = (emoji, didLongPress) => {
+    if(longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+
   return(
     <div style={{position:"relative"}}>
       <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
@@ -1789,15 +1798,16 @@ function ReactionRow({reactions, allEmojis, myPlayerIdx, playerNames, onReact, o
           return(
             <div key={emoji} style={{position:"relative"}}>
               <button
-                onClick={()=>onReact(emoji)}
-                onContextMenu={e=>{e.preventDefault();setPopover(popover===emoji?null:emoji);}}
+                onClick={()=>{if(popover===emoji){setPopover(null);return;}onReact(emoji);}}
+                onMouseDown={()=>handlePressStart(emoji)}
+                onMouseUp={()=>handlePressEnd(emoji)}
+                onTouchStart={()=>handlePressStart(emoji)}
+                onTouchEnd={()=>handlePressEnd(emoji)}
                 style={{display:"flex",alignItems:"center",gap:3,padding:"4px 8px",borderRadius:16,border:`1.5px solid ${mine?"var(--accent)":"#2a3a5c"}`,background:mine?"rgba(201,168,76,0.15)":"rgba(26,39,68,0.5)",cursor:"pointer",transition:"all 0.15s"}}
               >
                 <span style={{fontSize:17,lineHeight:1}}>{emoji}</span>
-                {who.length>0&&<span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:700,color:mine?"var(--accent)":"#8899b4",minWidth:10}}>{who.length}</span>}
+                {who.length>0&&<span onClick={e=>{e.stopPropagation();setPopover(popover===emoji?null:emoji);}} style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:700,color:mine?"var(--accent)":"#8899b4",minWidth:10}}>{who.length}</span>}
               </button>
-              {/* Tap count to see who — long press / second tap on count */}
-              {who.length>0&&<button onClick={e=>{e.stopPropagation();setPopover(popover===emoji?null:emoji);}} style={{position:"absolute",inset:0,background:"transparent",border:"none",cursor:"pointer"}}/>}
               {popover===emoji&&who.length>0&&(
                 <div style={{position:"absolute",bottom:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",background:"#0f1e38",border:"1px solid #2a3a5c",borderRadius:10,padding:"8px 10px",zIndex:300,minWidth:120,boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
                   <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",marginBottom:5,letterSpacing:1}}>{emoji} reacted</div>
@@ -1807,7 +1817,6 @@ function ReactionRow({reactions, allEmojis, myPlayerIdx, playerNames, onReact, o
                       <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"#e0dcd4"}}>{playerNames[idx]||`Player ${idx+1}`}</span>
                     </div>
                   ))}
-                  {/* Triangle pointer */}
                   <div style={{position:"absolute",bottom:-5,left:"50%",transform:"translateX(-50%)",width:8,height:8,background:"#0f1e38",border:"1px solid #2a3a5c",borderTop:"none",borderLeft:"none",rotate:"45deg"}}/>
                 </div>
               )}
@@ -1816,7 +1825,6 @@ function ReactionRow({reactions, allEmojis, myPlayerIdx, playerNames, onReact, o
         })}
         <button onClick={onAddEmoji} style={{width:30,height:30,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>➕</button>
       </div>
-      {/* Dismiss popover on outside tap */}
       {popover&&<div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setPopover(null)}/>}
     </div>
   );
@@ -2348,11 +2356,17 @@ export default function Mundialito() {
   // Live sync for spectators
   useEffect(()=>{
     if(!spectatorPoolCode||appState!=="spectator")return;
+    let picsLoaded=false;
     const unsub=onSnapshot(doc(db,'pools',spectatorPoolCode),(snap)=>{
       if(!snap.exists())return;
       try{
         const decoded=decode(snap.data().state);
         if(decoded) setSt(mergeState(EMPTY,decoded));
+        // Load pics on first snapshot, then whenever profiles change
+        if(!picsLoaded){
+          picsLoaded=true;
+          loadProfilePics(spectatorPoolCode).then(()=>bumpPics(setPicRefresh));
+        }
       }catch(e){}
     });
     return ()=>unsub();

@@ -1285,7 +1285,7 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
         // Outer initials chip
         if(owner!=null){
           const chipColor=getPlayerColor(owner.playerIdx,PC[owner.playerIdx]);
-          const chipX=isHome?PAD+6:W-PAD-26;
+          const chipX=isHome?PAD+6:W-PAD-6-26;
           const chipY=y+MH/2-13;
           ctx.fillStyle=chipColor;
           ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,26,26,5):ctx.rect(chipX,chipY,26,26);ctx.fill();

@@ -1165,10 +1165,10 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
           💬{chatCount>0&&<span style={{fontFamily:"'DM Sans'",fontSize:10,fontWeight:600}}>{chatCount}</span>}
         </button>
       </div>
+      {centreLabel()&&<div style={{display:"flex",justifyContent:"center",marginBottom:4}}>{centreLabel()}</div>}
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         {teamRow(a,ta?.flag,oa?.playerIdx!=null?oa:null,true)}
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-          {centreLabel()}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
           <ScoreEntry matchId={match.id} result={result} onSet={onSet} readOnly={readOnly} teamA={a} teamB={b} ownership={ownership} initials={initials}/>
         </div>
         {teamRow(b,tb?.flag,ob?.playerIdx!=null?ob:null,false)}

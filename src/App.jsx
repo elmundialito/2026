@@ -1137,11 +1137,13 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
     const winning=out&&((isHome&&out==="A")||(!isHome&&out==="B"));
     const losing=out&&((isHome&&out==="B")||(!isHome&&out==="A"));
     const color=owner!=null?PC[owner]:null;
+    const fn=countryFixture(name,lang);
+    const fs=fn.length>9?9:10;
     return(
       <div style={{flex:1,display:"flex",alignItems:"center",minWidth:0,opacity:losing?0.5:1,flexDirection:isHome?"row-reverse":"row",gap:4}}>
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:0,background:winning&&color?`${color}15`:"transparent",border:winning&&color?`1px solid ${color}44`:"1px solid transparent",borderRadius:6,padding:"3px 5px"}}>
-          <span style={{fontSize:15,lineHeight:1,flexShrink:0}}>{flag}</span>
-          {(()=>{const fn=countryFixture(name,lang);const fs=fn.length>9?9:10;return <span style={{fontFamily:"'DM Sans'",fontSize:fs,fontWeight:600,color:color||"#e0dcd4",lineHeight:1.2,textAlign:"center",hyphens:"manual"}} dangerouslySetInnerHTML={{__html:fn}}/>;})()}
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,width:72,background:winning&&color?`${color}15`:"transparent",border:winning&&color?`1px solid ${color}44`:"1px solid transparent",borderRadius:6,padding:"3px 5px"}}>
+          <span style={{fontSize:15,lineHeight:1,flexShrink:0,display:"block",textAlign:"center"}}>{flag}</span>
+          <span style={{fontFamily:"'DM Sans'",fontSize:fs,fontWeight:600,color:color||"#e0dcd4",lineHeight:1.2,textAlign:"center",hyphens:"manual",marginTop:2,display:"block",minHeight:24}} dangerouslySetInnerHTML={{__html:fn}}/>
         </div>
         <div style={{flex:1,minWidth:0}}/>
         {owner!=null

@@ -2331,26 +2331,33 @@ function SetupLockedScreen({config, onRename, onUnlock}) {
 
 
 function NotifBell() {
-  const [status, setStatus] = useState("unknown"); // unknown | granted | denied
+  const [status, setStatus] = useState("unknown");
 
   useEffect(()=>{
     if("Notification" in window) setStatus(Notification.permission);
   },[]);
 
   const handleTap = async () => {
-    if(status === "granted") return; // already subscribed, do nothing
+    if(status === "granted") return;
     try {
-      await requestNotificationPermission();
-      if("Notification" in window) setStatus(Notification.permission);
+      // Call native permission directly — must be synchronous from user tap for iOS
+      const result = await Notification.requestPermission();
+      setStatus(result);
+      // Now register with OneSignal
+      if(result === "granted" && window.OneSignalDeferred) {
+        window.OneSignalDeferred.push(async (OneSignal) => {
+          await OneSignal.Notifications.requestPermission();
+        });
+      }
     } catch(e) {}
   };
 
   if(status === "granted") return (
-    <div style={{width:26,height:26,borderRadius:"50%",border:"1px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}} title="Notifications on">🔔</div>
+    <div style={{width:26,height:26,borderRadius:"50%",border:"1px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🔔</div>
   );
 
   return (
-    <button onClick={handleTap} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}} title="Enable notifications">🔔</button>
+    <button onClick={handleTap} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🔔</button>
   );
 }
 
@@ -2677,13 +2684,13 @@ export default function Mundialito() {
         <div style={{position:"absolute",top:14,right:14,display:"flex",flexDirection:"column",gap:4}}>
           <button onClick={()=>setShowTheme(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🎨</button>
           <button onClick={()=>setLanguage(lang==="en"?"es":"en")} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{lang==="en"?"ES":"EN"}</button>
+          <NotifBell/>
         </div>
         {/* Left: ⏏ and ? stacked */}
         <div style={{position:"absolute",top:14,left:14,display:"flex",flexDirection:"column",gap:4}}>
           <button onClick={()=>{if(window.confirm("Leave this pool and go back to the home screen?")){try{window.localStorage?.removeItem(LOCAL_KEY);window.localStorage?.removeItem("mundi_pool_code");window.localStorage?.removeItem("mundi_host_pw");window.localStorage?.removeItem("mundi_intro_seen");window.localStorage?.removeItem("mundi_spectator_code");}catch(e){}window.location.reload();}}} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>⏏</button>
           <button onClick={()=>setShowRules(true)} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>?</button>
           <button onClick={()=>window.location.reload()} style={{width:26,height:26,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>↻</button>
-          <NotifBell/>
         </div>
       </div>
 

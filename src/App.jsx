@@ -284,7 +284,7 @@ const UI = {
     players:"JUGADORES", matchSchedule:"Calendario", groupStandings:"Grupos",
     today:"HOY", draw:"EMPATE", yourTeam:"TU EQUIPO", yourTeams:"TUS EQUIPOS",
     leaderboardTitle:"CLASIFICACIÓN", prizePool:"🏆 Premio total", winnerTakesAll:"el primero se lo lleva todo",
-    points:"puntos", group2:"Fase Grupos", knockout2:"Eliminatorias", pastR32:"Pasan R32", total:"Total",
+    points:"puntos", group2:"Grupos", knockout2:"KO", pastR32:"R32", total:"Total",
     teamBreakdown:"TUS EQUIPOS", tiebreaker:"Desempate: Más equipos en R32 → Diferencia de goles → Goles a favor",
     changeUser:"👤 Cambiar usuario", howItWorks:"CÓMO FUNCIONA",
     looksGood:"¡LISTO! →", skipForNow:"OMITIR POR AHORA →", addPhoto:"📷 AÑADIR FOTO",
@@ -1094,13 +1094,12 @@ function ScoreEntry({matchId,result,onSet,readOnly,teamA,teamB,ownership,initial
         ))}
       </div>
       {inp(av,setAv,"away")}
-      {result&&!readOnly&&<button onClick={()=>{setHv("");setAv("");onSet(matchId,undefined);}} style={{width:20,height:20,borderRadius:4,border:"1px solid #5a6a8a",background:"transparent",color:"#5a6a8a",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>×</button>}
     </div>
   );
 }
 
 // ── GroupMatchCard — owner chips pinned to far edges ──────────
-function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=new Set()}) {
+function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=new Set(),onOpenChat,chatCount=0,hasReactions=false}) {
   const lang=useContext(LangContext);
   const [a,b]=match.t;const ta=TBN[a],tb=TBN[b];const oa=ownership[a],ob=ownership[b];const out=getMatchOutcome(result);
   const isMyMatch=myTeams.has(a)||myTeams.has(b);
@@ -1143,7 +1142,9 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
       <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative"}}>
         <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>GRP {match.g}</span>
         {match.ko&&!result&&<span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1,whiteSpace:"nowrap"}}>{fmtKickoff(match.d,match.ko)}</span>}
-        <span style={{fontStyle:"italic",opacity:0.8}}>{match.v}</span>
+        <button onClick={onOpenChat} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${(chatCount>0||hasReactions)?"rgba(201,168,76,0.3)":"#2a3a5c"}`,background:(chatCount>0||hasReactions)?"rgba(201,168,76,0.08)":"transparent",color:(chatCount>0||hasReactions)?"var(--accent)":"#5a6a8a",cursor:"pointer",fontSize:12}}>
+          💬{chatCount>0&&<span style={{fontFamily:"'DM Sans'",fontSize:10,fontWeight:600}}>{chatCount}</span>}
+        </button>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         {teamRow(a,ta?.flag,oa?.playerIdx!=null?oa:null,true)}
@@ -1158,6 +1159,7 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
 }
 
 function GroupStandingsAccordion({g,res,ownership,initials}) {
+  const lang=useContext(LangContext);
   const [open,setOpen]=useState(false);
   const s=useMemo(()=>groupStandings(g,res),[g,res]);
   return(
@@ -1165,15 +1167,15 @@ function GroupStandingsAccordion({g,res,ownership,initials}) {
       <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",padding:"11px 14px",border:"none",background:"transparent",display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left"}}>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:22,color:"var(--accent)",letterSpacing:2,width:22,textAlign:"center",flexShrink:0}}>{g}</div>
         <div style={{flex:1,display:"flex",gap:4,flexWrap:"wrap"}}>
-          {s.map(({team},i)=>{const t=TBN[team];const o=ownership[team];return(<span key={team} style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:4,background:i<2?"rgba(97,169,120,0.1)":"transparent",fontSize:11,fontFamily:"'DM Sans'",color:o?PC[o.playerIdx]:(i<2?"#61a978":"#8899b4"),fontWeight:500}}><span style={{fontSize:12}}>{t?.flag}</span><span>{team}</span>{o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16}/>}</span>);})}
+          {s.map(({team},i)=>{const tm=TBN[team];const o=ownership[team];return(<span key={team} style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:4,background:i<2?"rgba(97,169,120,0.1)":"transparent",fontSize:11,fontFamily:"'DM Sans'",color:o?PC[o.playerIdx]:(i<2?"#61a978":"#8899b4"),fontWeight:500}}><span style={{fontSize:12}}>{tm?.flag}</span><span>{countryName(team,lang)}</span>{o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16}/>}</span>);})}
         </div>
         <span style={{fontSize:11,color:"#5a6a8a",transform:open?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
       </button>
       {open&&(
         <div style={{padding:"0 12px 12px"}}>
           <div style={{background:"rgba(10,22,40,0.4)",borderRadius:8,padding:"10px 12px",border:"1px solid #1e2f50"}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 40px 36px",gap:4,fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"0 2px 6px"}}><span>Team</span><span style={{textAlign:"center"}}>P</span><span style={{textAlign:"center"}}>W</span><span style={{textAlign:"center"}}>D</span><span style={{textAlign:"center"}}>L</span><span style={{textAlign:"center"}}>GD</span><span style={{textAlign:"center"}}>Pts</span></div>
-            {s.map((row,i)=>{const t=TBN[row.team];const o=ownership[row.team];return(<div key={row.team} style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 40px 36px",gap:4,padding:"4px 2px",borderTop:i>0?"1px solid rgba(26,39,68,0.5)":"none",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:i<2?"#61a978":"#5a6a8a",width:10,textAlign:"center"}}>{i+1}</span><span style={{fontSize:13}}>{t?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,color:o?PC[o.playerIdx]:"#e0dcd4",whiteSpace:"nowrap"}}>{code3(row.team)}</span>{o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16}/>}</div>{[row.P,row.W,row.D,row.L].map((v,j)=><span key={j} style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4"}}>{v}</span>)}<span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:row.GD>0?"#61a978":row.GD<0?"#d97757":"#8899b4"}}>{row.GD>0?"+":""}{row.GD}</span><span style={{textAlign:"center",fontFamily:"'Bebas Neue'",fontSize:14,color:"var(--accent)",letterSpacing:1}}>{row.Pts}</span></div>);})}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 40px 36px",gap:4,fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"0 2px 6px"}}><span>{lang==="es"?"Equipo":"Team"}</span><span style={{textAlign:"center"}}>P</span><span style={{textAlign:"center"}}>V</span><span style={{textAlign:"center"}}>E</span><span style={{textAlign:"center"}}>D</span><span style={{textAlign:"center"}}>GD</span><span style={{textAlign:"center"}}>Pts</span></div>
+            {s.map((row,i)=>{const tm=TBN[row.team];const o=ownership[row.team];return(<div key={row.team} style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 40px 36px",gap:4,padding:"4px 2px",borderTop:i>0?"1px solid rgba(26,39,68,0.5)":"none",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:i<2?"#61a978":"#5a6a8a",width:10,textAlign:"center"}}>{i+1}</span><span style={{fontSize:13}}>{tm?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,color:o?PC[o.playerIdx]:"#e0dcd4",whiteSpace:"nowrap"}}>{code3(row.team)}</span>{o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16}/>}</div>{[row.P,row.W,row.D,row.L].map((v,j)=><span key={j} style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4"}}>{v}</span>)}<span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:row.GD>0?"#61a978":row.GD<0?"#d97757":"#8899b4"}}>{row.GD>0?"+":""}{row.GD}</span><span style={{textAlign:"center",fontFamily:"'Bebas Neue'",fontSize:14,color:"var(--accent)",letterSpacing:1}}>{row.Pts}</span></div>);})}
           </div>
         </div>
       )}
@@ -1183,6 +1185,18 @@ function GroupStandingsAccordion({g,res,ownership,initials}) {
 
 function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx}) {
   const lang=useContext(LangContext);
+  const [matchChat,setMatchChat]=useState({});
+  const [openChatId,setOpenChatId]=useState(null);
+  const poolCode=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
+
+  // Subscribe to matchChat via onSnapshot
+  useEffect(()=>{
+    if(!poolCode)return;
+    const unsub=onSnapshot(doc(db,"pools",poolCode),(snap)=>{
+      if(snap.exists()){setMatchChat(snap.data().matchChat||{});}
+    });
+    return()=>unsub();
+  },[poolCode]);
   const [flash,setFlash]=useState(null);
   const [view,setView]=useState("schedule");
   const scrollTargetRef=useRef(null);
@@ -1265,7 +1279,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
         </div>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:16}}>
-        {[{id:"schedule",icon:"📅",label:"Match Schedule"},{id:"standings",icon:"📊",label:"Group Standings"}].map(v=>{const active=v.id===view;return <button key={v.id} onClick={()=>setView(v.id)} style={{padding:"9px 16px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>{v.icon} {v.label}</button>;})}
+        {[{id:"schedule",icon:"📅",labelKey:"matchSchedule"},{id:"standings",icon:"📊",labelKey:"groupStandings"}].map(v=>{const active=v.id===view;return <button key={v.id} onClick={()=>setView(v.id)} style={{padding:"9px 16px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>{v.icon} {t(lang,v.labelKey)}</button>;})}
       </div>
       {view==="schedule"&&matchesByDate.map(([date,matches])=>{
         const isToday=date===today;const isPast=date<today;
@@ -1279,13 +1293,14 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
               <div style={{flex:1,height:1,background:"rgba(26,39,68,0.6)"}}/>
               <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a"}}>{matches.filter(m=>matchResults[m.id]!=null).length}/{matches.length}</span>
             </div>
-            {matches.map(m=><GroupMatchCard key={m.id} match={m} result={matchResults[m.id]} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams}/>)}
+            {matches.map(m=><GroupMatchCard key={m.id} match={m} result={matchResults[m.id]} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} onOpenChat={()=>setOpenChatId(m.id)} chatCount={(matchChat[m.id]?.messages||[]).length} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)}/>)}
           </div>
         );
       })}
       {view==="standings"&&Object.keys(GROUPS).map(g=><GroupStandingsAccordion key={g} g={g} res={matchResults} ownership={ownership} initials={initials}/>)}
       <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
       {flash&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.4)",borderRadius:30,padding:"10px 22px",fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"var(--accent)",whiteSpace:"nowrap",zIndex:200,animation:"slideUp 0.3s ease-out"}}>⚽ {flash}</div>}
+      {openChatId&&(()=>{const m=GM.find(x=>x.id===openChatId);return m?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={m} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
     </div>
   );
 }
@@ -1722,6 +1737,196 @@ function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
   return (
     <div style={{width:size,height:size,borderRadius:"50%",background:color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.33,fontWeight:900,color:"#0a1628",flexShrink:0,...style}}>
       {initials}
+    </div>
+  );
+}
+
+// ── Match Chat ────────────────────────────────────────────────
+const PRESET_REACTIONS = ["🔥","😭","😱","🥳","😤","🙃"];
+const PRESET_PHRASES = ["Unlucky 😂","Told you so 👑","Let's go!! 🙌","Too easy 😏","Robbed!! 😤","What a game 🔥"];
+
+async function toggleReaction(poolCode, matchId, emoji, playerIdx) {
+  try {
+    const ref = doc(db, "pools", poolCode);
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? snap.data() : {};
+    const chat = data.matchChat || {};
+    const matchChat = chat[matchId] || {};
+    const reactions = matchChat.reactions || {};
+    const current = reactions[emoji] || [];
+    const updated = current.includes(playerIdx)
+      ? current.filter(i => i !== playerIdx)
+      : [...current, playerIdx];
+    await setDoc(ref, {
+      matchChat: { [matchId]: { reactions: { [emoji]: updated } } }
+    }, { merge: true });
+  } catch(e) { console.error("reaction failed", e); }
+}
+
+async function sendChatMessage(poolCode, matchId, playerIdx, playerName, text) {
+  try {
+    const ref = doc(db, "pools", poolCode);
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? snap.data() : {};
+    const chat = data.matchChat || {};
+    const matchChat = chat[matchId] || {};
+    const messages = matchChat.messages || [];
+    messages.push({ playerIdx, playerName, text, ts: Date.now() });
+    await setDoc(ref, {
+      matchChat: { [matchId]: { messages } }
+    }, { merge: true });
+  } catch(e) { console.error("chat failed", e); }
+}
+
+function ReactionRow({reactions, allEmojis, myPlayerIdx, playerNames, onReact, onAddEmoji}) {
+  const [popover, setPopover] = useState(null); // emoji string or null
+  return(
+    <div style={{position:"relative"}}>
+      <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+        {allEmojis.map(emoji=>{
+          const who=reactions[emoji]||[];
+          const mine=myPlayerIdx!==null&&who.includes(myPlayerIdx);
+          return(
+            <div key={emoji} style={{position:"relative"}}>
+              <button
+                onClick={()=>onReact(emoji)}
+                onContextMenu={e=>{e.preventDefault();setPopover(popover===emoji?null:emoji);}}
+                style={{display:"flex",alignItems:"center",gap:3,padding:"4px 8px",borderRadius:16,border:`1.5px solid ${mine?"var(--accent)":"#2a3a5c"}`,background:mine?"rgba(201,168,76,0.15)":"rgba(26,39,68,0.5)",cursor:"pointer",transition:"all 0.15s"}}
+              >
+                <span style={{fontSize:17,lineHeight:1}}>{emoji}</span>
+                {who.length>0&&<span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:700,color:mine?"var(--accent)":"#8899b4",minWidth:10}}>{who.length}</span>}
+              </button>
+              {/* Tap count to see who — long press / second tap on count */}
+              {who.length>0&&<button onClick={e=>{e.stopPropagation();setPopover(popover===emoji?null:emoji);}} style={{position:"absolute",inset:0,background:"transparent",border:"none",cursor:"pointer"}}/>}
+              {popover===emoji&&who.length>0&&(
+                <div style={{position:"absolute",bottom:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",background:"#0f1e38",border:"1px solid #2a3a5c",borderRadius:10,padding:"8px 10px",zIndex:300,minWidth:120,boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
+                  <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",marginBottom:5,letterSpacing:1}}>{emoji} reacted</div>
+                  {who.map(idx=>(
+                    <div key={idx} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0"}}>
+                      <div style={{width:18,height:18,borderRadius:5,background:getPlayerColor(idx,PC[idx]),color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{(playerNames[idx]||"").slice(0,2).toUpperCase()}</div>
+                      <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"#e0dcd4"}}>{playerNames[idx]||`Player ${idx+1}`}</span>
+                    </div>
+                  ))}
+                  {/* Triangle pointer */}
+                  <div style={{position:"absolute",bottom:-5,left:"50%",transform:"translateX(-50%)",width:8,height:8,background:"#0f1e38",border:"1px solid #2a3a5c",borderTop:"none",borderLeft:"none",rotate:"45deg"}}/>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <button onClick={onAddEmoji} style={{width:30,height:30,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>➕</button>
+      </div>
+      {/* Dismiss popover on outside tap */}
+      {popover&&<div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setPopover(null)}/>}
+    </div>
+  );
+}
+
+function MatchChatModal({open, onClose, match, poolCode, myPlayerIdx, playerNames, initials, matchChat={}}) {
+  const lang = useContext(LangContext);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef(null);
+  const emojiInputRef = useRef(null);
+  const reactions = matchChat.reactions || {};
+  const messages = matchChat.messages || [];
+  const [a, b] = match.t;
+  const ta = TBN[a], tb = TBN[b];
+
+  useEffect(() => {
+    if(open) setTimeout(() => messagesEndRef.current?.scrollIntoView({behavior:"smooth"}), 100);
+  }, [open, messages.length]);
+
+  if(!open) return null;
+
+  const myName = playerNames[myPlayerIdx] || `Player ${myPlayerIdx+1}`;
+  const code = poolCode || window.localStorage?.getItem("mundi_pool_code") || window.localStorage?.getItem("mundi_spectator_code");
+
+  const doReaction = (emoji) => {
+    if(myPlayerIdx===null||!code) return;
+    toggleReaction(code, match.id, emoji, myPlayerIdx);
+  };
+
+  const doSend = async (text) => {
+    if(!text.trim()||!code||myPlayerIdx===null) return;
+    setSending(true);
+    await sendChatMessage(code, match.id, myPlayerIdx, myName, text.trim());
+    setSending(false);
+    setInput("");
+  };
+
+  // All unique emojis used (presets + custom)
+  const allEmojis = [...new Set([...PRESET_REACTIONS, ...Object.keys(reactions).filter(e=>!PRESET_REACTIONS.includes(e))])];
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxHeight:"80vh",background:"linear-gradient(165deg,#0a1628,#0f1e38)",borderRadius:"20px 20px 0 0",display:"flex",flexDirection:"column",overflow:"hidden",border:"1px solid #2a3a5c"}}>
+        {/* Header */}
+        <div style={{padding:"14px 16px 10px",borderBottom:"1px solid #1e2f50",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:22}}>{ta?.flag}</span>
+            <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:"#8899b4",letterSpacing:1}}>vs</span>
+            <span style={{fontSize:22}}>{tb?.flag}</span>
+            <span style={{fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"#e0dcd4",marginLeft:4}}>{countryName(a,lang)} · {countryName(b,lang)}</span>
+          </div>
+          <button onClick={onClose} style={{width:28,height:28,borderRadius:"50%",border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+
+        {/* Reactions */}
+        <div style={{padding:"12px 16px",borderBottom:"1px solid #1e2f50",flexShrink:0}}>
+          <ReactionRow reactions={reactions} allEmojis={allEmojis} myPlayerIdx={myPlayerIdx} playerNames={playerNames} onReact={doReaction} onAddEmoji={()=>emojiInputRef.current?.click()}/>
+          <input ref={emojiInputRef} type="text" inputMode="none" style={{position:"absolute",opacity:0,width:0,height:0}} onInput={e=>{const v=e.target.value.trim();if(v){doReaction(v);e.target.value="";}}}/>
+        </div>
+
+        {/* Messages */}
+        <div style={{flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10}}>
+          {messages.length===0&&(
+            <div style={{textAlign:"center",color:"#3a4a6a",fontFamily:"'DM Sans'",fontSize:13,fontStyle:"italic",marginTop:20}}>
+              {lang==="es"?"Sé el primero en reaccionar 👇":"Be the first to react 👇"}
+            </div>
+          )}
+          {messages.map((msg,i)=>{
+            const color=getPlayerColor(msg.playerIdx,PC[msg.playerIdx]);
+            const isMe=msg.playerIdx===myPlayerIdx;
+            const time=new Date(msg.ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+            return(
+              <div key={i} style={{display:"flex",gap:8,flexDirection:isMe?"row-reverse":"row",alignItems:"flex-end"}}>
+                <div style={{width:28,height:28,borderRadius:8,background:color,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{initials[msg.playerIdx]}</div>
+                <div style={{maxWidth:"72%"}}>
+                  {!isMe&&<div style={{fontFamily:"'DM Sans'",fontSize:10,color:color,fontWeight:600,marginBottom:2}}>{msg.playerName}</div>}
+                  <div style={{background:isMe?`${color}22`:"rgba(26,39,68,0.6)",border:`1px solid ${isMe?color+"44":"#2a3a5c"}`,borderRadius:isMe?"12px 12px 4px 12px":"12px 12px 12px 4px",padding:"7px 11px"}}>
+                    <span style={{fontFamily:"'DM Sans'",fontSize:13,color:"#e0dcd4",lineHeight:1.4}}>{msg.text}</span>
+                  </div>
+                  <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3a4a6a",marginTop:2,textAlign:isMe?"right":"left"}}>{time}</div>
+                </div>
+              </div>
+            );
+          })}
+          <div ref={messagesEndRef}/>
+        </div>
+
+        {/* Pre-set phrases */}
+        <div style={{padding:"8px 16px 4px",borderTop:"1px solid #1e2f50",flexShrink:0}}>
+          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
+            {PRESET_PHRASES.map(phrase=>(
+              <button key={phrase} onClick={()=>doSend(phrase)} style={{padding:"5px 10px",borderRadius:16,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:11,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>
+                {phrase}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Text input */}
+        <div style={{padding:"8px 16px 24px",display:"flex",gap:8,flexShrink:0}}>
+          <input
+            value={input} onChange={e=>setInput(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&doSend(input)}
+            placeholder={lang==="es"?"Escribe algo...":"Say something..."}
+            style={{flex:1,padding:"10px 14px",borderRadius:20,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.6)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:13,outline:"none"}}
+          />
+          <button onClick={()=>doSend(input)} disabled={!input.trim()||sending} style={{width:40,height:40,borderRadius:"50%",border:"none",background:input.trim()?"var(--accent)":"#2a3a5c",color:"#0a1628",fontSize:18,cursor:input.trim()?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>➤</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2270,12 +2475,14 @@ export default function Mundialito() {
       if(!myTeams.has(m.t[0])&&!myTeams.has(m.t[1]))return;
       currentSeen[m.id]=`${r.home}-${r.away}`;
     });
-    // On first load, just store seen results without showing overlay
+    // On first run, load from localStorage so we know what was seen last session
     if(seenResultsRef.current===null){
-      seenResultsRef.current=currentSeen;
-      return;
+      try{
+        const saved=window.localStorage?.getItem("mundi_seen_results");
+        seenResultsRef.current=saved?JSON.parse(saved):{};
+      }catch{seenResultsRef.current={};}
     }
-    // Find newly seen results
+    // Find newly seen results (not in localStorage from previous sessions)
     const newResults=[];
     Object.entries(currentSeen).forEach(([matchId,score])=>{
       if(seenResultsRef.current[matchId]===score)return; // already seen
@@ -2292,10 +2499,29 @@ export default function Mundialito() {
         team:myTeamName, flag:TBN[myTeamName]?.flag||"⚽",
         opponent:opponentName, opponentFlag:TBN[opponentName]?.flag||"⚽",
         outcome, score:{home:r.home,away:r.away},
+        matchId, // keep for chronological sort
       });
     });
-    seenResultsRef.current=currentSeen;
-    if(newResults.length>0) setResultOverlay(newResults);
+    // Update seen ref and persist to localStorage
+    seenResultsRef.current={...seenResultsRef.current,...currentSeen};
+    try{window.localStorage?.setItem("mundi_seen_results",JSON.stringify(seenResultsRef.current));}catch{}
+    if(newResults.length>0){
+      // Sort chronologically by match order in GM fixture list
+      newResults.sort((a,b)=>GM.findIndex(m=>m.id===a.matchId)-GM.findIndex(m=>m.id===b.matchId));
+      // Only show animations for results within the last 72 hours
+      const cutoff=Date.now()-(72*60*60*1000);
+      const recent=newResults.filter(r=>{
+        const match=GM.find(m=>m.id===r.matchId);
+        if(!match)return false;
+        try{
+          const matchTime=match.ko
+            ?new Date(match.d+"T"+match.ko+":00Z").getTime()
+            :new Date(match.d+"T12:00:00Z").getTime();
+          return matchTime>=cutoff;
+        }catch{return false;}
+      });
+      if(recent.length>0) setResultOverlay(recent);
+    }
   },[st.matchResults, myPlayerIdx]);
 
   // Auto-save to Firebase whenever host changes scores — debounced 800ms
@@ -2403,7 +2629,7 @@ export default function Mundialito() {
     <div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628 0%,#0f1e38 40%,#0a1628 100%)",color:"#e0dcd4",fontFamily:"'DM Sans',sans-serif"}}>
       <div style={{position:"relative",textAlign:"center",padding:"26px 20px 4px"}}>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"var(--accent)",lineHeight:1}}>MUNDIALITO</div>
-        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>World Cup 2026 · 🇨🇦 🇺🇸 🇲🇽</div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>{lang==="es"?"Copa Mundial 2026":"World Cup 2026"} · 🇨🇦 🇺🇸 🇲🇽</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#4a5a7a",marginTop:2,letterSpacing:1,textTransform:"uppercase"}}>{lang==="es"?"11 de junio – 19 de julio":"June 11 – July 19"}</div>
         {/* Right: 🎨 and 🌐 stacked */}
         <div style={{position:"absolute",top:14,right:14,display:"flex",flexDirection:"column",gap:4}}>

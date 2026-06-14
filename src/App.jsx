@@ -2122,10 +2122,12 @@ async function loadProfilePics(code) {
 }
 
 // Call this after loadProfilePics to guarantee avatars re-render
-// Bumps twice — once immediately, once after 300ms — to catch any render timing gaps
+// Bumps multiple times with increasing delays to catch any render timing gaps
 function bumpPics(setPicRefresh) {
   setPicRefresh(n=>n+1);
-  setTimeout(()=>setPicRefresh(n=>n+1), 300);
+  setTimeout(()=>setPicRefresh(n=>n+1), 200);
+  setTimeout(()=>setPicRefresh(n=>n+1), 800);
+  setTimeout(()=>setPicRefresh(n=>n+1), 2000);
 }
 
 function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
@@ -2148,15 +2150,23 @@ function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
     if(hasPic && hasChosenColor) return;
     const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(!code) return;
-    const t=setTimeout(()=>{
-      loadProfilePics(code).then(()=>{
-        const p=getProfilePic(idx);
-        if(p) setPic(p);
-        setColor(getPlayerColor(idx,PC[idx]));
-        if(bump) bump();
-      });
-    },500);
-    return()=>clearTimeout(t);
+    // First try: re-read from cache after a short delay (cache may have populated by now)
+    const t1=setTimeout(()=>{
+      const p=getProfilePic(idx);
+      const c=getPlayerColor(idx,PC[idx]);
+      if(p) setPic(p);
+      setColor(c);
+      // If still missing after cache read, do a fresh fetch
+      if(!p&&!colorCache[idx]){
+        loadProfilePics(code).then(()=>{
+          const p2=getProfilePic(idx);
+          if(p2) setPic(p2);
+          setColor(getPlayerColor(idx,PC[idx]));
+          if(bump) bump();
+        });
+      }
+    },300);
+    return()=>clearTimeout(t1);
   },[idx, picVersion]);
   if(pic) return (
     <div style={{width:size,height:size,borderRadius:"50%",overflow:"hidden",flexShrink:0,...style}}>

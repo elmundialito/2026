@@ -2413,6 +2413,8 @@ export default function Mundialito() {
     // Fall back to localStorage for host — load local state immediately for speed,
     // then fetch fresh from Firebase in background
     try{const raw=window.localStorage?.getItem(LOCAL_KEY);if(raw){const saved=JSON.parse(raw);setSt(mergeState(EMPTY,saved.st));setPools(saved.pools||[{id:"default",name:"My Pool"}]);setActivePoolId(saved.activePoolId||"default");setActivePoolName(saved.activePoolName||"My Pool");setIsHost(true);setAppState("host");setActiveTab("standings");
+    // Re-request notification permission on every load to ensure subscription is registered
+    setTimeout(()=>requestNotificationPermission(), 2000);
     const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(code){
       // Load pics AND fresh scores from Firebase
@@ -2444,6 +2446,8 @@ export default function Mundialito() {
             setSt(merged);setIsHost(false);
             setSpectatorPoolCode(savedCode);
             loadProfilePics(savedCode).then(()=>bumpPics(setPicRefresh));
+            // Re-request on every load to ensure subscription registered
+            setTimeout(()=>requestNotificationPermission(), 2000);
             if(merged.draftLocked){
               const seen=window.localStorage?.getItem("mundi_intro_seen");
               if(seen){setAppState("spectator");setActiveTab("standings");}

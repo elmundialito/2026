@@ -1183,10 +1183,174 @@ function GroupStandingsAccordion({g,res,ownership,initials}) {
   );
 }
 
+function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,ownership,initials,config,lang}) {
+  const [selectedDate,setSelectedDate]=useState(today);
+  if(!open)return null;
+
+  const generateAndShare=async()=>{
+    try{
+      const bebas=new FontFace("BebasNeue","url(https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9WdhyyTh89ZNpQ.woff2)");
+      const dm=new FontFace("DMSans","url(https://fonts.gstatic.com/s/dmsans/v15/rP2Hp2ywxg089UriCZa4ET-DNl0.woff2)");
+      await Promise.all([bebas.load(),dm.load()]);
+      document.fonts.add(bebas);document.fonts.add(dm);
+    }catch(e){}
+
+    const matches=(matchesByDate.find(([d])=>d===selectedDate)||[,])[1]||[];
+    const W=420,HEADER=90,MH=90,PAD=14,FOOT=40;
+    const H=HEADER+MH*matches.length+FOOT;
+    const canvas=document.createElement("canvas");
+    const DPR=2;canvas.width=W*DPR;canvas.height=H*DPR;
+    const ctx=canvas.getContext("2d");ctx.scale(DPR,DPR);
+
+    // Background
+    const bg=ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,"#0a1628");bg.addColorStop(0.5,"#0f1e38");bg.addColorStop(1,"#0a1628");
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#c9a84c";ctx.fillRect(0,0,W,4);
+
+    // Header
+    ctx.fillStyle="#c9a84c";ctx.font=`700 32px BebasNeue,Arial`;ctx.textAlign="center";
+    ctx.fillText("⚽ MUNDIALITO 2026 🏆",W/2,42);
+    ctx.fillStyle="#4a5a7a";ctx.font=`400 12px DMSans,Arial`;
+    const d=new Date(selectedDate+"T12:00:00");
+    ctx.fillText(d.toLocaleDateString(lang==="es"?"es-ES":"en-AU",{weekday:"long",day:"numeric",month:"long"}),W/2,62);
+    ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.2;
+    ctx.fillRect(PAD*2,74,W-PAD*4,1);ctx.globalAlpha=1;
+
+    // Matches
+    for(let mi=0;mi<matches.length;mi++){
+      const m=matches[mi];
+      const y=HEADER+mi*MH;
+      const result=matchResults[m.id];
+      const [a,b]=m.t;
+      const ta=TBN[a],tb=TBN[b];
+      const oa=ownership[a],ob=ownership[b];
+      const out=getMatchOutcome(result);
+
+      // Card bg
+      ctx.fillStyle="rgba(26,39,68,0.5)";
+      ctx.strokeStyle="#2a3a5c";ctx.lineWidth=1;
+      ctx.beginPath();
+      ctx.roundRect?ctx.roundRect(PAD,y+4,W-PAD*2,MH-8,8):ctx.rect(PAD,y+4,W-PAD*2,MH-8);
+      ctx.fill();ctx.stroke();
+
+      // Group badge
+      ctx.fillStyle="#1e2f50";
+      ctx.beginPath();ctx.roundRect?ctx.roundRect(PAD+8,y+10,44,16,4):ctx.rect(PAD+8,y+10,44,16);ctx.fill();
+      ctx.fillStyle="#8899b4";ctx.font=`700 10px BebasNeue,Arial`;ctx.textAlign="left";
+      ctx.fillText(`GRP ${m.g}`,PAD+12,y+22);
+
+      // Kickoff or result centre
+      ctx.textAlign="center";
+      if(result&&result.home!=null&&result.away!=null){
+        ctx.font=`700 28px BebasNeue,Arial`;
+        ctx.fillStyle="#e0dcd4";
+        ctx.fillText(`${result.home} – ${result.away}`,W/2,y+MH/2+6);
+        if(out==="D"){
+          ctx.font=`600 9px DMSans,Arial`;ctx.fillStyle="#6b9bd1";
+          ctx.fillText(lang==="es"?"EMPATE":"DRAW",W/2,y+MH/2+18);
+        }
+      } else if(m.ko){
+        ctx.font=`700 18px BebasNeue,Arial`;ctx.fillStyle="var(--accent,#c9a84c)";
+        ctx.fillText(fmtKickoff(m.d,m.ko),W/2,y+MH/2+6);
+      } else {
+        ctx.font=`400 13px DMSans,Arial`;ctx.fillStyle="#4a5a7a";
+        ctx.fillText("–",W/2,y+MH/2+6);
+      }
+
+      // Home team
+      const drawTeam=(name,flag,owner,isHome,ptsEarned)=>{
+        const tx=isHome?PAD+8:W-PAD-8;
+        const align=isHome?"left":"right";
+        const isWin=out&&((isHome&&out==="A")||(!isHome&&out==="B"));
+        const isLoss=out&&((isHome&&out==="B")||(!isHome&&out==="A"));
+        ctx.textAlign=align;
+        ctx.font=`400 22px Arial`;
+        ctx.fillText(flag||"",isHome?PAD+14:W-PAD-14,y+MH/2-4);
+        const col=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):"#8899b4";
+        ctx.fillStyle=isLoss?"#4a5a7a":col||"#e0dcd4";
+        ctx.font=`600 11px DMSans,Arial`;
+        const fn=countryFixture(name,lang);
+        ctx.fillText(fn,isHome?PAD+40:W-PAD-40,y+MH/2-4);
+        // Owner chip + points
+        if(owner!=null){
+          const chipColor=getPlayerColor(owner.playerIdx,PC[owner.playerIdx]);
+          ctx.fillStyle=chipColor;
+          const chipX=isHome?PAD+40:W-PAD-40-16;
+          const chipY=y+MH/2+8;
+          ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,16,16,3):ctx.rect(chipX,chipY,16,16);ctx.fill();
+          ctx.fillStyle="#0a1628";ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="center";
+          ctx.fillText((initials[owner.playerIdx]||"?"),chipX+8,chipY+11);
+          if(ptsEarned>0){
+            ctx.fillStyle=chipColor;ctx.font=`700 10px DMSans,Arial`;
+            ctx.textAlign=isHome?"left":"right";
+            ctx.fillText(`+${ptsEarned}`,isHome?chipX+20:chipX-4,chipY+11);
+          }
+        }
+      };
+
+      // Calculate pts earned per team
+      const ptsA=out?(out==="A"?3:out==="D"?1:0):0;
+      const ptsB=out?(out==="B"?3:out==="D"?1:0):0;
+      drawTeam(a,ta?.flag,oa?.playerIdx!=null?oa:null,true,ptsA);
+      drawTeam(b,tb?.flag,ob?.playerIdx!=null?ob:null,false,ptsB);
+
+      // Divider
+      if(mi<matches.length-1){
+        ctx.fillStyle="#1e2f50";ctx.globalAlpha=0.5;
+        ctx.fillRect(PAD+20,y+MH-1,W-PAD*2-40,1);ctx.globalAlpha=1;
+      }
+    }
+
+    // Footer
+    ctx.fillStyle="#2a3a5c";ctx.font=`400 11px DMSans,Arial`;ctx.textAlign="center";
+    ctx.fillText("elmundialito.github.io/2026",W/2,HEADER+MH*matches.length+24);
+
+    canvas.toBlob(async blob=>{
+      if(!blob)return;
+      const file=new File([blob],"mundialito-results.png",{type:"image/png"});
+      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+        try{await navigator.share({files:[file],title:"Mundialito Results"});}catch(e){}
+      } else {
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");a.href=url;a.download="mundialito-results.png";a.click();
+        URL.revokeObjectURL(url);
+      }
+    },"image/png");
+    onClose();
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",background:"linear-gradient(165deg,#0a1628,#0f1e38)",borderRadius:"20px 20px 0 0",padding:"20px 16px 36px",border:"1px solid #2a3a5c"}}>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:3,color:"var(--accent)",marginBottom:16,textAlign:"center"}}>
+          📤 {lang==="es"?"COMPARTIR DÍA":"SHARE DAY"}
+        </div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",marginBottom:12}}>
+          {lang==="es"?"Selecciona el día:":"Select day:"}
+        </div>
+        <select value={selectedDate} onChange={e=>setSelectedDate(e.target.value)}
+          style={{width:"100%",padding:"12px 14px",borderRadius:10,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.8)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:14,marginBottom:16,outline:"none"}}>
+          {dates.map(d=>{
+            const dt=new Date(d+"T12:00:00");
+            const label=dt.toLocaleDateString(lang==="es"?"es-ES":"en-AU",{weekday:"short",day:"numeric",month:"short"});
+            const isToday=d===today;
+            return <option key={d} value={d}>{isToday?(lang==="es"?"HOY":"TODAY")+" · "+label:label}</option>;
+          })}
+        </select>
+        <button onClick={generateAndShare} style={{width:"100%",padding:"14px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,var(--accent),#b8923c)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,cursor:"pointer"}}>
+          {lang==="es"?"GENERAR Y COMPARTIR":"GENERATE & SHARE"} 📤
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx}) {
   const lang=useContext(LangContext);
   const [matchChat,setMatchChat]=useState({});
   const [openChatId,setOpenChatId]=useState(null);
+  const [showShareDay,setShowShareDay]=useState(false);
   const poolCode=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
 
   // Subscribe to matchChat via onSnapshot
@@ -1278,8 +1442,9 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
         })}
         </div>
       </div>
-      <div style={{display:"flex",gap:6,marginBottom:16}}>
+      <div style={{display:"flex",gap:6,marginBottom:16,alignItems:"center"}}>
         {[{id:"schedule",icon:"📅",labelKey:"matchSchedule"},{id:"standings",icon:"📊",labelKey:"groupStandings"}].map(v=>{const active=v.id===view;return <button key={v.id} onClick={()=>setView(v.id)} style={{padding:"9px 16px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>{v.icon} {t(lang,v.labelKey)}</button>;})}
+        <button onClick={()=>setShowShareDay(true)} style={{marginLeft:"auto",padding:"9px 12px",borderRadius:8,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer",flexShrink:0}}>📤</button>
       </div>
       {view==="schedule"&&matchesByDate.map(([date,matches])=>{
         const isToday=date===today;const isPast=date<today;
@@ -1300,6 +1465,23 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
       {view==="standings"&&Object.keys(GROUPS).map(g=><GroupStandingsAccordion key={g} g={g} res={matchResults} ownership={ownership} initials={initials}/>)}
       <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
       {flash&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.4)",borderRadius:30,padding:"10px 22px",fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"var(--accent)",whiteSpace:"nowrap",zIndex:200,animation:"slideUp 0.3s ease-out"}}>⚽ {flash}</div>}
+      {showShareDay&&(()=>{
+        const dates=matchesByDate.map(([d])=>d);
+        return(
+          <ShareDayModal
+            open={true}
+            onClose={()=>setShowShareDay(false)}
+            dates={dates}
+            today={today}
+            matchesByDate={matchesByDate}
+            matchResults={matchResults}
+            ownership={ownership}
+            initials={initials}
+            config={config}
+            lang={lang}
+          />
+        );
+      })()}
       {openChatId&&(()=>{const m=GM.find(x=>x.id===openChatId);return m?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={m} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
     </div>
   );
@@ -1408,6 +1590,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
 function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser,onEditProfile,picRefresh=0}) {
   const lang=useContext(LangContext);
   const [expandedIdx,setExpandedIdx]=useState(null);
+  const today=new Date().toLocaleDateString("en-CA");
   const playerData=useMemo(()=>{
     return Array.from({length:config.playerCount},(_,i)=>{
       const gsPts=playerGSPts(i,picks||[],matchResults);
@@ -1415,7 +1598,6 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       const r32=KM.filter(m=>m.round==="r32").filter(m=>{const r=koResults[m.id];if(!r)return false;const b=bracket[m.id];if(!b)return false;const w=r==="A"?b.a:b.b;return w&&(picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team).includes(w);}).length;
       const myTeams=(picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);
       const teamBreakdown=myTeams.map(t=>{const tgs=teamGSPts(t,matchResults);const tko=teamKOPts(t,bracket,koResults,config.koPoints);return{team:t,gsPts:tgs,koPts:tko,pts:tgs+tko,eliminated:isEliminated(t,bracket,koResults)};}).sort((a,b)=>b.pts-a.pts||a.team.localeCompare(b.team));
-      // Calculate goal difference and goals for across all owned teams (for tiebreaking)
       let gd=0,gf=0;
       myTeams.forEach(team=>{
         GM.forEach(m=>{
@@ -1425,8 +1607,18 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           else if(isAway){gf+=r.away;gd+=(r.away-r.home);}
         });
       });
+      // Today's points
+      let todayPts=0;
+      myTeams.forEach(team=>{
+        GM.filter(m=>m.d===today&&m.t.includes(team)).forEach(m=>{
+          const out=getMatchOutcome(matchResults[m.id]);if(!out)return;
+          const isHome=m.t[0]===team;
+          if((isHome&&out==="A")||(!isHome&&out==="B"))todayPts+=3;
+          else if(out==="D")todayPts+=1;
+        });
+      });
       const color=getPlayerColor(i,PC[i]);
-      return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,teamBreakdown,color,gd,gf};
+      return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,teamBreakdown,color,gd,gf,todayPts};
     }).sort((a,b)=>b.total-a.total||b.r32-a.r32||b.gsPts-a.gsPts||b.gd-a.gd||b.gf-a.gf);
   },[config,picks,matchResults,bracket,koResults,picRefresh]);
   const pot=(parseFloat(config.entryFee||0))*config.playerCount;
@@ -1588,16 +1780,22 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           let name=p.name;
           const maxNameW=W-PAD*2-106-70;
           while(ctx.measureText(name).width>maxNameW&&name.length>3) name=name.slice(0,-1)+"…";
-          ctx.fillText(name,PAD+106,y+ROW/2+6);
+          ctx.fillText(name,PAD+106,y+ROW/2);
+          // Today's pts under name
+          if(p.todayPts>0){
+            ctx.font=`600 11px DMSans,Arial`;
+            ctx.fillStyle=`${color}cc`;
+            ctx.fillText(`+${p.todayPts} ${lang==="es"?"hoy":"today"}`,PAD+106,y+ROW/2+16);
+          }
 
           // Points — big
           ctx.textAlign="right";
           ctx.font=`700 ${isTop3?36:30}px BebasNeue,Arial`;
           ctx.fillStyle=color;
-          ctx.fillText(p.total,W-PAD-10,y+ROW/2+12);
+          ctx.fillText(p.total,W-PAD-10,y+ROW/2+8);
           ctx.font=`400 10px DMSans,Arial`;
           ctx.fillStyle=`${color}88`;
-          ctx.fillText(lang==="es"?(p.total===1?"punto":"puntos"):(p.total===1?"pt":"pts"),W-PAD-10,y+ROW/2+24);
+          ctx.fillText(lang==="es"?(p.total===1?"punto":"puntos"):(p.total===1?"pt":"pts"),W-PAD-10,y+ROW/2+20);
         }
 
         // Footer

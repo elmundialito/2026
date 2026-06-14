@@ -2589,6 +2589,13 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
     if(!open||playerIdx===null) return;
     setPic(getProfilePic(playerIdx));
     setCropSrc(null);
+    setSelectedColor(null);
+    // Use colorCache immediately (already populated from Firebase on load)
+    const takenFromCache=Object.entries(colorCache)
+      .filter(([k])=>parseInt(k)!==playerIdx)
+      .map(([,v])=>v);
+    setTakenColors(takenFromCache);
+    // Also refresh from Firebase in case cache is stale
     const code = window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(code){
       loadProfilePics(code).then(()=>{ setPic(getProfilePic(playerIdx)); });

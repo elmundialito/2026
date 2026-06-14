@@ -3322,7 +3322,6 @@ export default function Mundialito() {
           {/* 💡 Suggestions — everyone */}
           <button onClick={()=>setShowSuggestions(true)} style={{width:28,height:28,borderRadius:"50%",border:"1px solid rgba(107,155,209,0.3)",background:"rgba(107,155,209,0.06)",color:"#6b9bd1",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>💡</button>
         </div>
-        </div>
         {/* Right: avatar — always visible, opens profile */}
         {myPlayerIdx!==null&&(()=>{const pc=getPlayerColor(myPlayerIdx,PC[myPlayerIdx]);return(
           <div onClick={()=>{setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 10px 4px 6px",borderRadius:20,border:`1px solid ${pc}55`,background:`${pc}11`,cursor:"pointer",flexShrink:0}} title="Edit your profile">

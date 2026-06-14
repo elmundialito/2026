@@ -1479,118 +1479,153 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         {t(lang,"changeUser")}
       </button>
       <button onClick={async()=>{
-        // Build canvas leaderboard card
-        const W=420,HEADER=90,ROW=64,PAD=16,FOOT=48;
+        // Load fonts before drawing
+        try {
+          const bebas = new FontFace("BebasNeue","url(https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9WdhyyTh89ZNpQ.woff2)");
+          const dm = new FontFace("DMSans","url(https://fonts.gstatic.com/s/dmsans/v15/rP2Hp2ywxg089UriCZa4ET-DNl0.woff2)");
+          await Promise.all([bebas.load(),dm.load()]);
+          document.fonts.add(bebas);document.fonts.add(dm);
+        } catch(e){}
+
+        const W=420,HEADER=100,ROW=72,PAD=16,FOOT=44;
         const H=HEADER+ROW*playerData.length+FOOT;
         const canvas=document.createElement("canvas");
         const DPR=2;
         canvas.width=W*DPR;canvas.height=H*DPR;
         const ctx=canvas.getContext("2d");
         ctx.scale(DPR,DPR);
-        // Background
+
+        // Background gradient
         const bg=ctx.createLinearGradient(0,0,W,H);
-        bg.addColorStop(0,"#0a1628");bg.addColorStop(1,"#0f1e38");
+        bg.addColorStop(0,"#0a1628");bg.addColorStop(0.5,"#0f1e38");bg.addColorStop(1,"#0a1628");
         ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+
         // Gold top bar
-        ctx.fillStyle="#c9a84c";ctx.fillRect(0,0,W,3);
-        // Header
+        ctx.fillStyle="#c9a84c";ctx.fillRect(0,0,W,4);
+
+        // Header — MUNDIALITO
         ctx.fillStyle="#c9a84c";
-        ctx.font=`700 ${28}px 'Arial Black',Arial,sans-serif`;
+        ctx.font=`700 36px BebasNeue,Arial`;
         ctx.textAlign="center";
-        ctx.fillText("MUNDIALITO 2026",W/2,38);
+        ctx.letterSpacing="8px";
+        ctx.fillText("MUNDIALITO 2026",W/2,48);
+        ctx.letterSpacing="0px";
+
+        // Subheader
         ctx.fillStyle="#4a5a7a";
-        ctx.font=`400 ${12}px Arial,sans-serif`;
+        ctx.font=`400 12px DMSans,Arial`;
         const now=new Date();
-        ctx.fillText(`${lang==="es"?"Clasificación":"Leaderboard"} · ${now.toLocaleDateString(lang==="es"?"es-ES":"en-AU",{day:"numeric",month:"short"})}`,W/2,58);
+        ctx.fillText(`${lang==="es"?"Clasificación":"Leaderboard"} · ${now.toLocaleDateString(lang==="es"?"es-ES":"en-AU",{day:"numeric",month:"short"})}`,W/2,68);
+
         // Divider
-        ctx.fillStyle="#1e2f50";ctx.fillRect(PAD,70,W-PAD*2,1);
+        ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.3;
+        ctx.fillRect(PAD*2,80,W-PAD*4,1);
+        ctx.globalAlpha=1;
+
         // Rows
         for(let ri=0;ri<playerData.length;ri++){
           const p=playerData[ri];
           const y=HEADER+ri*ROW;
           const color=p.color||"#c9a84c";
-          // Row bg for top 3
-          if(ri<3){
-            ctx.fillStyle=`${color}18`;
-            ctx.beginPath();
-            if(typeof ctx.roundRect==="function") ctx.roundRect(PAD,y+4,W-PAD*2,ROW-8,8);
-            else ctx.rect(PAD,y+4,W-PAD*2,ROW-8);
-            ctx.fill();
-          }
+
+          // Row bg — subtle colour tint
+          ctx.fillStyle=`${color}${ri===0?"22":"14"}`;
+          ctx.beginPath();
+          ctx.roundRect?ctx.roundRect(PAD,y+4,W-PAD*2,ROW-8,10):ctx.rect(PAD,y+4,W-PAD*2,ROW-8);
+          ctx.fill();
+
+          // Left colour accent bar
+          ctx.fillStyle=color;ctx.globalAlpha=0.8;
+          ctx.beginPath();
+          ctx.roundRect?ctx.roundRect(PAD,y+4,3,ROW-8,2):ctx.rect(PAD,y+4,3,ROW-8);
+          ctx.fill();
+          ctx.globalAlpha=1;
+
           // Rank
           const medals=["🥇","🥈","🥉"];
-          ctx.font=`700 ${ri<3?18:14}px Arial,sans-serif`;
-          ctx.textAlign="center";
-          ctx.fillStyle=ri<3?color:"#5a6a8a";
-          ctx.fillText(ri<3?medals[ri]:`${ri+1}`,PAD+18,y+ROW/2+6);
-          // Avatar circle
-          const ax=PAD+46,ay=y+ROW/2;
-          const AR=20;
+          if(ri<3){
+            ctx.font=`400 24px Arial`;
+            ctx.textAlign="center";
+            ctx.fillText(medals[ri],PAD+22,y+ROW/2+9);
+          } else {
+            ctx.font=`700 16px BebasNeue,Arial`;
+            ctx.fillStyle="#5a6a8a";
+            ctx.textAlign="center";
+            ctx.fillText(`${ri+1}`,PAD+22,y+ROW/2+6);
+          }
+
+          // Avatar
+          const ax=PAD+58,ay=y+ROW/2;const AR=22;
+          ctx.save();
           ctx.beginPath();ctx.arc(ax,ay,AR,0,Math.PI*2);
           ctx.fillStyle=color;ctx.fill();
-          // Try to draw profile pic
+          // Coloured ring
+          ctx.strokeStyle=color;ctx.lineWidth=2;ctx.globalAlpha=0.6;ctx.stroke();
+          ctx.globalAlpha=1;
+          ctx.clip();
           const pic=getProfilePic(p.idx);
           if(pic){
             try{
               await new Promise((res,rej)=>{
                 const img=new Image();
-                img.onload=()=>{
-                  ctx.save();
-                  ctx.beginPath();ctx.arc(ax,ay,AR,0,Math.PI*2);ctx.clip();
-                  ctx.drawImage(img,ax-AR,ay-AR,AR*2,AR*2);
-                  ctx.restore();res();
-                };
-                img.onerror=rej;
-                img.src=pic;
+                img.onload=()=>{ctx.drawImage(img,ax-AR,ay-AR,AR*2,AR*2);res();};
+                img.onerror=rej;img.src=pic;
               });
             }catch{
-              // fallback to initials
-              ctx.font=`700 ${13}px Arial,sans-serif`;
+              ctx.font=`700 13px BebasNeue,Arial`;
               ctx.fillStyle="#0a1628";ctx.textAlign="center";
               ctx.fillText((initials[p.idx]||"?"),ax,ay+5);
             }
           } else {
-            ctx.font=`700 ${13}px Arial,sans-serif`;
+            ctx.font=`700 13px BebasNeue,Arial`;
             ctx.fillStyle="#0a1628";ctx.textAlign="center";
             ctx.fillText((initials[p.idx]||"?"),ax,ay+5);
           }
+          ctx.restore();
+
           // Name
           ctx.textAlign="left";
-          ctx.font=`600 ${14}px Arial,sans-serif`;
-          ctx.fillStyle=ri===0?"#c9a84c":"#e0dcd4";
-          const maxW=W-PAD*2-80-60;
+          ctx.font=`600 ${ri===0?17:15}px DMSans,Arial`;
+          ctx.fillStyle=ri===0?color:"#e0dcd4";
           let name=p.name;
-          ctx.font=`600 14px Arial,sans-serif`;
-          while(ctx.measureText(name).width>maxW&&name.length>3) name=name.slice(0,-1)+"…";
-          ctx.fillText(name,PAD+76,y+ROW/2+5);
-          // Points
+          const maxNameW=W-PAD*2-90-80;
+          while(ctx.measureText(name).width>maxNameW&&name.length>3) name=name.slice(0,-1)+"…";
+          ctx.fillText(name,PAD+88,y+ROW/2+6);
+
+          // Points — big number
           ctx.textAlign="right";
-          ctx.font=`700 ${22}px Arial,sans-serif`;
+          ctx.font=`700 32px BebasNeue,Arial`;
           ctx.fillStyle=color;
-          ctx.fillText(p.total,W-PAD-36,y+ROW/2+8);
-          ctx.font=`400 ${10}px Arial,sans-serif`;
-          ctx.fillStyle="#5a6a8a";
-          ctx.fillText(lang==="es"?(p.total===1?"punto":"puntos"):(p.total===1?"pt":"pts"),W-PAD-36,y+ROW/2+20);
-          // Divider
+          ctx.fillText(p.total,W-PAD-8,y+ROW/2+10);
+          ctx.font=`400 10px DMSans,Arial`;
+          ctx.fillStyle=`${color}99`;
+          ctx.fillText(lang==="es"?(p.total===1?"punto":"puntos"):(p.total===1?"pt":"pts"),W-PAD-8,y+ROW/2+22);
+
+          // Row divider
           if(ri<playerData.length-1){
-            ctx.fillStyle="#1e2f50";
-            ctx.fillRect(PAD+70,y+ROW-1,W-PAD*2-70,1);
+            ctx.fillStyle="#1e2f50";ctx.globalAlpha=0.6;
+            ctx.fillRect(PAD+80,y+ROW-1,W-PAD*2-80,1);
+            ctx.globalAlpha=1;
           }
         }
+
         // Footer
         ctx.fillStyle="#2a3a5c";
-        ctx.font=`400 ${11}px Arial,sans-serif`;
+        ctx.font=`400 11px DMSans,Arial`;
         ctx.textAlign="center";
         ctx.fillText("elmundialito.github.io/2026",W/2,HEADER+ROW*playerData.length+28);
-        // Export
+
+        // Bottom gold line
+        ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.3;
+        ctx.fillRect(PAD*2,H-4,W-PAD*4,1);
+        ctx.globalAlpha=1;
+
         canvas.toBlob(async blob=>{
           if(!blob)return;
           const file=new File([blob],"mundialito-leaderboard.png",{type:"image/png"});
           if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-            try{await navigator.share({files:[file],title:"Mundialito Leaderboard"});}
-            catch(e){}
+            try{await navigator.share({files:[file],title:"Mundialito Leaderboard"});}catch(e){}
           } else {
-            // Fallback: download
             const url=URL.createObjectURL(blob);
             const a=document.createElement("a");a.href=url;a.download="mundialito-leaderboard.png";a.click();
             URL.revokeObjectURL(url);

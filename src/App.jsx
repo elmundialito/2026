@@ -1478,6 +1478,127 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       <button onClick={onChangeUser} style={{width:"100%",marginTop:14,padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
         {t(lang,"changeUser")}
       </button>
+      <button onClick={async()=>{
+        // Build canvas leaderboard card
+        const W=420,HEADER=90,ROW=64,PAD=16,FOOT=48;
+        const H=HEADER+ROW*playerData.length+FOOT;
+        const canvas=document.createElement("canvas");
+        const DPR=2;
+        canvas.width=W*DPR;canvas.height=H*DPR;
+        const ctx=canvas.getContext("2d");
+        ctx.scale(DPR,DPR);
+        // Background
+        const bg=ctx.createLinearGradient(0,0,W,H);
+        bg.addColorStop(0,"#0a1628");bg.addColorStop(1,"#0f1e38");
+        ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+        // Gold top bar
+        ctx.fillStyle="#c9a84c";ctx.fillRect(0,0,W,3);
+        // Header
+        ctx.fillStyle="#c9a84c";
+        ctx.font=`700 ${28}px 'Arial Black',Arial,sans-serif`;
+        ctx.textAlign="center";
+        ctx.fillText("MUNDIALITO 2026",W/2,38);
+        ctx.fillStyle="#4a5a7a";
+        ctx.font=`400 ${12}px Arial,sans-serif`;
+        const now=new Date();
+        ctx.fillText(`${lang==="es"?"Clasificación":"Leaderboard"} · ${now.toLocaleDateString(lang==="es"?"es-ES":"en-AU",{day:"numeric",month:"short"})}`,W/2,58);
+        // Divider
+        ctx.fillStyle="#1e2f50";ctx.fillRect(PAD,70,W-PAD*2,1);
+        // Rows
+        for(let ri=0;ri<playerData.length;ri++){
+          const p=playerData[ri];
+          const y=HEADER+ri*ROW;
+          const color=p.color||"#c9a84c";
+          // Row bg for top 3
+          if(ri<3){
+            ctx.fillStyle=`${color}18`;
+            ctx.beginPath();
+            if(typeof ctx.roundRect==="function") ctx.roundRect(PAD,y+4,W-PAD*2,ROW-8,8);
+            else ctx.rect(PAD,y+4,W-PAD*2,ROW-8);
+            ctx.fill();
+          }
+          // Rank
+          const medals=["🥇","🥈","🥉"];
+          ctx.font=`700 ${ri<3?18:14}px Arial,sans-serif`;
+          ctx.textAlign="center";
+          ctx.fillStyle=ri<3?color:"#5a6a8a";
+          ctx.fillText(ri<3?medals[ri]:`${ri+1}`,PAD+18,y+ROW/2+6);
+          // Avatar circle
+          const ax=PAD+46,ay=y+ROW/2;
+          const AR=20;
+          ctx.beginPath();ctx.arc(ax,ay,AR,0,Math.PI*2);
+          ctx.fillStyle=color;ctx.fill();
+          // Try to draw profile pic
+          const pic=getProfilePic(p.idx);
+          if(pic){
+            try{
+              await new Promise((res,rej)=>{
+                const img=new Image();
+                img.onload=()=>{
+                  ctx.save();
+                  ctx.beginPath();ctx.arc(ax,ay,AR,0,Math.PI*2);ctx.clip();
+                  ctx.drawImage(img,ax-AR,ay-AR,AR*2,AR*2);
+                  ctx.restore();res();
+                };
+                img.onerror=rej;
+                img.src=pic;
+              });
+            }catch{
+              // fallback to initials
+              ctx.font=`700 ${13}px Arial,sans-serif`;
+              ctx.fillStyle="#0a1628";ctx.textAlign="center";
+              ctx.fillText((initials[p.idx]||"?"),ax,ay+5);
+            }
+          } else {
+            ctx.font=`700 ${13}px Arial,sans-serif`;
+            ctx.fillStyle="#0a1628";ctx.textAlign="center";
+            ctx.fillText((initials[p.idx]||"?"),ax,ay+5);
+          }
+          // Name
+          ctx.textAlign="left";
+          ctx.font=`600 ${14}px Arial,sans-serif`;
+          ctx.fillStyle=ri===0?"#c9a84c":"#e0dcd4";
+          const maxW=W-PAD*2-80-60;
+          let name=p.name;
+          ctx.font=`600 14px Arial,sans-serif`;
+          while(ctx.measureText(name).width>maxW&&name.length>3) name=name.slice(0,-1)+"…";
+          ctx.fillText(name,PAD+76,y+ROW/2+5);
+          // Points
+          ctx.textAlign="right";
+          ctx.font=`700 ${22}px Arial,sans-serif`;
+          ctx.fillStyle=color;
+          ctx.fillText(p.total,W-PAD-36,y+ROW/2+8);
+          ctx.font=`400 ${10}px Arial,sans-serif`;
+          ctx.fillStyle="#5a6a8a";
+          ctx.fillText(lang==="es"?(p.total===1?"punto":"puntos"):(p.total===1?"pt":"pts"),W-PAD-36,y+ROW/2+20);
+          // Divider
+          if(ri<playerData.length-1){
+            ctx.fillStyle="#1e2f50";
+            ctx.fillRect(PAD+70,y+ROW-1,W-PAD*2-70,1);
+          }
+        }
+        // Footer
+        ctx.fillStyle="#2a3a5c";
+        ctx.font=`400 ${11}px Arial,sans-serif`;
+        ctx.textAlign="center";
+        ctx.fillText("elmundialito.github.io/2026",W/2,HEADER+ROW*playerData.length+28);
+        // Export
+        canvas.toBlob(async blob=>{
+          if(!blob)return;
+          const file=new File([blob],"mundialito-leaderboard.png",{type:"image/png"});
+          if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+            try{await navigator.share({files:[file],title:"Mundialito Leaderboard"});}
+            catch(e){}
+          } else {
+            // Fallback: download
+            const url=URL.createObjectURL(blob);
+            const a=document.createElement("a");a.href=url;a.download="mundialito-leaderboard.png";a.click();
+            URL.revokeObjectURL(url);
+          }
+        },"image/png");
+      }} style={{width:"100%",marginTop:10,padding:"12px 0",borderRadius:10,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer"}}>
+        📤 {lang==="es"?"COMPARTIR CLASIFICACIÓN":"SHARE LEADERBOARD"}
+      </button>
     </div>
   );
 }

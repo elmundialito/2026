@@ -2145,20 +2145,18 @@ function bumpPics(setPicRefresh) {
 
 function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
   const picVersion = useContext(PicContext);
-  // Read directly from cache on every render — no local state needed
-  // picVersion bumps whenever loadProfilePics completes, triggering a re-render
+  // picVersion and refresh are render triggers — reading them here forces re-render when they change
+  const _trigger = picVersion + refresh;
   const pic = getProfilePic(idx);
   const color = getPlayerColor(idx, PC[idx]);
   const initials = nameToInitial(name||"");
-  // refresh and picVersion are used as render triggers only
-  void refresh; void picVersion;
   if(pic) return (
     <div style={{width:size,height:size,borderRadius:"50%",overflow:"hidden",flexShrink:0,...style}}>
       <img src={pic} style={{width:"100%",height:"100%",objectFit:"cover"}} />
     </div>
   );
   return (
-    <div style={{width:size,height:size,borderRadius:"50%",background:color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.33,fontWeight:900,color:"#0a1628",flexShrink:0,...style}}>
+    <div style={{width:size,height:size,borderRadius:"50%",background:color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.33,fontWeight:900,color:"#0a1628",flexShrink:0,...style,opacity:_trigger>=0?1:0}}>
       {initials}
     </div>
   );

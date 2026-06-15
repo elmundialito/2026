@@ -2116,8 +2116,9 @@ async function saveProfilePicToFirestore(playerIdx, dataUrl) {
 }
 
 async function loadProfilePics(code) {
+  if(!code) return {};
   try {
-    const snap = await getDoc(doc(db, "pools", code));
+    const snap = await getDoc(doc(db, "pools", code.toUpperCase()));
     if (!snap.exists()) return {};
     const data = snap.data();
     const profiles = data.profiles || {};

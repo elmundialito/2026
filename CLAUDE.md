@@ -1,114 +1,279 @@
-# Mundialito 2026 — Project Summary for Claude
+# Mundialito 2026 — Project Context for Claude
 
-## What this is
-A World Cup 2026 family pool tracker app. Features: snake draft, group stage score entry, knockout bracket, standings, Firebase sync, 4-letter pool codes, host password, push notifications, profile pics, player colours, theme colours. Family pool across Singapore, El Salvador, Bali, Sydney.
+## First Steps in New Conversation
 
-## Live URL
-https://elmundialito.github.io/2026/
+1. Read this file fully
+1. Read the transcript at `/mnt/transcripts/` (latest file)
+1. Working file is ALWAYS `/mnt/user-data/outputs/App.jsx`
+1. Copy to `/home/claude/App.jsx` before editing, present back when done
+1. Always syntax check: `node -e "const fs=require('fs');const src=fs.readFileSync('App.jsx','utf8');let o=0,c=0;for(const ch of src){if(ch==='{')o++;if(ch==='}')c++;}console.log('Braces:'+(o-c));"`
 
-## GitHub Repo
-https://github.com/elmundialito/2026
-- `src/App.jsx` — entire app (~1200 lines, all logic in one file)
-- `index.html` — entry point with OneSignal SDK + app icon
-- `package.json` — dependencies (react, react-dom, firebase)
-- `vite.config.js` — base: '/2026/'
-- `.github/workflows/deploy.yml` — builds on push to main, deploys to gh-pages
-- `icon.svg` — trophy app icon (navy/gold)
-- `CLAUDE.md` — this file
+-----
 
-## How to deploy changes
-1. Edit `src/App.jsx` here in Claude
-2. Upload to GitHub repo src folder
-3. GitHub Actions builds automatically (~2 mins)
-4. No terminal needed ever
+## Project Overview
+
+- **Live URL:** <https://elmundialito.github.io/2026/>
+- **Repo:** github.com/elmundialito/2026 — all logic in `src/App.jsx` (~3400 lines)
+- **Deploy:** Push to main → GitHub Actions → gh-pages (~2 mins)
+- **Firebase:** Project `mundialito2026-c1c81`, pool doc `pools/CS26`
+- **Firebase rules expire ~July 13 2026** — update before then
+- **User:** Byron (host), 8-player World Cup pool, players in Singapore/Sydney/El Salvador
+
+-----
+
+## CRITICAL — Profile Pic Loading (DO NOT CHANGE THIS PATTERN)
+
+This has been broken and fixed many times. The working pattern is:
+
+### How it works
+
+- `picCache` = module-level JS object, in-memory only (pics are base64, too large for localStorage)
+- `colorCache` = module-level JS object, persisted to `mundi_color_cache` localStorage
+- `PicContext` = React context with value `picRefresh` (integer counter)
+- `PicBumpContext` = React context exposing `()=>bumpPics(setPicRefresh)`
+- `PlayerAvatar` is **stateless** — reads from `picCache` directly on every render, re-renders when `picVersion` (from PicContext) changes
+
+### The working load sequence (HOST)
+
+```js
+// Single Firebase call — loadPool returns both game state AND _profiles/_playerColors
+loadPool(code).then(fresh => {
+  if(fresh) {
+    if(fresh._profiles) Object.keys(fresh._profiles).forEach(k => { picCache[parseInt(k)] = fresh._profiles[k]; });
+    if(fresh._playerColors) Object.keys(fresh._playerColors).forEach(k => { colorCache[parseInt(k)] = fresh._playerColors[k]; saveCaches(); });
+    setPicRefresh(n => n+1); // bump AFTER cache is populated
+    setSt(prev => { ... }); // update game state
+  }
+});
+```
+
+### The working load sequence (SPECTATOR)
+
+- `onSnapshot` listener reads `data.profiles` and `data.playerColors` directly from snapshot
+- Populates `picCache` and `colorCache` then calls `bumpPics(setPicRefresh)`
+- `picsLoaded` flag prevents re-fetching on every snapshot update
+
+### loadPool function
+
+Always uppercases the code. Returns `_profiles` and `_playerColors` alongside decoded state.
+
+### loadProfilePics function
+
+Always uppercases the code. Used in ProfileSetupModal on open.
+
+### PlayerAvatar
+
+```jsx
+function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
+  const picVersion = useContext(PicContext);
+  const _trigger = picVersion + refresh; // MUST use picVersion in render output
+  const pic = getProfilePic(idx);
+  const color = getPlayerColor(idx, PC[idx]);
+  // _trigger used in opacity so React tracks the dependency
+  if(pic) return <div>...</div>;
+  return <div style={{..., opacity: _trigger>=0?1:0}}>initials</div>;
+}
+```
+
+### RULES — never break these:
+
+- NEVER add useState/useEffect to PlayerAvatar
+- NEVER call loadProfilePics AND loadPool simultaneously (causes race condition)
+- NEVER call bumpPics before Firebase has responded
+- ALWAYS use `setPicRefresh(n=>n+1)` directly, not `bumpPics()`, after Firebase responds
+- `bumpPics` fires 4 times (0, 200, 800, 2000ms) — use only as secondary safety net
+
+-----
 
 ## Architecture
 
-### Firebase Firestore
-- Project: mundialito2026
-- App ID: cc413549-cd70-4710-ae6f-de41d69f5b26 (safe to be public)
-- Database: asia-southeast1 (Singapore)
-- **IMPORTANT: Test mode expires ~July 13 2026 — update Firestore rules before then**
-- Fix: Firebase console → Firestore → Rules → open read/write, set expiry Aug 2026
-- Pool document `pools/CS26` fields: `state` (encoded), `password`, `updatedAt`, `profiles` (map of playerIdx→base64 photo), `playerColors` (map of playerIdx→hex color)
-- Functions: `savePool(code, state, password)`, `loadPool(code)`, `checkPassword(code, password)`, `saveProfilePicToFirestore(playerIdx, dataUrl)`, `loadProfilePics(code)`, `savePlayerColor(playerIdx, color)`, `loadPlayerColors(code)`
+### State Management
 
-### Pool code system
-- Host taps 📋 Share Update → first time: chooses code (CS26) + password → saves to Firebase
-- Auto-saves to Firebase every time a score is entered (no manual share needed for scores)
-- Spectators auto-load CS26 on return visits (saved in localStorage: `mundi_spectator_code`)
-- Host auto-loads on return visits (saved in localStorage: `mundi_v11`)
-- ⏏ button top-left resets everything
+- Host: localStorage (`mundi_v11`) + Firebase background sync
+- Spectator: Firebase `onSnapshot` listener
+- Auto-save: debounced 800ms using `stRef` (avoids stale closure)
 
-### Live sync
-- Spectators have Firebase `onSnapshot` listener — updates push automatically when host saves
-- No refresh needed — scores appear in real time
+### Key localStorage keys
 
-### Host mode switching
-- Load CS26 → 🎙️ Host mode button → enter password → full edit access
-- Switching to host saves state to localStorage so it persists on that device
+- `mundi_v11` — full host state
+- `mundi_pool_code` — pool code (always uppercase e.g. “CS26”)
+- `mundi_host_pw` — host password
+- `mundi_spectator_code` — spectator pool code
+- `mundi_my_player` — player index (0-7)
+- `mundi_color_cache` — JSON of `{playerIdx: colorHex}`
+- `mundi_accent` — chosen accent colour
+- `mundi_lang` — “en” or “es”
+- `mundi_intro_seen` — “1” if spectator has seen intro
+- `mundi_seen_results` — JSON of seen match results for overlay
 
-### Push notifications — OneSignal
-- App ID: cc413549-cd70-4710-ae6f-de41d69f5b26
-- SDK in index.html, service worker in repo root
-- Permission requested 3 seconds after spectator loads pool
-- 🔔 Notify button (host only) → NotifyModal with presets + custom message
+### Contexts
 
-### Cloudflare Worker (notification backend)
-- URL: https://mundialito-notify.byroncristol.workers.dev
-- Receives POST {message} → adds OneSignal REST API key → sends push
-- API key stored as Cloudflare secret `ONESIGNAL_API_KEY`
+- `LangContext` — “en” or “es”
+- `PicContext` — picRefresh integer (triggers PlayerAvatar re-renders)
+- `PicBumpContext` — function to bump picRefresh
 
-## User identity system
-- On first load after joining CS26, spectators see "Select your name" screen
-- Grid of all 8 players, tap yours → profile setup screen
-- Profile setup: optional photo upload (resized to 120px, stored in Firestore), colour picker
-- Identity saved to localStorage: `mundi_my_player` (index)
-- "👤 Change user" button at bottom of standings tab
-- Photos stored in Firestore `pools/CS26/profiles` — everyone sees everyone's photos
+-----
 
-## Theme & colours
-- **Player colour**: each player picks from 20 colours, saved to Firestore, seen by everyone. Used for initials chips in group stage and avatar circles in standings. Taken colours show 🔒.
-- **Theme accent colour**: personal preference, device only, saved to localStorage `mundi_accent`. Changes all gold (#c9a84c) elements to chosen colour. 12 options. 🎨 button in header.
-- CSS variable `--accent` injected on `<html>` element for global theming.
-- In-memory caches: `picCache` (photos), `colorCache` (player colours)
+## Key Components
 
-## Match data
-### Group stage — GM array (72 matches)
-- `{id: "G01"-"G72", g: group, d: UTC date, t: [team1, team2], v: venue, ko: UTC time}`
-- All 72 times verified against official SGT schedule
-- Matches grouped by user's LOCAL date (not UTC date) using `fmtKickoff(d, ko)`
-- 12hr format display (e.g. "3am", "7:30pm")
+### Mundialito() — main component
 
-### Knockout — KM array (32 matches, K73-K104)
-- `{id, round, n, sA, sB, v, ko, d}` — round: "r32"|"r16"|"qf"|"sf"|"3rd"|"final"
-- All times verified from Wikipedia knockout stage page
+- `appState`: “loading” | “welcome” | “join” | “host” | “spectator” | “spectator_intro”
+- `isHost`: boolean
+- `picRefresh` / `setPicRefresh`: pic loading trigger
+- `myPlayerIdx`: which player this device is (0-7)
+- `poolCode`: Firebase pool code
+- `spectatorPoolCode`: for spectator onSnapshot listener
 
-## Draft
-- 8 players, snake draft (manual or auto Sorteo with animation)
-- Teams split into tiers by odds
-- Each player gets 6 teams
-- **TODO**: group-aware draft (no player gets 2 teams from same group) — works perfectly for 8 players
+### GroupStageScreen
 
-## Design
-- Fonts: Bebas Neue (headings), DM Sans (body)
-- Base colors: navy #0a1628 bg, various blue-greys for cards/text
-- Accent: var(--accent), default #c9a84c gold
-- App icon: navy/gold trophy SVG, home screen name "Mundialito ⚽🏆"
+- `matchesByDate`: matches grouped by SGT local date
+- Auto-scrolls to last scored date on mount
+- Has `showShareDay` modal for sharing fixtures/results
+- Has `openChatId` for match chat modal
+- **TODO: Add sticky tab bar** (next task)
 
-## Current pool
-- Code: CS26
-- 8 players, draft completed June 13 2026
-- Host password set by Byron
+### StandingsScreen
 
-## TODO / Future features discussed
-1. **Firebase rules update** — before ~July 13 2026 (critical)
-2. **Group-aware draft** — prevent 2 teams from same group per player
-3. **Automated daily notifications** — Cloudflare cron, morning fixtures + evening results
-4. **Engagement features brainstormed** (not built):
-   - "Your team is playing!" banner when teams kick off soon
-   - Score predictions before each match
-   - Emoji reactions on match results
-   - Live match countdown timer
-   - "Who benefits from this result?" tooltip
-   - Weekly matchday summary notification
+- `playerDataWithRanks`: includes `todayPts`, `movement`, `prevRank`
+- `playerDataWithRanks` used in shareable leaderboard canvas
+- Today’s pts calculated using SGT timezone (UTC+8)
+- Yesterday’s rankings exclude today’s SGT games
+
+### ShareDayModal
+
+- Generates canvas image of day’s fixtures/results
+- Flag above country name, initials chips on outer edges
+- SGT label on kickoff times
+- +pts shown next to initials
+
+-----
+
+## Colour System
+
+- `PC[]` = default colour array (8 colours)
+- `PLAYER_PICK_COLORS` = full palette for user selection (20 colours)
+- `getPlayerColor(idx, fallback)` = reads from `colorCache` first, then fallback
+- `colorCache` persisted to localStorage via `saveCaches()`
+- `savePlayerColor(idx, color)` = saves to colorCache + Firebase
+
+-----
+
+## Translations
+
+- `UI.en` and `UI.es` objects with all strings
+- `t(lang, key)` helper function
+- `lang` from `LangContext`
+- Auto-detects from `navigator.language`, persists in `mundi_lang`
+- Spanish chat phrases in `UI.es.presetPhrases`
+
+-----
+
+## Shareable Cards
+
+### Leaderboard card (SHARE LEADERBOARD button in StandingsScreen)
+
+- Option A design: bigger names in their colour, glow on top 3 avatars
+- Gradient gold top bar
+- Medals 🥇🥈🥉 for top 3, #4-8 for rest
+- Movement arrows (▲2/▼1) vs yesterday’s standings (excluding today’s SGT games)
+- +today pts under name if earned
+- Loads Bebas Neue + DM Sans via FontFace API before drawing
+- Profile pics from picCache (base64), initials fallback
+
+### Results/Fixtures card (📤 button in GroupStageScreen)
+
+- ShareDayModal with date picker (defaults to today)
+- Flag above country name, close to score
+- Initials chips on outer edges (26px, equal padding both sides)
+- Group badge centred at top
+- SGT below kickoff time in muted colour
+- +pts next to initials chip
+
+-----
+
+## Notifications (OneSignal)
+
+- App ID: `cc413549-cd70-4710-ae6f-de41d69f5b26`
+- Safari web ID: `web.onesignal.auto.40785b5b-169b-4884-a5e0-8aeabe17c634`
+- Service worker: `/2026/OneSignalSDKWorker.js`
+- Cloudflare Worker: `https://mundialito-notify.byroncristol.workers.dev`
+- **Status: PENDING** — subscriptions not showing in OneSignal dashboard
+- Bell icon (🔔) in top-right header triggers `Notification.requestPermission()` directly
+- iOS requires user gesture — auto-prompt doesn’t work
+
+-----
+
+## Status Bar Layout
+
+- Left: 🎙️ (host, tap to switch to spectator) or 👀 (spectator, tap for info/host switch)
+- Then: ☁️ sync (host) or 📥 info (spectator)
+- Then: 🔔 Notify (host only)
+- Then: 💡 Suggestions (everyone)
+- Right: avatar pill (tap to open profile)
+
+## Header Layout
+
+- Top-left stack: ⏏ · ? · ↻
+- Top-right stack: 🌐 · 🎨 · 🔔 (NotifBell)
+
+-----
+
+## Features Completed
+
+- ✅ Profile pics & colours with crop UI
+- ✅ Win/loss/draw overlay animations (72hr cutoff, SGT-aware)
+- ✅ Match chat with reactions + preset phrases
+- ✅ Suggestion box (Firebase, upvote/downvote, real-time)
+- ✅ Shareable leaderboard card (Option A design)
+- ✅ Shareable results/fixtures card
+- ✅ Spanish translation (full)
+- ✅ Custom theme colour picker
+- ✅ Host can change any player’s colour in Setup tab
+- ✅ Colour locking (no two players same colour)
+- ✅ Auto-scroll to current matchday
+- ✅ Date headers (gold=today, muted=past, light=future)
+- ✅ 🎬 YouTube highlights button (2.5hrs after kickoff, no score needed)
+- ✅ Movement arrows on shareable leaderboard vs yesterday
+- ✅ Today’s pts on shareable leaderboard
+- ✅ Group/Knockout breakdown hidden until KO points exist
+- ✅ Team breakdown tiebreakers (GD → GF → alphabetical)
+- ✅ Draft recap uses chosen colours not default PC[]
+
+## NEXT TASK
+
+**Sticky tab bar** — make the tab navigation bar sticky/fixed at top so users don’t need to scroll up to switch tabs. Build for ALL tabs. Tab bar currently rendered with `display:flex` inside the main scrollable div — needs to be pulled out and fixed.
+
+-----
+
+## Pending / Known Issues
+
+- **Profile pics loading slowly** — intermittent, happens on fresh app open. Root cause suspected to be single Firebase call timing. DO NOT add extra Firebase calls or useEffect to PlayerAvatar. If broken, check loadPool().then() sequence.
+- **OneSignal notifications** — 0 subscribers despite correct setup. Needs laptop + Chrome DevTools to debug properly.
+- **Firebase rules expire July 13 2026** — update Firestore security rules before then.
+
+-----
+
+## Firebase Structure (pools/CS26)
+
+```
+{
+  state: "M2:..." (encoded game state),
+  password: "...",
+  profiles: { "0": "data:image/jpeg;base64,...", "1": "..." },
+  playerColors: { "0": "#e879a0", "1": "#c9a84c", ... },
+  matchChat: { "G01": { messages: [...], reactions: {...} } },
+  suggestions: [ { id, playerIdx, playerName, text, votes: {up:[], down:[]}, ts } ],
+  updatedAt: timestamp
+}
+```
+
+-----
+
+## SGT Timezone Notes
+
+- Singapore is UTC+8
+- Match dates in `GM` are stored as US local dates
+- Always convert: `new Date(m.d+"T"+m.ko+":00Z")` for UTC kickoff
+- SGT date: `new Date(kickoffUTC.getTime()+8*60*60*1000).toISOString().slice(0,10)`
+- Today’s pts, yesterday’s rankings, date headers all use SGT

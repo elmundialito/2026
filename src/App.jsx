@@ -3036,6 +3036,7 @@ export default function Mundialito() {
           const colors=data.playerColors||{};
           Object.keys(colors).forEach(k=>{colorCache[parseInt(k)]=colors[k];});
           saveCaches();
+          setPlayerColors(colors);
           bumpPics(setPicRefresh);
         }
       }catch(e){}
@@ -3093,7 +3094,8 @@ export default function Mundialito() {
           // Load pics and colours from the same document fetch
           if(fresh._profiles){Object.keys(fresh._profiles).forEach(k=>{picCache[parseInt(k)]=fresh._profiles[k];});}
           if(fresh._playerColors){Object.keys(fresh._playerColors).forEach(k=>{colorCache[parseInt(k)]=fresh._playerColors[k];});saveCaches();}
-          // Bump AFTER cache is populated
+          // setPlayerColors triggers a guaranteed React re-render (original working pattern)
+          setPlayerColors(fresh._playerColors||{});
           setPicRefresh(n=>n+1);
           setSt(prev=>{
           const localResults = prev.matchResults||{};
@@ -3122,6 +3124,7 @@ export default function Mundialito() {
             // Load pics from same fetch response
             if(data._profiles){Object.keys(data._profiles).forEach(k=>{picCache[parseInt(k)]=data._profiles[k];});}
             if(data._playerColors){Object.keys(data._playerColors).forEach(k=>{colorCache[parseInt(k)]=data._playerColors[k];});saveCaches();}
+            setPlayerColors(data._playerColors||{});
             setPicRefresh(n=>n+1);
             setTimeout(()=>requestNotificationPermission(), 2000);
             if(merged.draftLocked){

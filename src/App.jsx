@@ -3044,13 +3044,14 @@ export default function Mundialito() {
     setTimeout(()=>requestNotificationPermission(), 2000);
     const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(code){
-      // Load pics from Firebase then bump — this is the ONLY bump needed
-      loadProfilePics(code).then(()=>setPicRefresh(n=>n+1));
-      // Also load fresh game state from Firebase
+      // Single Firebase call — loadPool returns both game state AND pics/colours
       loadPool(code).then(fresh=>{
         if(fresh){
+          // Load pics and colours from the same document fetch
           if(fresh._profiles){Object.keys(fresh._profiles).forEach(k=>{picCache[parseInt(k)]=fresh._profiles[k];});}
           if(fresh._playerColors){Object.keys(fresh._playerColors).forEach(k=>{colorCache[parseInt(k)]=fresh._playerColors[k];});saveCaches();}
+          // Bump AFTER cache is populated
+          setPicRefresh(n=>n+1);
           setSt(prev=>{
           const localResults = prev.matchResults||{};
           const freshResults = fresh.matchResults||{};
@@ -3070,16 +3071,16 @@ export default function Mundialito() {
       const savedCode=window.localStorage?.getItem("mundi_spectator_code");
       if(savedCode){
         setAppState("loading");
-        // Bump from localStorage cache immediately while Firebase loads
-        bumpPics(setPicRefresh);
         loadPool(savedCode).then(data=>{
           if(data){
             const merged=mergeState(EMPTY,data);
             setSt(merged);setIsHost(false);
             setSpectatorPoolCode(savedCode);
-        // Bump immediately from cache, then load pics from Firebase
-        loadProfilePics(savedCode).then(()=>setPicRefresh(n=>n+1));
-        setTimeout(()=>requestNotificationPermission(), 2000);
+            // Load pics from same fetch response
+            if(data._profiles){Object.keys(data._profiles).forEach(k=>{picCache[parseInt(k)]=data._profiles[k];});}
+            if(data._playerColors){Object.keys(data._playerColors).forEach(k=>{colorCache[parseInt(k)]=data._playerColors[k];});saveCaches();}
+            setPicRefresh(n=>n+1);
+            setTimeout(()=>requestNotificationPermission(), 2000);
             if(merged.draftLocked){
               const seen=window.localStorage?.getItem("mundi_intro_seen");
               if(seen){setAppState("spectator");setActiveTab("standings");}
@@ -3099,13 +3100,7 @@ export default function Mundialito() {
   },[]);
   useEffect(()=>{if(appState!=="host")return;try{window.localStorage?.setItem(LOCAL_KEY,JSON.stringify({st,pools,activePoolId,activePoolName}));}catch(e){};},[st,appState,pools,activePoolId,activePoolName]);
 
-  // Always load profile pics when entering host mode
-  useEffect(()=>{
-    if(appState!=="host")return;
-    const code=window.localStorage?.getItem("mundi_pool_code")||poolCode;
-    if(!code)return;
-    loadProfilePics(code).then(()=>setPicRefresh(n=>n+1));
-  },[appState]);
+  // picRefresh is bumped inside the loadPool.then() callback above — no extra effect needed
 
   // Keep a ref to latest st so the debounced save always sends fresh data
   const stRef=useRef(st);

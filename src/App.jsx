@@ -2144,34 +2144,13 @@ function bumpPics(setPicRefresh) {
 
 function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
   const picVersion = useContext(PicContext);
-  const [pic, setPic] = useState(()=>getProfilePic(idx));
-  const [color, setColor] = useState(()=>getPlayerColor(idx, PC[idx]));
+  // Read directly from cache on every render — no local state needed
+  // picVersion bumps whenever loadProfilePics completes, triggering a re-render
+  const pic = getProfilePic(idx);
+  const color = getPlayerColor(idx, PC[idx]);
   const initials = nameToInitial(name||"");
-
-  // Re-read from cache whenever picVersion bumps (covers main load + fallback)
-  useEffect(()=>{
-    setPic(getProfilePic(idx));
-    setColor(getPlayerColor(idx,PC[idx]));
-  },[idx, picVersion, refresh]);
-
-  // Fallback: re-read from cache at intervals in case main load populated it after render
-  const bump = useContext(PicBumpContext);
-  useEffect(()=>{
-    if(pic && colorCache[idx]) return; // already have everything
-    // Re-check cache at 500ms and 1500ms — by then main loadProfilePics should have completed
-    const t1=setTimeout(()=>{
-      const p=getProfilePic(idx);
-      if(p) setPic(p);
-      setColor(getPlayerColor(idx,PC[idx]));
-    },500);
-    const t2=setTimeout(()=>{
-      const p=getProfilePic(idx);
-      if(p) setPic(p);
-      setColor(getPlayerColor(idx,PC[idx]));
-      if(bump) bump(); // bump all avatars in case others also need updating
-    },1500);
-    return()=>{clearTimeout(t1);clearTimeout(t2);};
-  },[idx, picVersion]);
+  // refresh and picVersion are used as render triggers only
+  void refresh; void picVersion;
   if(pic) return (
     <div style={{width:size,height:size,borderRadius:"50%",overflow:"hidden",flexShrink:0,...style}}>
       <img src={pic} style={{width:"100%",height:"100%",objectFit:"cover"}} />

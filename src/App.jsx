@@ -2154,31 +2154,23 @@ function PlayerAvatar({idx, name, size=36, style={}, refresh=0}) {
     setColor(getPlayerColor(idx,PC[idx]));
   },[idx, picVersion, refresh]);
 
-  // Fallback fetch if pic or colour still missing after context bumps
+  // Fallback: re-read from cache at intervals in case main load populated it after render
   const bump = useContext(PicBumpContext);
   useEffect(()=>{
-    const hasPic = !!pic;
-    const hasChosenColor = !!colorCache[idx];
-    if(hasPic && hasChosenColor) return;
-    const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
-    if(!code) return;
-    // First try: re-read from cache after a short delay (cache may have populated by now)
+    if(pic && colorCache[idx]) return; // already have everything
+    // Re-check cache at 500ms and 1500ms — by then main loadProfilePics should have completed
     const t1=setTimeout(()=>{
       const p=getProfilePic(idx);
-      const c=getPlayerColor(idx,PC[idx]);
       if(p) setPic(p);
-      setColor(c);
-      // If still missing after cache read, do a fresh fetch
-      if(!p&&!colorCache[idx]){
-        loadProfilePics(code).then(()=>{
-          const p2=getProfilePic(idx);
-          if(p2) setPic(p2);
-          setColor(getPlayerColor(idx,PC[idx]));
-          if(bump) bump();
-        });
-      }
-    },300);
-    return()=>clearTimeout(t1);
+      setColor(getPlayerColor(idx,PC[idx]));
+    },500);
+    const t2=setTimeout(()=>{
+      const p=getProfilePic(idx);
+      if(p) setPic(p);
+      setColor(getPlayerColor(idx,PC[idx]));
+      if(bump) bump(); // bump all avatars in case others also need updating
+    },1500);
+    return()=>{clearTimeout(t1);clearTimeout(t2);};
   },[idx, picVersion]);
   if(pic) return (
     <div style={{width:size,height:size,borderRadius:"50%",overflow:"hidden",flexShrink:0,...style}}>

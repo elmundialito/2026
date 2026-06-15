@@ -1390,18 +1390,32 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
   );
 }
 
-function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx}) {
+function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx,onPicsLoaded}) {
   const lang=useContext(LangContext);
   const [matchChat,setMatchChat]=useState({});
   const [openChatId,setOpenChatId]=useState(null);
   const [showShareDay,setShowShareDay]=useState(false);
   const poolCode=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
 
-  // Subscribe to matchChat via onSnapshot
+  // Subscribe to matchChat via onSnapshot — also grab pics/colours from same document
   useEffect(()=>{
     if(!poolCode)return;
+    let picsLoadedFromChat=false;
     const unsub=onSnapshot(doc(db,"pools",poolCode),(snap)=>{
-      if(snap.exists()){setMatchChat(snap.data().matchChat||{});}
+      if(snap.exists()){
+        setMatchChat(snap.data().matchChat||{});
+        // First snapshot — populate pic cache from same document fetch
+        if(!picsLoadedFromChat){
+          picsLoadedFromChat=true;
+          const data=snap.data();
+          const profiles=data.profiles||{};
+          Object.keys(profiles).forEach(k=>{picCache[parseInt(k)]=profiles[k];});
+          const colors=data.playerColors||{};
+          Object.keys(colors).forEach(k=>{colorCache[parseInt(k)]=colors[k];});
+          saveCaches();
+          if(onPicsLoaded) onPicsLoaded();
+        }
+      }
     });
     return()=>unsub();
   },[poolCode]);
@@ -3283,7 +3297,7 @@ export default function Mundialito() {
     if(activeTab==="setup"){if(st.setupLocked&&!readOnly)return(<SetupLockedScreen config={st.config} onRename={(i,name)=>{setSt(p=>{const updated={...p,config:{...p.config,playerNames:p.config.playerNames.map((n,j)=>j===i?name:n)}};const code=window.localStorage?.getItem("mundi_pool_code")||poolCode||window.localStorage?.getItem("mundi_spectator_code");const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;if(code)savePool(code,updated,pw).then(ok=>{if(ok&&code!==poolCode){try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}setPoolCode(code);}});return updated;});}} onColorChange={(i,color)=>{colorCache[i]=color;saveCaches();savePlayerColor(i,color);bumpPics(setPicRefresh);}} onUnlock={()=>setSt(p=>({...p,setupLocked:false,draftOrder:null,draftMode:null,picks:[],draftLocked:false,matchResults:{},koResults:{},koOverrides:{}}))}/>);
       return <SetupScreen config={st.config} setConfig={c=>setSt(p=>({...p,config:typeof c==="function"?c(p.config):c}))} onLock={()=>{setSt(p=>({...p,setupLocked:true}));setActiveTab("draft");}} readOnly={readOnly}/>;}
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
-    if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx}/>;
+    if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx} onPicsLoaded={()=>setPicRefresh(n=>n+1)}/>;
     if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly}/>;
     if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} onSuggestions={()=>setShowSuggestions(true)} picRefresh={picRefresh}/>;
     return null;

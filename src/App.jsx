@@ -1627,7 +1627,19 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       const koPts=playerKOPts(i,picks||[],bracket,koResults,config.koPoints);
       const r32=KM.filter(m=>m.round==="r32").filter(m=>{const r=koResults[m.id];if(!r)return false;const b=bracket[m.id];if(!b)return false;const w=r==="A"?b.a:b.b;return w&&(picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team).includes(w);}).length;
       const myTeams=(picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);
-      const teamBreakdown=myTeams.map(t=>{const tgs=teamGSPts(t,matchResults);const tko=teamKOPts(t,bracket,koResults,config.koPoints);return{team:t,gsPts:tgs,koPts:tko,pts:tgs+tko,eliminated:isEliminated(t,bracket,koResults)};}).sort((a,b)=>b.pts-a.pts||a.team.localeCompare(b.team));
+      const teamBreakdown=myTeams.map(t=>{
+        const tgs=teamGSPts(t,matchResults);
+        const tko=teamKOPts(t,bracket,koResults,config.koPoints);
+        // Calculate GD and GF for this team
+        let tgd=0,tgf=0;
+        GM.filter(m=>m.t.includes(t)).forEach(m=>{
+          const r=matchResults[m.id];if(!r||r.home==null||r.away==null)return;
+          const isHome=m.t[0]===t;
+          if(isHome){tgf+=r.home;tgd+=(r.home-r.away);}
+          else{tgf+=r.away;tgd+=(r.away-r.home);}
+        });
+        return{team:t,gsPts:tgs,koPts:tko,pts:tgs+tko,gd:tgd,gf:tgf,eliminated:isEliminated(t,bracket,koResults)};
+      }).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf||a.team.localeCompare(b.team));
       let gd=0,gf=0;
       myTeams.forEach(team=>{
         GM.forEach(m=>{

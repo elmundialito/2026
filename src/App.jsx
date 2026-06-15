@@ -2551,6 +2551,7 @@ async function loadPlayerColors(code) {
 
 function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, currentColor, onColorChange, onPicSaved}) {
   const lang=useContext(LangContext);
+  const bump=useContext(PicBumpContext);
   const [pic, setPic] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null); // null = no selection yet
   const [takenColors, setTakenColors] = useState([]);
@@ -2575,7 +2576,10 @@ function ProfileSetupModal({open, onClose, playerIdx, playerName, onDone, curren
     // Also refresh from Firebase in case cache is stale
     const code = window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(code){
-      loadProfilePics(code).then(()=>{ setPic(getProfilePic(playerIdx)); });
+      loadProfilePics(code).then(()=>{
+        setPic(getProfilePic(playerIdx));
+        if(bump) bump(); // bump all avatars globally
+      });
       loadPlayerColors(code).then(colors=>{
         const taken = Object.entries(colors).filter(([k])=>parseInt(k)!==playerIdx).map(([,v])=>v);
         setTakenColors(taken);
@@ -3038,19 +3042,16 @@ export default function Mundialito() {
     // Fall back to localStorage for host — load local state immediately for speed,
     // then fetch fresh from Firebase in background
     try{const raw=window.localStorage?.getItem(LOCAL_KEY);if(raw){const saved=JSON.parse(raw);setSt(mergeState(EMPTY,saved.st));setPools(saved.pools||[{id:"default",name:"My Pool"}]);setActivePoolId(saved.activePoolId||"default");setActivePoolName(saved.activePoolName||"My Pool");setIsHost(true);setAppState("host");setActiveTab("standings");
-    // Bump immediately from localStorage cache (colours persist there)
-    bumpPics(setPicRefresh);
     setTimeout(()=>requestNotificationPermission(), 2000);
     const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(code){
-      // Load pics explicitly — separate from game state fetch
-      loadProfilePics(code).then(()=>bumpPics(setPicRefresh));
+      // Load pics from Firebase then bump — this is the ONLY bump needed
+      loadProfilePics(code).then(()=>setPicRefresh(n=>n+1));
       // Also load fresh game state from Firebase
       loadPool(code).then(fresh=>{
         if(fresh){
           if(fresh._profiles){Object.keys(fresh._profiles).forEach(k=>{picCache[parseInt(k)]=fresh._profiles[k];});}
           if(fresh._playerColors){Object.keys(fresh._playerColors).forEach(k=>{colorCache[parseInt(k)]=fresh._playerColors[k];});saveCaches();}
-          bumpPics(setPicRefresh);
           setSt(prev=>{
           const localResults = prev.matchResults||{};
           const freshResults = fresh.matchResults||{};
@@ -3078,8 +3079,7 @@ export default function Mundialito() {
             setSt(merged);setIsHost(false);
             setSpectatorPoolCode(savedCode);
         // Bump immediately from cache, then load pics from Firebase
-        bumpPics(setPicRefresh);
-        loadProfilePics(savedCode).then(()=>bumpPics(setPicRefresh));
+        loadProfilePics(savedCode).then(()=>setPicRefresh(n=>n+1));
         setTimeout(()=>requestNotificationPermission(), 2000);
             if(merged.draftLocked){
               const seen=window.localStorage?.getItem("mundi_intro_seen");
@@ -3100,13 +3100,13 @@ export default function Mundialito() {
   },[]);
   useEffect(()=>{if(appState!=="host")return;try{window.localStorage?.setItem(LOCAL_KEY,JSON.stringify({st,pools,activePoolId,activePoolName}));}catch(e){};},[st,appState,pools,activePoolId,activePoolName]);
 
-  // Always load profile pics when entering host mode — try every possible code source
+  // Always load profile pics when entering host mode
   useEffect(()=>{
     if(appState!=="host")return;
-    const code=window.localStorage?.getItem("mundi_pool_code")||poolCode||window.localStorage?.getItem("mundi_spectator_code");
+    const code=window.localStorage?.getItem("mundi_pool_code")||poolCode;
     if(!code)return;
-    loadProfilePics(code).then(()=>bumpPics(setPicRefresh));
-  },[appState,poolCode]);
+    loadProfilePics(code).then(()=>setPicRefresh(n=>n+1));
+  },[appState]);
 
   // Keep a ref to latest st so the debounced save always sends fresh data
   const stRef=useRef(st);

@@ -386,6 +386,50 @@ const fmtDate = (dateStr, lang="en") => {
   return d.toLocaleDateString("en-US",{weekday:"short"}).toUpperCase()+" · "+d.toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase();
 };
 
+// ── Pre-match odds (home%/draw%/away%) sourced from Polymarket & Oddschecker consensus ──
+// Only shown before kickoff. Format: [home, draw, away] normalised to 100.
+const MATCH_ODDS = {
+  // Group A
+  G01:[62,20,18], G02:[40,27,33], G25:[55,26,21], G28:[52,25,23],
+  G53:[48,26,26], G54:[38,29,33],
+  // Group B
+  G03:[48,27,25], G05:[57,23,20], G26:[61,23,16], G27:[75,16,9],
+  G49:[55,24,21], G50:[44,29,27],
+  // Group C
+  G06:[52,27,21], G07:[14,19,67], G30:[72,18,10], G31:[67,19,14],
+  G51:[14,19,67], G52:[72,18,10],
+  // Group D
+  G04:[68,19,13], G08:[38,27,35], G29:[71,18,11], G32:[45,27,28],
+  G59:[35,27,38], G60:[55,25,20],
+  // Group E
+  G09:[88,8,4],   G11:[30,25,45], G34:[72,18,10], G35:[85,10,5],
+  G55:[25,20,55], G56:[30,24,46],
+  // Group F
+  G10:[52,26,22], G12:[22,26,52], G33:[58,23,19], G36:[32,27,41],
+  G57:[45,27,28], G58:[16,22,62],
+  // Group G
+  G14:[55,26,19], G16:[18,22,60], G38:[68,19,13], G40:[20,26,54],
+  G65:[42,29,29], G66:[12,19,69],
+  // Group H
+  G13:[57,22,21], G15:[12,19,69], G37:[77,15,8],  G39:[72,18,10],
+  G63:[38,28,34], G64:[38,26,36],
+  // Group I
+  G17:[67,22,11], G18:[6,13,81],  G42:[78,15,7],  G43:[52,27,21],
+  G61:[27,23,50], G62:[60,23,17],
+  // Group J
+  G19:[71,21,8],  G20:[73,18,9],  G41:[76,16,8],  G44:[20,26,54],
+  G71:[8,16,76],  G72:[45,28,27],
+  // Group K
+  G21:[77,17,6],  G24:[10,21,69], G45:[80,14,6],  G48:[69,19,12],
+  G69:[40,26,34], G70:[12,22,66],
+  // Group L
+  G22:[57,26,17], G23:[44,29,27], G46:[72,19,9],  G47:[38,29,33],
+  G67:[14,20,66], G68:[42,29,29],
+};
+
+// Helper: convert American odds to implied probability, then normalise 3-way
+function americanToImpl(odds){return odds>0?100/(odds+100):(-odds)/(-odds+100);}
+
 const fmtKickoff = (dateStr, timeUTC) => {
   if(!timeUTC) return "";
   try {
@@ -1118,17 +1162,49 @@ function ScoreEntry({matchId,result,onSet,readOnly,teamA,teamB,ownership,initial
 }
 
 // ── GroupMatchCard — owner chips pinned to far edges ──────────
+function OddsPopup({matchId, teamA, teamB, flagA, flagB, lang}) {
+  const [open,setOpen]=useState(false);
+  const odds=MATCH_ODDS[matchId];
+  if(!odds)return null;
+  const [h,d,a]=odds;
+  const nameA=countryName(teamA,lang)||teamA;
+  const nameB=countryName(teamB,lang)||teamB;
+  const label=lang==="es"?"Pronóstico":"Most likely";
+  return(
+    <div style={{display:"inline-flex",flexDirection:"column",alignItems:"flex-end"}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${open?"rgba(107,155,209,0.4)":"rgba(107,155,209,0.2)"}`,background:open?"rgba(107,155,209,0.15)":"rgba(107,155,209,0.06)",color:"#6b9bd1",cursor:"pointer",fontSize:12,fontFamily:"'DM Sans'"}}>
+        🔮
+      </button>
+      {open&&(
+        <div style={{position:"absolute",zIndex:30,marginTop:28,right:0,background:"#0a1628",border:"1px solid rgba(107,155,209,0.25)",borderRadius:10,padding:"10px 12px",minWidth:190,boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1.5,color:"#5a6a8a",marginBottom:8}}>{label.toUpperCase()}</div>
+          {[[flagA,nameA,h,"#61a978"],["—",lang==="es"?"Empate":"Draw",d,"#5a6a8a"],[flagB,nameB,a,"#6b9bd1"]].map(([flag,name,pct,col])=>(
+            <div key={name} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+              <span style={{fontSize:12,width:18,textAlign:"center",flexShrink:0}}>{flag}</span>
+              <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4",flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</span>
+              <div style={{width:60,height:4,background:"#1a2d4a",borderRadius:4,overflow:"hidden",flexShrink:0}}>
+                <div style={{width:`${pct}%`,height:"100%",background:col,borderRadius:4}}/>
+              </div>
+              <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:700,color:col,minWidth:28,textAlign:"right"}}>{pct}%</span>
+            </div>
+          ))}
+          <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",marginTop:6,borderTop:"1px solid #1a2d4a",paddingTop:6}}>via Polymarket · pre-match</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=new Set(),onOpenChat,chatCount=0,hasReactions=false}) {
   const lang=useContext(LangContext);
   const [a,b]=match.t;const ta=TBN[a],tb=TBN[b];const oa=ownership[a],ob=ownership[b];const out=getMatchOutcome(result);
   const isMyMatch=myTeams.has(a)||myTeams.has(b);
   const myHasHome=myTeams.has(a),myHasAway=myTeams.has(b),myBoth=myHasHome&&myHasAway;
   const myColor=isMyMatch?(myHasHome?PC[oa?.playerIdx??0]:PC[ob?.playerIdx??0]):"transparent";
-  // Persistent result highlight for player's own teams
   const myOutcome=isMyMatch&&out?(()=>{
     const wins=(myHasHome&&out==="A")||(myHasAway&&out==="B");
     const loses=(myHasHome&&out==="B")||(myHasAway&&out==="A");
-    if(myBoth)return "D"; // if you own both, always neutral
+    if(myBoth)return "D";
     return wins?"W":loses?"L":out==="D"?"D":null;
   })():null;
   const resultBg=myOutcome==="W"?"rgba(97,169,120,0.08)":myOutcome==="L"?"rgba(217,119,87,0.08)":myOutcome==="D"?"rgba(107,155,209,0.06)":isMyMatch?"rgba(201,168,76,0.06)":"rgba(10,22,40,0.4)";
@@ -1152,22 +1228,22 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
       </div>
     );
   };
-  // Build the centre label — only YOUR TEAM badge (kickoff moved to top row)
   const centreLabel=()=>{
     if(!isMyMatch) return null;
     const badge=<span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"1px 6px",borderRadius:4,whiteSpace:"nowrap"}}>{myBoth?`⭐ ${t(lang,"yourTeams")} ⭐`:myHasHome?`⭐ ${t(lang,"yourTeam")}`:(`${t(lang,"yourTeam")} ⭐`)}</span>;
     return <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}>{badge}</div>;
   };
+  const isPreKickoff=match.ko&&!result&&Date.now()<new Date(match.d+"T"+match.ko+":00Z").getTime();
   return(
-    <div style={{background:resultBg,borderRadius:10,padding:"10px 12px",border:resultBorder,marginBottom:6}}>
+    <div style={{background:resultBg,borderRadius:10,padding:"10px 12px",border:resultBorder,marginBottom:6,position:"relative"}}>
       <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative"}}>
         <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>GRP {match.g}</span>
         {match.ko&&!result&&<span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1,whiteSpace:"nowrap"}}>{fmtKickoff(match.d,match.ko)}</span>}
         <div style={{display:"flex",alignItems:"center",gap:5}}>
+          {isPreKickoff&&<OddsPopup matchId={match.id} teamA={a} teamB={b} flagA={ta?.flag||"🏳️"} flagB={tb?.flag||"🏳️"} lang={lang}/>}
           {match.ko&&(()=>{
             const kickoffUTC=new Date(match.d+"T"+match.ko+":00Z");
             if(Date.now()<kickoffUTC.getTime()+2.5*60*60*1000) return null;
-            const [a,b]=match.t;
             const query=encodeURIComponent(`${a} vs ${b} 2026 World Cup highlights`);
             return(
               <a href={`https://www.youtube.com/results?search_query=${query}`} target="_blank" rel="noopener noreferrer"
@@ -1509,12 +1585,12 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
         // Scroll to last date with scores, or today, or first future date
         const isScrollTarget=date===(lastScoredDate||today)||(date>today&&!lastScoredDate&&!matchesByDate.some(([d])=>d===today||d>today&&d<date));
         return(
-          <div key={date} ref={isScrollTarget?scrollTargetRef:null} style={{marginBottom:18,marginTop:8}}>
+          <div key={date} ref={isScrollTarget?scrollTargetRef:null} style={{marginBottom:18,marginTop:8,borderRadius:isToday?10:0,border:isToday?"1px solid rgba(201,168,76,0.2)":"none",background:isToday?"rgba(201,168,76,0.03)":"transparent",padding:isToday?"10px 10px 10px":"0"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingTop:4}}>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:3,color:isToday?"var(--accent)":isPast?"#5a6a8a":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
-              {isToday&&<div style={{padding:"2px 8px",borderRadius:10,background:"rgba(201,168,76,0.2)",border:"1px solid rgba(201,168,76,0.4)",fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1.5}}>{t(lang,"today")}</div>}
-              <div style={{flex:1,height:1,background:isToday?"rgba(201,168,76,0.3)":isPast?"rgba(26,39,68,0.8)":"rgba(138,153,180,0.2)"}}/>
-              <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a"}}>{matches.filter(m=>matchResults[m.id]!=null).length}/{matches.length}</span>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:isToday?22:18,letterSpacing:3,color:isToday?"var(--accent)":isPast?"#5a6a8a":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
+              {isToday&&<div style={{padding:"2px 10px",borderRadius:10,background:"rgba(201,168,76,0.25)",border:"1px solid rgba(201,168,76,0.5)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:2}}>⚡ {t(lang,"today")}</div>}
+              <div style={{flex:1,height:isToday?2:1,background:isToday?"rgba(201,168,76,0.4)":isPast?"rgba(26,39,68,0.8)":"rgba(138,153,180,0.2)"}}/>
+              <span style={{fontFamily:"'DM Sans'",fontSize:10,color:isToday?"var(--accent)":"#5a6a8a",fontWeight:isToday?600:400}}>{matches.filter(m=>matchResults[m.id]!=null).length}/{matches.length}</span>
             </div>
             {matches.map(m=><GroupMatchCard key={m.id} match={m} result={matchResults[m.id]} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} onOpenChat={()=>setOpenChatId(m.id)} chatCount={(matchChat[m.id]?.messages||[]).length} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)}/>)}
           </div>
@@ -3385,8 +3461,8 @@ export default function Mundialito() {
           </div>
         );})()}
       </div>
-      <div style={{display:"flex",justifyContent:"center",gap:2,padding:"14px 12px 0",marginBottom:26}}>
-        {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);const tabLabel=t(lang,tab.id==="standings"?"leaderboard":tab.id);return(<button key={tab.id} onClick={()=>{if(open)setActiveTab(tab.id);}} style={{padding:"9px 6px 11px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tabLabel}</div></button>);})}
+      <div style={{position:"sticky",top:0,zIndex:50,background:"linear-gradient(180deg,rgba(10,22,40,0.97) 0%,rgba(15,30,56,0.97) 100%)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderBottom:"1px solid rgba(201,168,76,0.12)",display:"flex",justifyContent:"center",gap:2,padding:"10px 12px 0",marginBottom:0}}>
+        {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);const tabLabel=t(lang,tab.id==="standings"?"leaderboard":tab.id);return(<button key={tab.id} onClick={()=>{if(open)setActiveTab(tab.id);}} style={{padding:"7px 6px 10px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tabLabel}</div></button>);})}
       </div>
       <div style={{paddingBottom:48}}>{tabContent()}
         {isHost&&(

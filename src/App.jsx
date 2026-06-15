@@ -1163,9 +1163,23 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
       <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative"}}>
         <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>GRP {match.g}</span>
         {match.ko&&!result&&<span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1,whiteSpace:"nowrap"}}>{fmtKickoff(match.d,match.ko)}</span>}
-        <button onClick={onOpenChat} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${(chatCount>0||hasReactions)?"rgba(201,168,76,0.3)":"#2a3a5c"}`,background:(chatCount>0||hasReactions)?"rgba(201,168,76,0.08)":"transparent",color:(chatCount>0||hasReactions)?"var(--accent)":"#5a6a8a",cursor:"pointer",fontSize:12}}>
-          💬{chatCount>0&&<span style={{fontFamily:"'DM Sans'",fontSize:10,fontWeight:600}}>{chatCount}</span>}
-        </button>
+        <div style={{display:"flex",alignItems:"center",gap:5}}>
+          {match.ko&&(()=>{
+            const kickoffUTC=new Date(match.d+"T"+match.ko+":00Z");
+            if(Date.now()<kickoffUTC.getTime()+2.5*60*60*1000) return null;
+            const [a,b]=match.t;
+            const query=encodeURIComponent(`${a} vs ${b} 2026 World Cup highlights`);
+            return(
+              <a href={`https://www.youtube.com/results?search_query=${query}`} target="_blank" rel="noopener noreferrer"
+                style={{display:"flex",alignItems:"center",padding:"2px 7px",borderRadius:10,border:"1px solid rgba(255,80,80,0.3)",background:"rgba(255,80,80,0.08)",color:"#ff6b6b",fontSize:12,textDecoration:"none"}}>
+                🎬
+              </a>
+            );
+          })()}
+          <button onClick={onOpenChat} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${(chatCount>0||hasReactions)?"rgba(201,168,76,0.3)":"#2a3a5c"}`,background:(chatCount>0||hasReactions)?"rgba(201,168,76,0.08)":"transparent",color:(chatCount>0||hasReactions)?"var(--accent)":"#5a6a8a",cursor:"pointer",fontSize:12}}>
+            💬{chatCount>0&&<span style={{fontFamily:"'DM Sans'",fontSize:10,fontWeight:600}}>{chatCount}</span>}
+          </button>
+        </div>
       </div>
       {centreLabel()&&<div style={{display:"flex",justifyContent:"center",marginBottom:4}}>{centreLabel()}</div>}
       <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1779,8 +1793,10 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         bg.addColorStop(0,"#0a1628");bg.addColorStop(0.5,"#0f1e38");bg.addColorStop(1,"#0a1628");
         ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
 
-        // Gold top bar
-        ctx.fillStyle="#c9a84c";ctx.fillRect(0,0,W,4);
+        // Gold gradient top bar
+        const topBar=ctx.createLinearGradient(0,0,W,0);
+        topBar.addColorStop(0,"#c9a84c");topBar.addColorStop(0.5,"#e8c96a");topBar.addColorStop(1,"#c9a84c");
+        ctx.fillStyle=topBar;ctx.fillRect(0,0,W,4);
 
         // Title
         ctx.fillStyle="#c9a84c";
@@ -1790,13 +1806,13 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
 
         // Subtitle
         ctx.fillStyle="#4a5a7a";
-        ctx.font=`400 12px DMSans,Arial`;
+        ctx.font=`400 11px DMSans,Arial`;
         const now=new Date();
-        ctx.fillText(`${lang==="es"?"Clasificación":"Leaderboard"} · ${now.toLocaleDateString(lang==="es"?"es-ES":"en-AU",{day:"numeric",month:"short"})}`,W/2,72);
+        ctx.fillText(`${lang==="es"?"CLASIFICACIÓN":"LEADERBOARD"} · ${now.toLocaleDateString(lang==="es"?"es-ES":"en-AU",{day:"numeric",month:"short"}).toUpperCase()}`,W/2,70);
 
         // Divider
-        ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.25;
-        ctx.fillRect(PAD*3,86,W-PAD*6,1);
+        ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.2;
+        ctx.fillRect(PAD*3,82,W-PAD*6,1);
         ctx.globalAlpha=1;
 
         for(let ri=0;ri<playerDataWithRanks.length;ri++){
@@ -1804,52 +1820,51 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           const y=HEADER+ri*ROW;
           const color=p.color||"#c9a84c";
           const isFirst=ri===0;
+          const isTop3=ri<3;
 
-          // Row card — highlight only 1st place
-          ctx.fillStyle=isFirst?"rgba(26,39,68,0.9)":"rgba(16,28,52,0.6)";
-          ctx.strokeStyle=isFirst?"rgba(201,168,76,0.35)":"rgba(30,47,80,0.8)";
-          ctx.lineWidth=1;
-          ctx.beginPath();
-          ctx.roundRect?ctx.roundRect(PAD,y+3,W-PAD*2,ROW-6,10):ctx.rect(PAD,y+3,W-PAD*2,ROW-6);
-          ctx.fill();ctx.stroke();
-
-          // Left colour bar — only 1st place
+          // Row background — subtle tint for 1st, transparent for rest
           if(isFirst){
-            ctx.fillStyle=color;ctx.globalAlpha=0.9;
+            ctx.fillStyle=`${color}18`;
             ctx.beginPath();
-            ctx.roundRect?ctx.roundRect(PAD,y+3,3,ROW-6,2):ctx.rect(PAD,y+3,3,ROW-6);
-            ctx.fill();ctx.globalAlpha=1;
+            ctx.roundRect?ctx.roundRect(PAD,y+2,W-PAD*2,ROW-4,8):ctx.rect(PAD,y+2,W-PAD*2,ROW-4);
+            ctx.fill();
           }
 
-          // Rank — medals for top 3, plain number for rest
-          if(ri<3){
+          // Row divider
+          ctx.fillStyle=isTop3?`${color}22`:"rgba(20,35,65,0.9)";
+          ctx.fillRect(PAD,y+ROW-1,W-PAD*2,1);
+
+          // Rank
+          if(isTop3){
             const medals=["🥇","🥈","🥉"];
-            ctx.font=`400 26px Arial`;
+            ctx.font=`400 ${isFirst?22:18}px Arial`;
             ctx.textAlign="center";
-            ctx.fillText(medals[ri],PAD+26,y+ROW/2+10);
+            ctx.fillText(medals[ri],PAD+22,y+ROW/2+8);
           } else {
-            ctx.font=`700 18px BebasNeue,Arial`;
-            ctx.fillStyle="#4a5a7a";
+            ctx.font=`700 14px BebasNeue,Arial`;
+            ctx.fillStyle="#2a3a5a";
             ctx.textAlign="center";
-            ctx.fillText(`${ri+1}`,PAD+26,y+ROW/2+7);
+            ctx.fillText(`#${ri+1}`,PAD+22,y+ROW/2+5);
           }
 
-          // Movement arrow with number — neutral grey, compact
+          // Movement
           const movement=p.movement||0;
           if(movement!==0){
-            const absMove=Math.abs(movement);
-            const arrow=movement>0?"▲":"▼";
-            ctx.font=`700 9px DMSans,Arial`;
-            ctx.fillStyle="#8899b4";
+            ctx.font=`700 8px DMSans,Arial`;
+            ctx.fillStyle="#556070";
             ctx.textAlign="center";
-            ctx.fillText(`${arrow}${absMove}`,PAD+26,y+ROW/2+22);
+            ctx.fillText(`${movement>0?"▲":"▼"}${Math.abs(movement)}`,PAD+22,y+ROW/2+18);
           }
 
-          // Avatar
-          const ax=PAD+72,ay=y+ROW/2;const AR=26;
+          // Avatar — bigger for top 3, glow effect
+          const ax=PAD+64,ay=y+ROW/2;
+          const AR=isTop3?24:20;
           ctx.save();
-          ctx.beginPath();ctx.arc(ax,ay,AR+2,0,Math.PI*2);
-          ctx.fillStyle=color;ctx.globalAlpha=0.3;ctx.fill();ctx.globalAlpha=1;
+          if(isTop3){
+            // Glow ring
+            ctx.beginPath();ctx.arc(ax,ay,AR+4,0,Math.PI*2);
+            ctx.fillStyle=color;ctx.globalAlpha=0.2;ctx.fill();ctx.globalAlpha=1;
+          }
           ctx.beginPath();ctx.arc(ax,ay,AR,0,Math.PI*2);
           ctx.fillStyle=color;ctx.fill();ctx.clip();
           const pic=getProfilePic(p.idx);
@@ -1861,50 +1876,52 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                 img.onerror=rej;img.src=pic;
               });
             }catch{
-              ctx.font=`700 14px BebasNeue,Arial`;
+              ctx.font=`700 ${AR*0.7}px BebasNeue,Arial`;
               ctx.fillStyle="#0a1628";ctx.textAlign="center";
-              ctx.fillText((initials[p.idx]||"?"),ax,ay+5);
+              ctx.fillText((initials[p.idx]||"?"),ax,ay+AR*0.25);
             }
           } else {
-            ctx.font=`700 14px BebasNeue,Arial`;
+            ctx.font=`700 ${AR*0.7}px BebasNeue,Arial`;
             ctx.fillStyle="#0a1628";ctx.textAlign="center";
-            ctx.fillText((initials[p.idx]||"?"),ax,ay+5);
+            ctx.fillText((initials[p.idx]||"?"),ax,ay+AR*0.25);
           }
           ctx.restore();
 
-          // Player name — in their colour
+          // Player name — bigger, in their colour
+          const nameSize=isFirst?17:isTop3?15:13;
           ctx.textAlign="left";
-          ctx.font=`600 ${isFirst?17:15}px DMSans,Arial`;
+          ctx.font=`700 ${nameSize}px DMSans,Arial`;
           ctx.fillStyle=color;
           let name=p.name;
-          const maxNameW=W-PAD*2-106-70;
+          const nameX=PAD+98;
+          const maxNameW=W-PAD-nameX-60;
           while(ctx.measureText(name).width>maxNameW&&name.length>3) name=name.slice(0,-1)+"…";
-          const nameY=p.todayPts>0?y+ROW/2-4:y+ROW/2+6;
-          ctx.fillText(name,PAD+106,nameY);
-          // Today's pts — in their colour, subtle
+          const nameY=p.todayPts>0?y+ROW/2-3:y+ROW/2+6;
+          ctx.fillText(name,nameX,nameY);
           if(p.todayPts>0){
-            ctx.font=`600 10px DMSans,Arial`;
-            ctx.fillStyle=`${color}aa`;
-            ctx.fillText(`+${p.todayPts} ${lang==="es"?"hoy":"today"}`,PAD+106,nameY+15);
+            ctx.font=`600 9px DMSans,Arial`;
+            ctx.fillStyle=`${color}99`;
+            ctx.fillText(`+${p.todayPts} ${lang==="es"?"hoy":"today"}`,nameX,nameY+13);
           }
 
-          // Points — big, in their colour
+          // Points
+          const ptSize=isFirst?32:isTop3?26:21;
           ctx.textAlign="right";
-          ctx.font=`700 ${isFirst?36:30}px BebasNeue,Arial`;
+          ctx.font=`700 ${ptSize}px BebasNeue,Arial`;
           ctx.fillStyle=color;
-          ctx.fillText(p.total,W-PAD-10,y+ROW/2+8);
-          ctx.font=`400 10px DMSans,Arial`;
-          ctx.fillStyle=`${color}88`;
-          ctx.fillText(lang==="es"?(p.total===1?"punto":"puntos"):(p.total===1?"pt":"pts"),W-PAD-10,y+ROW/2+20);
+          ctx.fillText(p.total,W-PAD-8,y+ROW/2+8);
+          ctx.font=`400 9px DMSans,Arial`;
+          ctx.fillStyle=`${color}77`;
+          ctx.fillText(lang==="es"?(p.total===1?"punto":"puntos"):(p.total===1?"pt":"pts"),W-PAD-8,y+ROW/2+19);
         }
 
         // Footer
-        ctx.fillStyle="#2a3a5c";
-        ctx.font=`400 11px DMSans,Arial`;
+        ctx.fillStyle="#1e2f50";
+        ctx.font=`400 10px DMSans,Arial`;
         ctx.textAlign="center";
         ctx.fillText("elmundialito.github.io/2026",W/2,HEADER+ROW*playerDataWithRanks.length+26);
 
-        ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.2;
+        ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.15;
         ctx.fillRect(PAD*3,H-5,W-PAD*6,1);
         ctx.globalAlpha=1;
 

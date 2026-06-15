@@ -3067,12 +3067,14 @@ export default function Mundialito() {
     // Fall back to localStorage for host — load local state immediately for speed,
     // then fetch fresh from Firebase in background
     try{const raw=window.localStorage?.getItem(LOCAL_KEY);if(raw){const saved=JSON.parse(raw);setSt(mergeState(EMPTY,saved.st));setPools(saved.pools||[{id:"default",name:"My Pool"}]);setActivePoolId(saved.activePoolId||"default");setActivePoolName(saved.activePoolName||"My Pool");setIsHost(true);setAppState("host");setActiveTab("standings");
-    // Bump pics immediately from localStorage cache (colours persist there)
+    // Bump immediately from localStorage cache (colours persist there)
     bumpPics(setPicRefresh);
     setTimeout(()=>requestNotificationPermission(), 2000);
     const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(code){
-      // Load fresh scores and pics from Firebase
+      // Load pics explicitly — separate from game state fetch
+      loadProfilePics(code).then(()=>bumpPics(setPicRefresh));
+      // Also load fresh game state from Firebase
       loadPool(code).then(fresh=>{
         if(fresh){
           if(fresh._profiles){Object.keys(fresh._profiles).forEach(k=>{picCache[parseInt(k)]=fresh._profiles[k];});}
@@ -3104,11 +3106,10 @@ export default function Mundialito() {
             const merged=mergeState(EMPTY,data);
             setSt(merged);setIsHost(false);
             setSpectatorPoolCode(savedCode);
-            // Extract pics from same fetch response
-            if(data._profiles){Object.keys(data._profiles).forEach(k=>{picCache[parseInt(k)]=data._profiles[k];});}
-            if(data._playerColors){Object.keys(data._playerColors).forEach(k=>{colorCache[parseInt(k)]=data._playerColors[k];});saveCaches();}
-            bumpPics(setPicRefresh);
-            setTimeout(()=>requestNotificationPermission(), 2000);
+        // Bump immediately from cache, then load pics from Firebase
+        bumpPics(setPicRefresh);
+        loadProfilePics(savedCode).then(()=>bumpPics(setPicRefresh));
+        setTimeout(()=>requestNotificationPermission(), 2000);
             if(merged.draftLocked){
               const seen=window.localStorage?.getItem("mundi_intro_seen");
               if(seen){setAppState("spectator");setActiveTab("standings");}

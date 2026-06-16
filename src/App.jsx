@@ -1308,20 +1308,6 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
     const matches=(matchesByDate.find(([d])=>d===selectedDate)||[,])[1]||[];
     const W=420,HEADER=90,MH=90,PAD=14,FOOT=40;
     const H=HEADER+MH*matches.length+FOOT;
-
-    // Pre-load profile pics as Image objects so they can be drawn synchronously on canvas
-    const picImgs={};
-    await Promise.all(Object.keys(picCache).map(idx=>{
-      const src=picCache[idx];
-      if(!src)return Promise.resolve();
-      return new Promise(res=>{
-        const img=new Image();
-        img.onload=()=>{picImgs[idx]=img;res();};
-        img.onerror=()=>res();
-        img.src=src;
-      });
-    }));
-
     const canvas=document.createElement("canvas");
     const DPR=2;canvas.width=W*DPR;canvas.height=H*DPR;
     const ctx=canvas.getContext("2d");ctx.scale(DPR,DPR);
@@ -1391,30 +1377,20 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
         const col=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):"#8899b4";
         ctx.globalAlpha=isLoss?0.4:1;
 
-        // Outer chip — profile pic if available, else initials square
+        // Outer initials chip
         if(owner!=null){
           const chipColor=getPlayerColor(owner.playerIdx,PC[owner.playerIdx]);
-          const chipX=isHome?PAD+2:W-PAD-2-36;
-          const chipY=y+MH/2-18+OFFSET;
-          const pic=picImgs[owner.playerIdx];
-          if(pic){
-            ctx.save();
-            ctx.beginPath();ctx.arc(chipX+18,chipY+18,18,0,Math.PI*2);ctx.clip();
-            ctx.drawImage(pic,chipX,chipY,36,36);
-            ctx.restore();
-            ctx.strokeStyle=chipColor;ctx.lineWidth=2;
-            ctx.beginPath();ctx.arc(chipX+18,chipY+18,18,0,Math.PI*2);ctx.stroke();
-          } else {
-            ctx.fillStyle=chipColor;
-            ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,36,36,6):ctx.rect(chipX,chipY,36,36);ctx.fill();
-            ctx.fillStyle="#0a1628";ctx.font=`700 15px BebasNeue,Arial`;ctx.textAlign="center";
-            ctx.fillText((initials[owner.playerIdx]||"?"),chipX+18,chipY+24);
-          }
+          const chipX=isHome?PAD+6:W-PAD-6-26;
+          const chipY=y+MH/2-13+OFFSET;
+          ctx.fillStyle=chipColor;
+          ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,26,26,5):ctx.rect(chipX,chipY,26,26);ctx.fill();
+          ctx.fillStyle="#0a1628";ctx.font=`700 13px BebasNeue,Arial`;ctx.textAlign="center";
+          ctx.fillText((initials[owner.playerIdx]||"?"),chipX+13,chipY+18);
           if(ptsEarned>0){
             ctx.globalAlpha=1;
             ctx.fillStyle=chipColor;ctx.font=`700 10px DMSans,Arial`;
             ctx.textAlign=isHome?"left":"right";
-            ctx.fillText(`+${ptsEarned}`,isHome?chipX+40:chipX-4,chipY+24);
+            ctx.fillText(`+${ptsEarned}`,isHome?chipX+30:chipX-4,chipY+18);
           }
         }
 

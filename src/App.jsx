@@ -1541,7 +1541,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
       if(scrollTargetRef.current){
         const el=scrollTargetRef.current;
         const rect=el.getBoundingClientRect();
-        const offset=20; // just a sliver above the today box
+        const offset=60; // land just above the gold border of today box
         window.scrollTo({top:window.scrollY+rect.top-offset,behavior:"smooth"});
       }
     },120);
@@ -3386,7 +3386,6 @@ export default function Mundialito() {
           if(fresh._profiles){Object.keys(fresh._profiles).forEach(k=>{picCache[parseInt(k)]=fresh._profiles[k];});}
           if(fresh._playerColors){Object.keys(fresh._playerColors).forEach(k=>{colorCache[parseInt(k)]=fresh._playerColors[k];});saveCaches();}
           setPlayerColors(fresh._playerColors||{});
-          bumpPics(setPicRefresh);
           setSt(prev=>{
           const localResults = prev.matchResults||{};
           const freshResults = fresh.matchResults||{};
@@ -3396,7 +3395,8 @@ export default function Mundialito() {
           merged.matchResults = freshCount > localCount ? {...freshResults, ...localResults} : {...localResults, ...freshResults};
           merged.config = {...merged.config, playerNames: prev.config.playerNames};
           return merged;
-        });
+          });
+          bumpPics(setPicRefresh);
         }
       });
     }
@@ -3408,13 +3408,13 @@ export default function Mundialito() {
         setAppState("loading");
         loadPool(savedCode).then(data=>{
           if(data){
-            const merged=mergeState(EMPTY,data);
-            setSt(merged);setIsHost(false);
-            setSpectatorPoolCode(savedCode);
-            // Load pics from same fetch response
+            // Load pics from same fetch response — populate BEFORE setSt then bump
             if(data._profiles){Object.keys(data._profiles).forEach(k=>{picCache[parseInt(k)]=data._profiles[k];});}
             if(data._playerColors){Object.keys(data._playerColors).forEach(k=>{colorCache[parseInt(k)]=data._playerColors[k];});saveCaches();}
             setPlayerColors(data._playerColors||{});
+            const merged=mergeState(EMPTY,data);
+            setSt(merged);setIsHost(false);
+            setSpectatorPoolCode(savedCode);
             bumpPics(setPicRefresh);
             setTimeout(()=>requestNotificationPermission(), 2000);
             if(merged.draftLocked){
@@ -3490,7 +3490,7 @@ export default function Mundialito() {
       // Sort chronologically by match order in GM fixture list
       newResults.sort((a,b)=>GM.findIndex(m=>m.id===a.matchId)-GM.findIndex(m=>m.id===b.matchId));
       // Only show animations for results within the last 72 hours
-      const cutoff=Date.now()-(72*60*60*1000);
+      const cutoff=Date.now()-(48*60*60*1000);
       const recent=newResults.filter(r=>{
         const match=GM.find(m=>m.id===r.matchId);
         if(!match)return false;

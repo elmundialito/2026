@@ -386,45 +386,45 @@ const fmtDate = (dateStr, lang="en") => {
   return d.toLocaleDateString("en-US",{weekday:"short"}).toUpperCase()+" · "+d.toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase();
 };
 
-// ── Pre-match odds [home%, draw%, away%] — sourced from Polymarket via prode-market.pages.dev ──
-// Shown always (pre & post kickoff) so people can see if it was an upset.
+// ── Pre-match odds [home%, draw%, away%] — cross-checked Polymarket vs bet365, using bet365 where >5% discrepancy ──
+// Shown always (pre & post kickoff). Winning outcome highlighted green post-match.
 const MATCH_ODDS = {
-  // Group A
+  // Group A: MEX/SKO/CZE/RSA
   G01:[69,21,11], G02:[37,31,31], G25:[54,25,20], G28:[48,28,23],
-  G53:[57,24,19], G54:[44,27,29],
-  // Group B
-  G03:[53,27,19], G05:[83,12,6],  G26:[62,23,15], G27:[76,16,7],
-  G49:[62,22,16], G50:[37,29,34],
-  // Group C
-  G06:[58,25,16], G07:[16,22,63], G30:[14,19,67], G31:[67,19,14],
+  G53:[19,24,57], G54:[17,23,60],
+  // Group B: CAN/SUI/BIH/QAT
+  G03:[53,27,19], G05:[6,12,83],  G26:[62,23,15], G27:[76,16,7],
+  G49:[45,28,27], G50:[59,25,16],
+  // Group C: BRA/MAR/SCO/HAI
+  G06:[58,25,16], G07:[16,22,63], G30:[17,26,56], G31:[88,8,4],
   G51:[14,19,67], G52:[72,18,10],
-  // Group D
-  G04:[47,31,23], G08:[17,26,56], G29:[61,21,17], G32:[35,29,35],
-  G59:[38,27,34], G60:[44,29,27],
-  // Group E
-  G09:[93,5,2],   G11:[29,33,39], G34:[72,18,10], G35:[85,10,5],
-  G55:[25,20,55], G56:[28,22,50],
-  // Group F
-  G10:[48,27,24], G12:[52,28,21], G33:[60,23,17], G36:[24,27,48],
-  G57:[41,29,29], G58:[15,22,62],
-  // Group G
-  G14:[65,21,13], G16:[54,27,18], G38:[68,19,13], G40:[15,26,59],
-  G65:[37,30,32], G66:[10,19,70],
-  // Group H
-  G13:[90,7,3],   G15:[11,21,67], G37:[77,15,8],  G39:[72,18,10],
-  G63:[34,29,37], G64:[36,26,38],
-  // Group I
-  G17:[66,21,12], G18:[5,12,82],  G42:[78,16,7],  G43:[48,28,24],
-  G61:[24,22,53], G62:[57,24,19],
-  // Group J
-  G19:[70,20,9],  G20:[72,17,10], G41:[76,16,8],  G44:[16,23,61],
-  G71:[8,16,76],  G72:[44,28,28],
-  // Group K
+  // Group D: USA/TUR/PAR/AUS
+  G04:[47,30,23], G08:[17,26,56], G29:[61,21,17], G32:[47,28,24],
+  G59:[36,27,38], G60:[44,29,27],
+  // Group E: GER/ECU/CIV/CUR
+  G09:[93,5,2],   G11:[29,33,39], G34:[63,20,16], G35:[88,8,4],
+  G55:[4,8,88],   G56:[20,26,54],
+  // Group F: NED/JPN/SWE/TUN
+  G10:[48,27,24], G12:[52,28,21], G33:[57,23,19], G36:[13,23,65],
+  G57:[45,28,28], G58:[10,19,71],
+  // Group G: BEL/EGY/IRN/NZL
+  G14:[65,21,13], G16:[54,27,18], G38:[69,19,11], G40:[15,26,59],
+  G65:[43,31,26], G66:[8,15,77],
+  // Group H: ESP/URU/KSA/CPV
+  G13:[90,7,3],   G15:[11,21,67], G37:[88,7,4],   G39:[63,23,14],
+  G63:[34,29,37], G64:[16,22,62],
+  // Group I: FRA/SEN/IRQ/NOR
+  G17:[66,21,12], G18:[5,12,82],  G42:[86,10,4],  G43:[45,28,27],
+  G61:[22,25,53], G62:[67,21,12],
+  // Group J: ARG/ALG/AUT/JOR
+  G19:[70,20,9],  G20:[72,17,10], G41:[58,25,17], G44:[16,23,61],
+  G71:[8,16,76],  G72:[27,29,44],
+  // Group K: POR/COD/UZB/COL
   G21:[76,16,7],  G24:[9,19,71],  G45:[80,14,6],  G48:[67,20,13],
-  G69:[38,27,35], G70:[11,21,67],
-  // Group L
-  G22:[56,25,18], G23:[44,29,28], G46:[72,19,9],  G47:[35,29,36],
-  G67:[13,20,66], G68:[40,29,31],
+  G69:[27,29,45], G70:[41,28,31],
+  // Group L: ENG/CRO/GHA/PAN
+  G22:[56,25,18], G23:[44,29,28], G46:[72,19,9],  G47:[16,23,61],
+  G67:[10,16,74], G68:[57,25,18],
 };
 
 const fmtKickoff = (dateStr, timeUTC) => {
@@ -1626,7 +1626,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
         );
       })()}
       {openChatId&&(()=>{const m=GM.find(x=>x.id===openChatId);return m?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={m} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
-      {openPredictId&&(()=>{const m=GM.find(x=>x.id===openPredictId);return m?<PredictModal open={true} onClose={()=>setOpenPredictId(null)} match={m} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchPredictions={predictions[openPredictId]||{}}/>:null;})()}
+      {openPredictId&&(()=>{const m=GM.find(x=>x.id===openPredictId);return m?<PredictModal open={true} onClose={()=>setOpenPredictId(null)} match={m} result={matchResults[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchPredictions={predictions[openPredictId]||{}}/>:null;})()}
     </div>
   );
 }
@@ -2522,7 +2522,7 @@ async function savePrediction(poolCode, matchId, playerIdx, outcome) {
   } catch(e){console.error("savePrediction failed",e);}
 }
 
-function PredictModal({open,onClose,match,poolCode,myPlayerIdx,playerNames,initials,matchPredictions={}}) {
+function PredictModal({open,onClose,match,result,poolCode,myPlayerIdx,playerNames,initials,matchPredictions={}}) {
   const lang=useContext(LangContext);
   const picVersion=useContext(PicContext);
   if(!open)return null;
@@ -2532,15 +2532,26 @@ function PredictModal({open,onClose,match,poolCode,myPlayerIdx,playerNames,initi
   const isLocked=kickoffUTC?Date.now()>=kickoffUTC.getTime():false;
   const myPick=myPlayerIdx!==null?matchPredictions[String(myPlayerIdx)]:null;
 
+  // Determine winning outcome from result for post-match colouring
+  const out=getMatchOutcome(result);
+  const winKey=out==="A"?"home":out==="B"?"away":out==="D"?"draw":null;
+
+  const getColor=(key)=>{
+    if(winKey&&winKey===key) return "#61a978"; // winner = green
+    if(winKey) return "#3d5070"; // other outcomes = muted after result
+    // pre-match: all same neutral blue
+    return "#6b9bd1";
+  };
+
   const doPick=async(outcome)=>{
     if(isLocked||myPlayerIdx===null||!poolCode)return;
     await savePrediction(poolCode,match.id,myPlayerIdx,outcome);
   };
 
   const outcomes=[
-    {key:"home",flag:ta?.flag||"🏳️",name:countryName(a,lang)||a,pct:odds?odds[0]:null,color:"#61a978"},
-    {key:"draw",flag:"🤝",name:lang==="es"?"Empate":"Draw",pct:odds?odds[1]:null,color:"#8899b4"},
-    {key:"away",flag:tb?.flag||"🏳️",name:countryName(b,lang)||b,pct:odds?odds[2]:null,color:"#6b9bd1"},
+    {key:"home",flag:ta?.flag||"🏳️",name:countryName(a,lang)||a,pct:odds?odds[0]:null},
+    {key:"draw",flag:"🤝",name:lang==="es"?"Empate":"Draw",pct:odds?odds[1]:null},
+    {key:"away",flag:tb?.flag||"🏳️",name:countryName(b,lang)||b,pct:odds?odds[2]:null},
   ];
 
   // Group players by their pick
@@ -2569,16 +2580,18 @@ function PredictModal({open,onClose,match,poolCode,myPlayerIdx,playerNames,initi
           {odds&&(
             <div style={{background:"rgba(10,22,40,0.5)",borderRadius:12,padding:"14px 16px",border:"1px solid #1a2d4a"}}>
               <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,color:"#5a6a8a",marginBottom:12}}>{(lang==="es"?"PRONÓSTICO PREVIO":"PRE-MATCH ODDS").toUpperCase()}</div>
-              {outcomes.map(({key,flag,name,pct,color})=>(
+              {outcomes.map(({key,flag,name,pct})=>{
+                const col=getColor(key);
+                return(
                 <div key={key} style={{display:"flex",alignItems:"center",gap:10,marginBottom:key==="away"?0:10}}>
                   <span style={{fontSize:18,width:24,textAlign:"center",flexShrink:0}}>{flag}</span>
-                  <span style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:500,color:"#c8c0b0",flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</span>
+                  <span style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:500,color:winKey?(winKey===key?"#c8c0b0":"#4a5a7a"):"#c8c0b0",flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</span>
                   <div style={{width:90,height:6,background:"#1a2d4a",borderRadius:4,overflow:"hidden",flexShrink:0}}>
-                    <div style={{width:`${pct}%`,height:"100%",background:color,borderRadius:4}}/>
+                    <div style={{width:`${pct}%`,height:"100%",background:col,borderRadius:4}}/>
                   </div>
-                  <span style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:700,color,minWidth:36,textAlign:"right"}}>{pct}%</span>
+                  <span style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:700,color:col,minWidth:36,textAlign:"right"}}>{pct}%</span>
                 </div>
-              ))}
+              );})}
             </div>
           )}
 
@@ -2589,25 +2602,30 @@ function PredictModal({open,onClose,match,poolCode,myPlayerIdx,playerNames,initi
               {isLocked&&<span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",marginLeft:8,fontWeight:400,letterSpacing:0}}>· {lang==="es"?"bloqueado":"locked at kickoff"}</span>}
             </div>
             <div style={{display:"flex",gap:8}}>
-              {outcomes.map(({key,flag,name,color})=>{
+              {outcomes.map(({key,flag,name})=>{
                 const picked=myPick===key;
-                const iHaveOne=myPick===key;
+                const iHaveOne=myPick!==null;
+                const col=getColor(key);
+                const isWinner=winKey===key;
                 return(
                   <div key={key} style={{flex:1,display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
                     <button
                       onClick={()=>doPick(key)}
                       disabled={isLocked}
                       style={{
-                        width:"100%",padding:"14px 4px",borderRadius:12,border:`2px solid ${picked?color:iHaveOne?"transparent":`${color}44`}`,
-                        background:picked?`${color}22`:"rgba(26,39,68,0.4)",
-                        color:picked?color:"#8899b4",cursor:isLocked?"default":"pointer",
+                        width:"100%",padding:"14px 4px",borderRadius:12,
+                        border:`2px solid ${picked?col:isWinner?col:`${col}44`}`,
+                        background:picked?`${col}22`:isWinner?"rgba(97,169,120,0.08)":"rgba(26,39,68,0.4)",
+                        color:picked?col:isWinner?col:"#8899b4",
+                        cursor:isLocked?"default":"pointer",
                         display:"flex",flexDirection:"column",alignItems:"center",gap:6,
-                        opacity:isLocked&&!picked&&myPick!==null?0.5:1,
+                        opacity:isLocked&&!picked&&iHaveOne&&!isWinner?0.4:1,
                         transition:"all 0.15s"
                       }}>
                       <span style={{fontSize:28}}>{flag}</span>
                       <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,textAlign:"center",lineHeight:1.2}}>{name}</span>
-                      {picked&&<span style={{fontSize:10,color,fontFamily:"'DM Sans'",fontWeight:700}}>✓ {lang==="es"?"tu voto":"your pick"}</span>}
+                      {picked&&<span style={{fontSize:10,color:col,fontFamily:"'DM Sans'",fontWeight:700}}>✓ {lang==="es"?"tu voto":"your pick"}</span>}
+                      {isWinner&&!picked&&<span style={{fontSize:10,color:"#61a978",fontFamily:"'DM Sans'",fontWeight:700}}>✓ {lang==="es"?"resultado":"result"}</span>}
                     </button>
                     {/* Avatars of people who picked this */}
                     {byOutcome[key].length>0&&(

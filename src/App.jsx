@@ -1775,7 +1775,7 @@ function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,in
         if(pickOutcome===out)correct++;
       });
       return{idx:i,correct,total,pct:total>0?Math.round(correct/total*100):null};
-    }).filter(p=>p.total>0).sort((a,b)=>b.pct-a.pct||b.correct-a.correct);
+    }).filter(p=>playerNames[p.idx]).sort((a,b)=>b.pct-a.pct||b.correct-a.correct||a.idx-b.idx);
   },[allPredictions,matchResults,playerCount]);
 
   if(stats.length===0)return null;
@@ -1803,11 +1803,11 @@ function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,in
                   <span style={{fontFamily:"'Bebas Neue'",fontSize:12,color:isTop?"var(--accent)":"#3d5070",width:14}}>{rank+1}</span>
                   <PlayerAvatar idx={p.idx} name={playerNames[p.idx]||""} size={26} refresh={picVersion}/>
                   <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playerNames[p.idx]||`P${p.idx+1}`}</span>
-                  {isTop&&<span style={{fontSize:10}}>🏆</span>}
+                  {isTop&&p.pct!==null&&<span style={{fontSize:10}}>🏆</span>}
                 </div>
                 <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color,textAlign:"center"}}>{p.correct}</span>
                 <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center"}}>{p.total}</span>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:isTop?"var(--accent)":color,textAlign:"center"}}>{p.pct}%</span>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:isTop&&p.pct!==null?"var(--accent)":color,textAlign:"center"}}>{p.pct!==null?`${p.pct}%`:"—"}</span>
               </div>
             );
           })}

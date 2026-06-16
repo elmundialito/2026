@@ -2630,6 +2630,29 @@ function ReactionRow({reactions, allEmojis, myPlayerIdx, playerNames, onReact, o
   );
 }
 
+function AvatarWithName({idx,name,size,picVersion}) {
+  const [show,setShow]=useState(false);
+  const color=getPlayerColor(idx,PC[idx]);
+  useEffect(()=>{
+    if(!show)return;
+    const dismiss=()=>setShow(false);
+    document.addEventListener("touchstart",dismiss,{once:true,passive:true});
+    document.addEventListener("mousedown",dismiss,{once:true});
+    return()=>{document.removeEventListener("touchstart",dismiss);document.removeEventListener("mousedown",dismiss);};
+  },[show]);
+  return(
+    <div style={{position:"relative"}} onClick={e=>{e.stopPropagation();setShow(o=>!o);}}>
+      <PlayerAvatar idx={idx} name={name} size={size} refresh={picVersion}/>
+      {show&&(
+        <div style={{position:"absolute",bottom:"calc(100% + 4px)",left:"50%",transform:"translateX(-50%)",background:"#0a1628",border:`1px solid ${color}`,borderRadius:8,padding:"3px 8px",whiteSpace:"nowrap",fontFamily:"'DM Sans'",fontSize:name.length>14?9:name.length>10?10:11,fontWeight:600,color,zIndex:300,boxShadow:"0 2px 8px rgba(0,0,0,0.5)"}}
+          onClick={e=>e.stopPropagation()}>
+          {name}
+        </div>
+      )}
+    </div>
+  );
+}
+
 async function savePrediction(poolCode, matchId, playerIdx, outcome) {
   try {
     await setDoc(doc(db,"pools",poolCode),{predictions:{[matchId]:{[String(playerIdx)]:outcome}}},{merge:true});
@@ -2745,9 +2768,7 @@ function PredictModal({open,onClose,match,result,poolCode,myPlayerIdx,playerName
                     {byOutcome[key].length>0&&(
                       <div style={{display:"flex",flexWrap:"wrap",gap:3,justifyContent:"center"}}>
                         {byOutcome[key].map(idx=>(
-                          <div key={idx} title={playerNames[idx]||`P${idx+1}`}>
-                            <PlayerAvatar idx={idx} name={playerNames[idx]||""} size={24} refresh={picVersion}/>
-                          </div>
+                          <AvatarWithName key={idx} idx={idx} name={playerNames[idx]||`P${idx+1}`} size={24} picVersion={picVersion}/>
                         ))}
                       </div>
                     )}

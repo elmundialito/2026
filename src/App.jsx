@@ -591,7 +591,7 @@ function OwnerChip({playerIdx,initials,size=18,playerName=""}) {
     <div style={{position:"relative",flexShrink:0}} onClick={e=>{e.stopPropagation();setShow(o=>!o);}}>
       <div style={{width:size,height:size,borderRadius:4,background:color,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:size-6,display:"inline-flex",alignItems:"center",justifyContent:"center",lineHeight:1,cursor:"pointer"}}>{initials[playerIdx]}</div>
       {show&&playerName&&(
-        <div style={{position:"absolute",bottom:"calc(100% + 4px)",left:"50%",transform:"translateX(-50%)",background:"#0a1628",border:`1px solid ${color}`,borderRadius:8,padding:"4px 10px",whiteSpace:"nowrap",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color,zIndex:200,boxShadow:"0 2px 8px rgba(0,0,0,0.5)"}}
+        <div style={{position:"absolute",bottom:"calc(100% + 4px)",right:0,background:"#0a1628",border:`1px solid ${color}`,borderRadius:8,padding:"4px 10px",whiteSpace:"nowrap",fontFamily:"'DM Sans'",fontSize:playerName.length>14?9:playerName.length>10?10:11,fontWeight:600,color,zIndex:200,boxShadow:"0 2px 8px rgba(0,0,0,0.5)"}}
           onClick={e=>e.stopPropagation()}>
           {playerName}
         </div>
@@ -1508,7 +1508,7 @@ function ScheduleView({matchesByDate,today,todaySGT,matchResults,ownership,onSet
         <div key={date} style={{marginBottom:isCollapsed?4:18,marginTop:8,borderRadius:isToday?10:0,border:isToday?"1px solid rgba(201,168,76,0.2)":"none",background:isToday?"rgba(201,168,76,0.03)":"transparent",padding:isToday?"10px":"0"}}>
           <div onClick={toggleCollapse} style={{display:"flex",alignItems:"center",gap:10,marginBottom:isCollapsed?0:10,paddingTop:4,cursor:"pointer"}}>
             <div style={{fontFamily:"'Bebas Neue'",fontSize:isToday?22:18,letterSpacing:3,color:isToday?"var(--accent)":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
-            {isToday&&!isCollapsed&&<div style={{padding:"2px 10px",borderRadius:10,background:"rgba(201,168,76,0.25)",border:"1px solid rgba(201,168,76,0.5)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:2}}>⚡ {t(lang,"today")}</div>}
+            {isToday&&<div style={{padding:"2px 10px",borderRadius:10,background:"rgba(201,168,76,0.25)",border:"1px solid rgba(201,168,76,0.5)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:2}}>⚡ {t(lang,"today")}</div>}
             <div style={{flex:1,height:isToday?2:1,background:isToday?"rgba(201,168,76,0.4)":"rgba(138,153,180,0.2)"}}/>
             <span style={{fontFamily:"'DM Sans'",fontSize:10,color:isToday?"var(--accent)":"#5a6a8a",fontWeight:isToday?600:400}}>{scored}/{matches.length} {isCollapsed?"▼":"▲"}</span>
           </div>

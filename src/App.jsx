@@ -1467,6 +1467,7 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
 
 function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx,onPicsLoaded,onPredictionsUpdate}) {
   const lang=useContext(LangContext);
+  const bumpPicsCtx=useContext(PicBumpContext);
   const [matchChat,setMatchChat]=useState({});
   const [predictions,setPredictions]=useState({});
   const [openChatId,setOpenChatId]=useState(null);
@@ -1493,7 +1494,8 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
           const colors=data.playerColors||{};
           Object.keys(colors).forEach(k=>{colorCache[parseInt(k)]=colors[k];});
           saveCaches();
-          if(onPicsLoaded) onPicsLoaded();
+          if(bumpPicsCtx) bumpPicsCtx();
+          else if(onPicsLoaded) onPicsLoaded();
         }
       }
     });
@@ -1541,8 +1543,8 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
       if(scrollTargetRef.current){
         const el=scrollTargetRef.current;
         const rect=el.getBoundingClientRect();
-        const offset=60; // land just above the gold border of today box
-        window.scrollTo({top:window.scrollY+rect.top-offset,behavior:"smooth"});
+        const tabBarHeight=58; // sticky tab bar height
+        window.scrollTo({top:window.scrollY+rect.top-tabBarHeight,behavior:"smooth"});
       }
     },120);
     return()=>clearTimeout(t);

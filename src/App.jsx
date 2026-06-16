@@ -1187,14 +1187,14 @@ function OddsPopup({matchId, teamA, teamB, flagA, flagB, lang, hasResult}) {
               <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:700,color:col,minWidth:28,textAlign:"right"}}>{pct}%</span>
             </div>
           ))}
-          <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",marginTop:6,borderTop:"1px solid #1a2d4a",paddingTop:6}}>via Polymarket · pre-match</div>
+          <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",marginTop:6,borderTop:"1px solid #1a2d4a",paddingTop:6}}>pre-match odds</div>
         </div>
       )}
     </div>
   );
 }
 
-function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=new Set(),onOpenChat,chatCount=0,hasReactions=false}) {
+function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=new Set(),onOpenChat,chatCount=0,hasReactions=false,onOpenPredict,matchPredictions={},myPlayerIdx,playerCount=8}) {
   const lang=useContext(LangContext);
   const [a,b]=match.t;const ta=TBN[a],tb=TBN[b];const oa=ownership[a],ob=ownership[b];const out=getMatchOutcome(result);
   const isMyMatch=myTeams.has(a)||myTeams.has(b);
@@ -1239,7 +1239,7 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
         <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>GRP {match.g}</span>
         {match.ko&&!result&&<span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1,whiteSpace:"nowrap"}}>{fmtKickoff(match.d,match.ko)}</span>}
         <div style={{display:"flex",alignItems:"center",gap:5}}>
-          {MATCH_ODDS[match.id]&&<OddsPopup matchId={match.id} teamA={a} teamB={b} flagA={ta?.flag||"🏳️"} flagB={tb?.flag||"🏳️"} lang={lang} hasResult={!!result}/>}
+          {MATCH_ODDS[match.id]&&<button onClick={onOpenPredict} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${matchPredictions[myPlayerIdx]!=null?"rgba(107,155,209,0.4)":"rgba(107,155,209,0.2)"}`,background:matchPredictions[myPlayerIdx]!=null?"rgba(107,155,209,0.15)":"rgba(107,155,209,0.06)",color:"#6b9bd1",cursor:"pointer",fontSize:12,fontFamily:"'DM Sans'",flexShrink:0}}>🔮{Object.keys(matchPredictions).length>0&&<span style={{fontSize:10,fontWeight:600}}>{Object.keys(matchPredictions).length}</span>}</button>}
           {match.ko&&(()=>{
             const kickoffUTC=new Date(match.d+"T"+match.ko+":00Z");
             if(Date.now()<kickoffUTC.getTime()+2.5*60*60*1000) return null;
@@ -1468,7 +1468,9 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
 function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx,onPicsLoaded}) {
   const lang=useContext(LangContext);
   const [matchChat,setMatchChat]=useState({});
+  const [predictions,setPredictions]=useState({});
   const [openChatId,setOpenChatId]=useState(null);
+  const [openPredictId,setOpenPredictId]=useState(null);
   const [showShareDay,setShowShareDay]=useState(false);
   const poolCode=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
 
@@ -1479,6 +1481,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
     const unsub=onSnapshot(doc(db,"pools",poolCode),(snap)=>{
       if(snap.exists()){
         setMatchChat(snap.data().matchChat||{});
+        setPredictions(snap.data().predictions||{});
         // First snapshot — populate pic cache from same document fetch
         if(!picsLoadedFromChat){
           picsLoadedFromChat=true;
@@ -1583,8 +1586,9 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
       </div>
       {view==="schedule"&&matchesByDate.map(([date,matches])=>{
         const isToday=date===today;const isPast=date<today;const isYesterday=date===yesterday;
-        const isOldPast=isPast&&!isToday&&!isYesterday;
-        const isCollapsed=isOldPast&&(collapsedDates[date]!==false); // old past days start collapsed
+        const collapseThreshold=lastScoredDate||yesterday;
+        const isOldPast=date<collapseThreshold;
+        const isCollapsed=isOldPast&&(collapsedDates[date]!==false);
         const isScrollTarget=date===(lastScoredDate||today)||(date>today&&!lastScoredDate&&!matchesByDate.some(([d])=>d===today||d>today&&d<date));
         const scored=matches.filter(m=>matchResults[m.id]!=null).length;
         return(
@@ -1597,7 +1601,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
               {isOldPast&&<span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#3d5070",background:"rgba(26,39,68,0.6)",padding:"1px 8px",borderRadius:8,flexShrink:0}}>{scored}/{matches.length} {isCollapsed?"▼":"▲"}</span>}
               {!isOldPast&&<span style={{fontFamily:"'DM Sans'",fontSize:10,color:isToday?"var(--accent)":"#5a6a8a",fontWeight:isToday?600:400}}>{scored}/{matches.length}</span>}
             </div>
-            {!isCollapsed&&matches.map(m=><GroupMatchCard key={m.id} match={m} result={matchResults[m.id]} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} onOpenChat={()=>setOpenChatId(m.id)} chatCount={(matchChat[m.id]?.messages||[]).length} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)}/>)}
+            {!isCollapsed&&matches.map(m=><GroupMatchCard key={m.id} match={m} result={matchResults[m.id]} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} onOpenChat={()=>setOpenChatId(m.id)} chatCount={(matchChat[m.id]?.messages||[]).length} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)} onOpenPredict={()=>setOpenPredictId(m.id)} matchPredictions={predictions[m.id]||{}} myPlayerIdx={myPlayerIdx} playerCount={config.playerCount}/>)}
           </div>
         );
       })}
@@ -1622,6 +1626,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
         );
       })()}
       {openChatId&&(()=>{const m=GM.find(x=>x.id===openChatId);return m?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={m} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
+      {openPredictId&&(()=>{const m=GM.find(x=>x.id===openPredictId);return m?<PredictModal open={true} onClose={()=>setOpenPredictId(null)} match={m} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchPredictions={predictions[openPredictId]||{}}/>:null;})()}
     </div>
   );
 }
@@ -2507,6 +2512,126 @@ function ReactionRow({reactions, allEmojis, myPlayerIdx, playerNames, onReact, o
         <button onClick={onAddEmoji} style={{width:30,height:30,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>➕</button>
       </div>
       {popover&&<div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setPopover(null)}/>}
+    </div>
+  );
+}
+
+async function savePrediction(poolCode, matchId, playerIdx, outcome) {
+  try {
+    await setDoc(doc(db,"pools",poolCode),{predictions:{[matchId]:{[String(playerIdx)]:outcome}}},{merge:true});
+  } catch(e){console.error("savePrediction failed",e);}
+}
+
+function PredictModal({open,onClose,match,poolCode,myPlayerIdx,playerNames,initials,matchPredictions={}}) {
+  const lang=useContext(LangContext);
+  const picVersion=useContext(PicContext);
+  if(!open)return null;
+  const [a,b]=match.t;const ta=TBN[a],tb=TBN[b];
+  const odds=MATCH_ODDS[match.id];
+  const kickoffUTC=match.ko?new Date(match.d+"T"+match.ko+":00Z"):null;
+  const isLocked=kickoffUTC?Date.now()>=kickoffUTC.getTime():false;
+  const myPick=myPlayerIdx!==null?matchPredictions[String(myPlayerIdx)]:null;
+
+  const doPick=async(outcome)=>{
+    if(isLocked||myPlayerIdx===null||!poolCode)return;
+    await savePrediction(poolCode,match.id,myPlayerIdx,outcome);
+  };
+
+  const outcomes=[
+    {key:"home",flag:ta?.flag||"🏳️",name:countryName(a,lang)||a,pct:odds?odds[0]:null,color:"#61a978"},
+    {key:"draw",flag:"🤝",name:lang==="es"?"Empate":"Draw",pct:odds?odds[1]:null,color:"#8899b4"},
+    {key:"away",flag:tb?.flag||"🏳️",name:countryName(b,lang)||b,pct:odds?odds[2]:null,color:"#6b9bd1"},
+  ];
+
+  // Group players by their pick
+  const byOutcome={home:[],draw:[],away:[]};
+  Object.entries(matchPredictions).forEach(([idx,outcome])=>{
+    if(byOutcome[outcome])byOutcome[outcome].push(parseInt(idx));
+  });
+
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxHeight:"80vh",background:"linear-gradient(165deg,#0a1628,#0f1e38)",borderRadius:"20px 20px 0 0",display:"flex",flexDirection:"column",overflow:"hidden",border:"1px solid #2a3a5c"}}>
+        {/* Header */}
+        <div style={{padding:"14px 16px 10px",borderBottom:"1px solid #1e2f50",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:22}}>{ta?.flag}</span>
+            <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:"#8899b4",letterSpacing:1}}>vs</span>
+            <span style={{fontSize:22}}>{tb?.flag}</span>
+            <span style={{fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"#e0dcd4",marginLeft:4}}>{countryName(a,lang)} · {countryName(b,lang)}</span>
+          </div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:"#5a6a8a",fontSize:20,cursor:"pointer",padding:"0 4px"}}>✕</button>
+        </div>
+
+        <div style={{overflowY:"auto",padding:"14px 16px 24px",display:"flex",flexDirection:"column",gap:14}}>
+
+          {/* Odds section */}
+          {odds&&(
+            <div style={{background:"rgba(10,22,40,0.5)",borderRadius:10,padding:"10px 12px",border:"1px solid #1a2d4a"}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1.5,color:"#5a6a8a",marginBottom:8}}>{(lang==="es"?"PRONÓSTICO PREVIO":"PRE-MATCH ODDS").toUpperCase()}</div>
+              {outcomes.map(({key,flag,name,pct,color})=>(
+                <div key={key} style={{display:"flex",alignItems:"center",gap:8,marginBottom:key==="away"?0:6}}>
+                  <span style={{fontSize:13,width:20,textAlign:"center",flexShrink:0}}>{flag}</span>
+                  <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4",flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</span>
+                  <div style={{width:70,height:4,background:"#1a2d4a",borderRadius:4,overflow:"hidden",flexShrink:0}}>
+                    <div style={{width:`${pct}%`,height:"100%",background:color,borderRadius:4}}/>
+                  </div>
+                  <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:700,color,minWidth:30,textAlign:"right"}}>{pct}%</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pick section */}
+          <div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,color:"#5a6a8a",marginBottom:10}}>
+              {isLocked?(lang==="es"?"PREDICCIONES":"PREDICTIONS"):(lang==="es"?"¿QUIÉN GANA?":"WHO WINS?")}
+              {isLocked&&<span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",marginLeft:8,fontWeight:400,letterSpacing:0}}>· {lang==="es"?"bloqueado":"locked at kickoff"}</span>}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              {outcomes.map(({key,flag,name,color})=>{
+                const picked=myPick===key;
+                const othersHere=byOutcome[key].filter(i=>i!==myPlayerIdx);
+                const iHaveOne=myPick===key;
+                return(
+                  <div key={key} style={{flex:1,display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
+                    <button
+                      onClick={()=>doPick(key)}
+                      disabled={isLocked}
+                      style={{
+                        width:"100%",padding:"10px 4px",borderRadius:10,border:`2px solid ${picked?color:iHaveOne?"transparent":`${color}44`}`,
+                        background:picked?`${color}22`:"rgba(26,39,68,0.4)",
+                        color:picked?color:"#8899b4",cursor:isLocked?"default":"pointer",
+                        display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+                        opacity:isLocked&&!picked&&myPick!==null?0.5:1,
+                        transition:"all 0.15s"
+                      }}>
+                      <span style={{fontSize:20}}>{flag}</span>
+                      <span style={{fontFamily:"'DM Sans'",fontSize:10,fontWeight:600,textAlign:"center",lineHeight:1.2}}>{name}</span>
+                      {picked&&<span style={{fontSize:9,color,fontFamily:"'DM Sans'",fontWeight:700}}>✓ {lang==="es"?"tu voto":"your pick"}</span>}
+                    </button>
+                    {/* Avatars of people who picked this */}
+                    {byOutcome[key].length>0&&(
+                      <div style={{display:"flex",flexWrap:"wrap",gap:3,justifyContent:"center"}}>
+                        {byOutcome[key].map(idx=>(
+                          <div key={idx} title={playerNames[idx]||`P${idx+1}`}>
+                            <PlayerAvatar idx={idx} name={playerNames[idx]||""} size={24} refresh={picVersion}/>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {!isLocked&&myPlayerIdx===null&&(
+              <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",textAlign:"center",marginTop:8}}>
+                {lang==="es"?"Selecciona tu jugador para predecir":"Select your player to make a prediction"}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

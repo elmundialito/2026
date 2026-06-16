@@ -1489,7 +1489,7 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
   );
 }
 
-function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx,onPicsLoaded}) {
+function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx,onPicsLoaded,onPredictionsUpdate}) {
   const lang=useContext(LangContext);
   const [matchChat,setMatchChat]=useState({});
   const [predictions,setPredictions]=useState({});
@@ -1505,7 +1505,9 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
     const unsub=onSnapshot(doc(db,"pools",poolCode),(snap)=>{
       if(snap.exists()){
         setMatchChat(snap.data().matchChat||{});
-        setPredictions(snap.data().predictions||{});
+        const preds=snap.data().predictions||{};
+        setPredictions(preds);
+        if(onPredictionsUpdate)onPredictionsUpdate(preds);
         // First snapshot — populate pic cache from same document fetch
         if(!picsLoadedFromChat){
           picsLoadedFromChat=true;
@@ -1755,7 +1757,67 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   );
 }
 
-function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser,onEditProfile,onSuggestions,picRefresh=0}) {
+function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,initials,lang}) {
+  const [open,setOpen]=useState(false);
+  const picVersion=useContext(PicContext);
+
+  const stats=useMemo(()=>{
+    return Array.from({length:playerCount},(_,i)=>{
+      let correct=0,total=0;
+      GM.forEach(m=>{
+        const pick=allPredictions[m.id]?.[String(i)];
+        const result=matchResults[m.id];
+        if(!pick||!result)return;
+        const out=getMatchOutcome(result);
+        if(!out)return;
+        total++;
+        const pickOutcome=pick==="home"?"A":pick==="away"?"B":"D";
+        if(pickOutcome===out)correct++;
+      });
+      return{idx:i,correct,total,pct:total>0?Math.round(correct/total*100):null};
+    }).filter(p=>p.total>0).sort((a,b)=>b.pct-a.pct||b.correct-a.correct);
+  },[allPredictions,matchResults,playerCount]);
+
+  if(stats.length===0)return null;
+
+  return(
+    <div style={{marginTop:16,borderRadius:12,border:"1px solid #1e2f50",overflow:"hidden"}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",padding:"12px 16px",background:"rgba(26,39,68,0.3)",border:"none",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}>
+        <span style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,color:"var(--accent)"}}>🔮 {lang==="es"?"PREDICCIONES":"PREDICTION ACCURACY"}</span>
+        <span style={{fontSize:11,color:"#5a6a8a",transform:open?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
+      </button>
+      {open&&(
+        <div style={{padding:"8px 12px 12px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 60px 60px 52px",gap:4,fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"4px 4px 8px",borderBottom:"1px solid #1a2d4a",marginBottom:6}}>
+            <span>{lang==="es"?"Jugador":"Player"}</span>
+            <span style={{textAlign:"center"}}>{lang==="es"?"Correctas":"Correct"}</span>
+            <span style={{textAlign:"center"}}>{lang==="es"?"Jugadas":"Played"}</span>
+            <span style={{textAlign:"center"}}>%</span>
+          </div>
+          {stats.map((p,rank)=>{
+            const color=getPlayerColor(p.idx,PC[p.idx]);
+            const isTop=rank===0;
+            return(
+              <div key={p.idx} style={{display:"grid",gridTemplateColumns:"1fr 60px 60px 52px",gap:4,alignItems:"center",padding:"6px 4px",borderBottom:rank<stats.length-1?"1px solid rgba(26,39,68,0.5)":"none"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontFamily:"'Bebas Neue'",fontSize:12,color:isTop?"var(--accent)":"#3d5070",width:14}}>{rank+1}</span>
+                  <PlayerAvatar idx={p.idx} name={playerNames[p.idx]||""} size={26} refresh={picVersion}/>
+                  <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playerNames[p.idx]||`P${p.idx+1}`}</span>
+                  {isTop&&<span style={{fontSize:10}}>🏆</span>}
+                </div>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color,textAlign:"center"}}>{p.correct}</span>
+                <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center"}}>{p.total}</span>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:isTop?"var(--accent)":color,textAlign:"center"}}>{p.pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser,onEditProfile,onSuggestions,picRefresh=0,allPredictions={}}) {
   const lang=useContext(LangContext);
   const [expandedIdx,setExpandedIdx]=useState(null);
   const today=new Date().toLocaleDateString("en-CA");
@@ -1896,6 +1958,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       <button onClick={onSuggestions} style={{width:"100%",marginTop:8,padding:"10px 0",borderRadius:10,border:"1px solid rgba(107,155,209,0.3)",background:"rgba(107,155,209,0.06)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
         💡 {lang==="es"?"Sugerir una función":"Suggest a feature"}
       </button>
+      <PredictionRecap allPredictions={allPredictions} matchResults={matchResults} playerNames={config.playerNames} playerCount={config.playerCount} initials={initials} lang={lang}/>
       <button onClick={async()=>{
         try {
           const bebas=new FontFace("BebasNeue","url(https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9WdhyyTh89ZNpQ.woff2)");
@@ -3270,6 +3333,7 @@ export default function Mundialito() {
   const [showProfileSetup,setShowProfileSetup]=useState(false);
   const [profileSetupIdx,setProfileSetupIdx]=useState(null);
   const [spectatorPoolCode,setSpectatorPoolCode]=useState(()=>{try{return window.localStorage?.getItem('mundi_spectator_code')||null;}catch(e){return null;}});
+  const [allPredictions,setAllPredictions]=useState({});
 
   // Live sync for spectators
   useEffect(()=>{
@@ -3281,6 +3345,7 @@ export default function Mundialito() {
         const data=snap.data();
         const decoded=decode(data.state);
         if(decoded) setSt(mergeState(EMPTY,decoded));
+        setAllPredictions(data.predictions||{});
         // Extract pics/colours directly from snapshot — no extra getDoc needed
         if(!picsLoaded){
           picsLoaded=true;
@@ -3552,9 +3617,9 @@ export default function Mundialito() {
     if(activeTab==="setup"){if(st.setupLocked&&!readOnly)return(<SetupLockedScreen config={st.config} onRename={(i,name)=>{setSt(p=>{const updated={...p,config:{...p.config,playerNames:p.config.playerNames.map((n,j)=>j===i?name:n)}};const code=window.localStorage?.getItem("mundi_pool_code")||poolCode||window.localStorage?.getItem("mundi_spectator_code");const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;if(code)savePool(code,updated,pw).then(ok=>{if(ok&&code!==poolCode){try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}setPoolCode(code);}});return updated;});}} onColorChange={(i,color)=>{colorCache[i]=color;saveCaches();savePlayerColor(i,color);bumpPics(setPicRefresh);}} onUnlock={()=>setSt(p=>({...p,setupLocked:false,draftOrder:null,draftMode:null,picks:[],draftLocked:false,matchResults:{},koResults:{},koOverrides:{}}))}/>);
       return <SetupScreen config={st.config} setConfig={c=>setSt(p=>({...p,config:typeof c==="function"?c(p.config):c}))} onLock={()=>{setSt(p=>({...p,setupLocked:true}));setActiveTab("draft");}} readOnly={readOnly}/>;}
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
-    if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx} onPicsLoaded={()=>setPicRefresh(n=>n+1)}/>;
+    if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx} onPicsLoaded={()=>setPicRefresh(n=>n+1)} onPredictionsUpdate={p=>setAllPredictions(p)}/>;
     if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly}/>;
-    if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} onSuggestions={()=>setShowSuggestions(true)} picRefresh={picRefresh}/>;
+    if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} onSuggestions={()=>setShowSuggestions(true)} picRefresh={picRefresh} allPredictions={allPredictions}/>;
     return null;
   };
 

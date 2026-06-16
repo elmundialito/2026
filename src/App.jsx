@@ -386,49 +386,46 @@ const fmtDate = (dateStr, lang="en") => {
   return d.toLocaleDateString("en-US",{weekday:"short"}).toUpperCase()+" · "+d.toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase();
 };
 
-// ── Pre-match odds (home%/draw%/away%) sourced from Polymarket & Oddschecker consensus ──
-// Only shown before kickoff. Format: [home, draw, away] normalised to 100.
+// ── Pre-match odds [home%, draw%, away%] — sourced from Polymarket via prode-market.pages.dev ──
+// Shown always (pre & post kickoff) so people can see if it was an upset.
 const MATCH_ODDS = {
   // Group A
-  G01:[62,20,18], G02:[40,27,33], G25:[55,26,21], G28:[52,25,23],
-  G53:[48,26,26], G54:[38,29,33],
+  G01:[69,21,11], G02:[37,31,31], G25:[54,25,20], G28:[48,28,23],
+  G53:[57,24,19], G54:[44,27,29],
   // Group B
-  G03:[48,27,25], G05:[57,23,20], G26:[61,23,16], G27:[75,16,9],
-  G49:[55,24,21], G50:[44,29,27],
+  G03:[53,27,19], G05:[83,12,6],  G26:[62,23,15], G27:[76,16,7],
+  G49:[62,22,16], G50:[37,29,34],
   // Group C
-  G06:[52,27,21], G07:[14,19,67], G30:[72,18,10], G31:[67,19,14],
+  G06:[58,25,16], G07:[16,22,63], G30:[14,19,67], G31:[67,19,14],
   G51:[14,19,67], G52:[72,18,10],
   // Group D
-  G04:[68,19,13], G08:[38,27,35], G29:[71,18,11], G32:[45,27,28],
-  G59:[35,27,38], G60:[55,25,20],
+  G04:[47,31,23], G08:[17,26,56], G29:[61,21,17], G32:[35,29,35],
+  G59:[38,27,34], G60:[44,29,27],
   // Group E
-  G09:[88,8,4],   G11:[30,25,45], G34:[72,18,10], G35:[85,10,5],
-  G55:[25,20,55], G56:[30,24,46],
+  G09:[93,5,2],   G11:[29,33,39], G34:[72,18,10], G35:[85,10,5],
+  G55:[25,20,55], G56:[28,22,50],
   // Group F
-  G10:[52,26,22], G12:[22,26,52], G33:[58,23,19], G36:[32,27,41],
-  G57:[45,27,28], G58:[16,22,62],
+  G10:[48,27,24], G12:[52,28,21], G33:[60,23,17], G36:[24,27,48],
+  G57:[41,29,29], G58:[15,22,62],
   // Group G
-  G14:[55,26,19], G16:[18,22,60], G38:[68,19,13], G40:[20,26,54],
-  G65:[42,29,29], G66:[12,19,69],
+  G14:[65,21,13], G16:[54,27,18], G38:[68,19,13], G40:[15,26,59],
+  G65:[37,30,32], G66:[10,19,70],
   // Group H
-  G13:[57,22,21], G15:[12,19,69], G37:[77,15,8],  G39:[72,18,10],
-  G63:[38,28,34], G64:[38,26,36],
+  G13:[90,7,3],   G15:[11,21,67], G37:[77,15,8],  G39:[72,18,10],
+  G63:[34,29,37], G64:[36,26,38],
   // Group I
-  G17:[67,22,11], G18:[6,13,81],  G42:[78,15,7],  G43:[52,27,21],
-  G61:[27,23,50], G62:[60,23,17],
+  G17:[66,21,12], G18:[5,12,82],  G42:[78,16,7],  G43:[48,28,24],
+  G61:[24,22,53], G62:[57,24,19],
   // Group J
-  G19:[71,21,8],  G20:[73,18,9],  G41:[76,16,8],  G44:[20,26,54],
-  G71:[8,16,76],  G72:[45,28,27],
+  G19:[70,20,9],  G20:[72,17,10], G41:[76,16,8],  G44:[16,23,61],
+  G71:[8,16,76],  G72:[44,28,28],
   // Group K
-  G21:[77,17,6],  G24:[10,21,69], G45:[80,14,6],  G48:[69,19,12],
-  G69:[40,26,34], G70:[12,22,66],
+  G21:[76,16,7],  G24:[9,19,71],  G45:[80,14,6],  G48:[67,20,13],
+  G69:[38,27,35], G70:[11,21,67],
   // Group L
-  G22:[57,26,17], G23:[44,29,27], G46:[72,19,9],  G47:[38,29,33],
-  G67:[14,20,66], G68:[42,29,29],
+  G22:[56,25,18], G23:[44,29,28], G46:[72,19,9],  G47:[35,29,36],
+  G67:[13,20,66], G68:[40,29,31],
 };
-
-// Helper: convert American odds to implied probability, then normalise 3-way
-function americanToImpl(odds){return odds>0?100/(odds+100):(-odds)/(-odds+100);}
 
 const fmtKickoff = (dateStr, timeUTC) => {
   if(!timeUTC) return "";
@@ -1162,14 +1159,16 @@ function ScoreEntry({matchId,result,onSet,readOnly,teamA,teamB,ownership,initial
 }
 
 // ── GroupMatchCard — owner chips pinned to far edges ──────────
-function OddsPopup({matchId, teamA, teamB, flagA, flagB, lang}) {
+function OddsPopup({matchId, teamA, teamB, flagA, flagB, lang, hasResult}) {
   const [open,setOpen]=useState(false);
   const odds=MATCH_ODDS[matchId];
   if(!odds)return null;
   const [h,d,a]=odds;
   const nameA=countryName(teamA,lang)||teamA;
   const nameB=countryName(teamB,lang)||teamB;
-  const label=lang==="es"?"Pronóstico":"Most likely";
+  const label=hasResult
+    ?(lang==="es"?"Pronóstico pre-partido":"Pre-match odds")
+    :(lang==="es"?"Pronóstico":"Most likely");
   return(
     <div style={{display:"inline-flex",flexDirection:"column",alignItems:"flex-end"}}>
       <button onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${open?"rgba(107,155,209,0.4)":"rgba(107,155,209,0.2)"}`,background:open?"rgba(107,155,209,0.15)":"rgba(107,155,209,0.06)",color:"#6b9bd1",cursor:"pointer",fontSize:12,fontFamily:"'DM Sans'"}}>
@@ -1240,7 +1239,7 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
         <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>GRP {match.g}</span>
         {match.ko&&!result&&<span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1,whiteSpace:"nowrap"}}>{fmtKickoff(match.d,match.ko)}</span>}
         <div style={{display:"flex",alignItems:"center",gap:5}}>
-          {isPreKickoff&&<OddsPopup matchId={match.id} teamA={a} teamB={b} flagA={ta?.flag||"🏳️"} flagB={tb?.flag||"🏳️"} lang={lang}/>}
+          {MATCH_ODDS[match.id]&&<OddsPopup matchId={match.id} teamA={a} teamB={b} flagA={ta?.flag||"🏳️"} flagB={tb?.flag||"🏳️"} lang={lang} hasResult={!!result}/>}
           {match.ko&&(()=>{
             const kickoffUTC=new Date(match.d+"T"+match.ko+":00Z");
             if(Date.now()<kickoffUTC.getTime()+2.5*60*60*1000) return null;

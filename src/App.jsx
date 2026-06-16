@@ -1541,7 +1541,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
       if(scrollTargetRef.current){
         const el=scrollTargetRef.current;
         const rect=el.getBoundingClientRect();
-        const offset=80; // leave room for sticky tab bar + date header visibility
+        const offset=120; // leave room for sticky tab bar + date header visibility
         window.scrollTo({top:window.scrollY+rect.top-offset,behavior:"smooth"});
       }
     },120);

@@ -1752,9 +1752,16 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   );
 }
 
-function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,initials,lang}) {
+function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,initials,lang,playerDataWithRanks=[]}) {
   const [open,setOpen]=useState(false);
   const picVersion=useContext(PicContext);
+
+  // Build main leaderboard rank lookup (lower = better)
+  const mainRank=useMemo(()=>{
+    const r={};
+    playerDataWithRanks.forEach((p,i)=>{r[p.idx]=i;});
+    return r;
+  },[playerDataWithRanks]);
 
   const stats=useMemo(()=>{
     return Array.from({length:playerCount},(_,i)=>{
@@ -1770,8 +1777,17 @@ function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,in
         if(pickOutcome===out)correct++;
       });
       return{idx:i,correct,total,pct:total>0?Math.round(correct/total*100):null};
-    }).filter(p=>playerNames[p.idx]).sort((a,b)=>b.pct-a.pct||b.correct-a.correct||a.idx-b.idx);
-  },[allPredictions,matchResults,playerCount]);
+    }).filter(p=>playerNames[p.idx]).sort((a,b)=>{
+      // 1. Most correct picks
+      if(b.correct!==a.correct)return b.correct-a.correct;
+      // 2. Highest %
+      const ap=a.pct??-1, bp=b.pct??-1;
+      if(bp!==ap)return bp-ap;
+      // 3. Main leaderboard rank (lower index = better)
+      const ar=mainRank[a.idx]??99, br=mainRank[b.idx]??99;
+      return ar-br;
+    });
+  },[allPredictions,matchResults,playerCount,mainRank]);
 
   if(stats.length===0)return null;
 
@@ -1947,7 +1963,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         })}
       </div>
       <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",marginTop:20,lineHeight:1.7,fontStyle:"italic"}}>{t(lang,"tiebreaker")}</div>
-      <PredictionRecap allPredictions={allPredictions} matchResults={matchResults} playerNames={config.playerNames} playerCount={config.playerCount} initials={initials} lang={lang}/>
+      <PredictionRecap allPredictions={allPredictions} matchResults={matchResults} playerNames={config.playerNames} playerCount={config.playerCount} initials={initials} lang={lang} playerDataWithRanks={playerDataWithRanks}/>
       <button onClick={async()=>{
         try {
           const bebas=new FontFace("BebasNeue","url(https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9WdhyyTh89ZNpQ.woff2)");

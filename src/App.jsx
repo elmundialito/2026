@@ -2045,7 +2045,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           ctx.restore();
 
           // Player name — bigger, in their colour
-          const nameSize=isFirst?17:isTop3?15:13;
+          const nameSize=isFirst?22:isTop3?20:17;
           ctx.textAlign="left";
           ctx.font=`700 ${nameSize}px DMSans,Arial`;
           ctx.fillStyle=color;

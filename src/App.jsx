@@ -591,7 +591,7 @@ function OwnerChip({playerIdx,initials,size=18,playerName=""}) {
     <div style={{position:"relative",flexShrink:0}} onClick={e=>{e.stopPropagation();setShow(o=>!o);}}>
       <div style={{width:size,height:size,borderRadius:4,background:color,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:size-6,display:"inline-flex",alignItems:"center",justifyContent:"center",lineHeight:1,cursor:"pointer"}}>{initials[playerIdx]}</div>
       {show&&playerName&&(
-        <div style={{position:"absolute",bottom:"calc(100% + 4px)",right:0,background:"#0a1628",border:`1px solid ${color}`,borderRadius:8,padding:"4px 10px",whiteSpace:"nowrap",fontFamily:"'DM Sans'",fontSize:playerName.length>14?9:playerName.length>10?10:11,fontWeight:600,color,zIndex:200,boxShadow:"0 2px 8px rgba(0,0,0,0.5)"}}
+        <div style={{position:"absolute",bottom:"calc(100% + 4px)",left:"50%",transform:"translateX(-50%)",background:"#0a1628",border:`1px solid ${color}`,borderRadius:8,padding:"4px 10px",whiteSpace:"nowrap",fontFamily:"'DM Sans'",fontSize:playerName.length>14?9:playerName.length>10?10:11,fontWeight:600,color,zIndex:200,boxShadow:"0 2px 8px rgba(0,0,0,0.5)"}}
           onClick={e=>e.stopPropagation()}>
           {playerName}
         </div>

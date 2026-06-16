@@ -2567,16 +2567,16 @@ function PredictModal({open,onClose,match,poolCode,myPlayerIdx,playerNames,initi
 
           {/* Odds section */}
           {odds&&(
-            <div style={{background:"rgba(10,22,40,0.5)",borderRadius:10,padding:"10px 12px",border:"1px solid #1a2d4a"}}>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1.5,color:"#5a6a8a",marginBottom:8}}>{(lang==="es"?"PRONÓSTICO PREVIO":"PRE-MATCH ODDS").toUpperCase()}</div>
+            <div style={{background:"rgba(10,22,40,0.5)",borderRadius:12,padding:"14px 16px",border:"1px solid #1a2d4a"}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,color:"#5a6a8a",marginBottom:12}}>{(lang==="es"?"PRONÓSTICO PREVIO":"PRE-MATCH ODDS").toUpperCase()}</div>
               {outcomes.map(({key,flag,name,pct,color})=>(
-                <div key={key} style={{display:"flex",alignItems:"center",gap:8,marginBottom:key==="away"?0:6}}>
-                  <span style={{fontSize:13,width:20,textAlign:"center",flexShrink:0}}>{flag}</span>
-                  <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4",flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</span>
-                  <div style={{width:70,height:4,background:"#1a2d4a",borderRadius:4,overflow:"hidden",flexShrink:0}}>
+                <div key={key} style={{display:"flex",alignItems:"center",gap:10,marginBottom:key==="away"?0:10}}>
+                  <span style={{fontSize:18,width:24,textAlign:"center",flexShrink:0}}>{flag}</span>
+                  <span style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:500,color:"#c8c0b0",flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</span>
+                  <div style={{width:90,height:6,background:"#1a2d4a",borderRadius:4,overflow:"hidden",flexShrink:0}}>
                     <div style={{width:`${pct}%`,height:"100%",background:color,borderRadius:4}}/>
                   </div>
-                  <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:700,color,minWidth:30,textAlign:"right"}}>{pct}%</span>
+                  <span style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:700,color,minWidth:36,textAlign:"right"}}>{pct}%</span>
                 </div>
               ))}
             </div>
@@ -2591,7 +2591,6 @@ function PredictModal({open,onClose,match,poolCode,myPlayerIdx,playerNames,initi
             <div style={{display:"flex",gap:8}}>
               {outcomes.map(({key,flag,name,color})=>{
                 const picked=myPick===key;
-                const othersHere=byOutcome[key].filter(i=>i!==myPlayerIdx);
                 const iHaveOne=myPick===key;
                 return(
                   <div key={key} style={{flex:1,display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
@@ -2599,16 +2598,16 @@ function PredictModal({open,onClose,match,poolCode,myPlayerIdx,playerNames,initi
                       onClick={()=>doPick(key)}
                       disabled={isLocked}
                       style={{
-                        width:"100%",padding:"10px 4px",borderRadius:10,border:`2px solid ${picked?color:iHaveOne?"transparent":`${color}44`}`,
+                        width:"100%",padding:"14px 4px",borderRadius:12,border:`2px solid ${picked?color:iHaveOne?"transparent":`${color}44`}`,
                         background:picked?`${color}22`:"rgba(26,39,68,0.4)",
                         color:picked?color:"#8899b4",cursor:isLocked?"default":"pointer",
-                        display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+                        display:"flex",flexDirection:"column",alignItems:"center",gap:6,
                         opacity:isLocked&&!picked&&myPick!==null?0.5:1,
                         transition:"all 0.15s"
                       }}>
-                      <span style={{fontSize:20}}>{flag}</span>
-                      <span style={{fontFamily:"'DM Sans'",fontSize:10,fontWeight:600,textAlign:"center",lineHeight:1.2}}>{name}</span>
-                      {picked&&<span style={{fontSize:9,color,fontFamily:"'DM Sans'",fontWeight:700}}>✓ {lang==="es"?"tu voto":"your pick"}</span>}
+                      <span style={{fontSize:28}}>{flag}</span>
+                      <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,textAlign:"center",lineHeight:1.2}}>{name}</span>
+                      {picked&&<span style={{fontSize:10,color,fontFamily:"'DM Sans'",fontWeight:700}}>✓ {lang==="es"?"tu voto":"your pick"}</span>}
                     </button>
                     {/* Avatars of people who picked this */}
                     {byOutcome[key].length>0&&(
@@ -3306,9 +3305,8 @@ export default function Mundialito() {
           // Load pics and colours from the same document fetch
           if(fresh._profiles){Object.keys(fresh._profiles).forEach(k=>{picCache[parseInt(k)]=fresh._profiles[k];});}
           if(fresh._playerColors){Object.keys(fresh._playerColors).forEach(k=>{colorCache[parseInt(k)]=fresh._playerColors[k];});saveCaches();}
-          // setPlayerColors triggers a guaranteed React re-render (original working pattern)
           setPlayerColors(fresh._playerColors||{});
-          setPicRefresh(n=>n+1);
+          bumpPics(setPicRefresh);
           setSt(prev=>{
           const localResults = prev.matchResults||{};
           const freshResults = fresh.matchResults||{};
@@ -3337,7 +3335,7 @@ export default function Mundialito() {
             if(data._profiles){Object.keys(data._profiles).forEach(k=>{picCache[parseInt(k)]=data._profiles[k];});}
             if(data._playerColors){Object.keys(data._playerColors).forEach(k=>{colorCache[parseInt(k)]=data._playerColors[k];});saveCaches();}
             setPlayerColors(data._playerColors||{});
-            setPicRefresh(n=>n+1);
+            bumpPics(setPicRefresh);
             setTimeout(()=>requestNotificationPermission(), 2000);
             if(merged.draftLocked){
               const seen=window.localStorage?.getItem("mundi_intro_seen");
@@ -3647,7 +3645,7 @@ export default function Mundialito() {
       <PoolMgrModal/>
       {resultOverlay&&<ResultOverlay results={resultOverlay} onDone={()=>setResultOverlay(null)}/>}
       {showSuggestions&&<SuggestionModal open={true} onClose={()=>setShowSuggestions(false)} poolCode={poolCode||window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code")} myPlayerIdx={myPlayerIdx} playerNames={st.config?.playerNames||[]} initials={initials}/>}
-      {scrolled&&<button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:28,right:16,zIndex:100,width:38,height:38,borderRadius:"50%",background:"rgba(10,22,40,0.92)",border:"1px solid rgba(201,168,76,0.35)",color:"var(--accent)",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 12px rgba(0,0,0,0.4)"}}>↑</button>}
+      {scrolled&&<button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:28,right:16,zIndex:100,padding:"8px 14px",borderRadius:20,background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.5)",color:"var(--accent)",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 16px rgba(0,0,0,0.5)"}}>↑ TOP</button>}
     </div></>{/* end app */}</PicBumpContext.Provider></PicContext.Provider></LangContext.Provider>
   );
 }

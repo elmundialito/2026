@@ -1785,9 +1785,9 @@ function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,in
         <div style={{padding:"8px 12px 12px"}}>
           <div style={{display:"flex",alignItems:"center",fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"4px 4px 8px",borderBottom:"1px solid #1a2d4a",marginBottom:6}}>
             <span style={{flex:1}}>{lang==="es"?"Jugador":"Player"}</span>
-            <span style={{width:64,textAlign:"center"}}>{lang==="es"?"Correctas":"Correct"}</span>
-            <span style={{width:64,textAlign:"center"}}>{lang==="es"?"Jugadas":"Played"}</span>
-            <span style={{width:44,textAlign:"center"}}>%</span>
+            <span style={{width:52,textAlign:"center"}}>{lang==="es"?"Correctas":"Correct"}</span>
+            <span style={{width:52,textAlign:"center"}}>{lang==="es"?"Jugadas":"Played"}</span>
+            <span style={{width:40,textAlign:"center"}}>%</span>
           </div>
           {stats.map((p,rank)=>{
             const color=getPlayerColor(p.idx,PC[p.idx]);
@@ -1800,9 +1800,9 @@ function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,in
                   <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playerNames[p.idx]||`P${p.idx+1}`}</span>
                   {isTop&&p.pct!==null&&<span style={{fontSize:10,flexShrink:0}}>🏆</span>}
                 </div>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color,width:64,textAlign:"center",flexShrink:0}}>{p.correct}</span>
-                <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",width:64,textAlign:"center",flexShrink:0}}>{p.total}</span>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:isTop&&p.pct!==null?"var(--accent)":color,width:44,textAlign:"center",flexShrink:0}}>{p.pct!==null?`${p.pct}%`:"—"}</span>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color,width:52,textAlign:"center",flexShrink:0}}>{p.correct}</span>
+                <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",width:52,textAlign:"center",flexShrink:0}}>{p.total}</span>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:isTop&&p.pct!==null?"var(--accent)":color,width:40,textAlign:"center",flexShrink:0}}>{p.pct!==null?`${p.pct}%`:"—"}</span>
               </div>
             );
           })}
@@ -2064,7 +2064,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           ctx.restore();
 
           // Player name — bigger, in their colour
-          const nameSize=isFirst?22:isTop3?20:17;
+          const nameSize=isFirst?22:20;
           ctx.textAlign="left";
           ctx.font=`700 ${nameSize}px DMSans,Arial`;
           ctx.fillStyle=color;

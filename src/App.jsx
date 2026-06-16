@@ -1308,6 +1308,20 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
     const matches=(matchesByDate.find(([d])=>d===selectedDate)||[,])[1]||[];
     const W=420,HEADER=90,MH=90,PAD=14,FOOT=40;
     const H=HEADER+MH*matches.length+FOOT;
+
+    // Pre-load profile pics as Image objects so they can be drawn synchronously on canvas
+    const picImgs={};
+    await Promise.all(Object.keys(picCache).map(idx=>{
+      const src=picCache[idx];
+      if(!src)return Promise.resolve();
+      return new Promise(res=>{
+        const img=new Image();
+        img.onload=()=>{picImgs[idx]=img;res();};
+        img.onerror=()=>res();
+        img.src=src;
+      });
+    }));
+
     const canvas=document.createElement("canvas");
     const DPR=2;canvas.width=W*DPR;canvas.height=H*DPR;
     const ctx=canvas.getContext("2d");ctx.scale(DPR,DPR);
@@ -1377,15 +1391,26 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
         const col=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):"#8899b4";
         ctx.globalAlpha=isLoss?0.4:1;
 
-        // Outer initials chip
+        // Outer chip — profile pic if available, else initials square
         if(owner!=null){
           const chipColor=getPlayerColor(owner.playerIdx,PC[owner.playerIdx]);
           const chipX=isHome?PAD+6:W-PAD-6-26;
           const chipY=y+MH/2-13+OFFSET;
-          ctx.fillStyle=chipColor;
-          ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,26,26,5):ctx.rect(chipX,chipY,26,26);ctx.fill();
-          ctx.fillStyle="#0a1628";ctx.font=`700 13px BebasNeue,Arial`;ctx.textAlign="center";
-          ctx.fillText((initials[owner.playerIdx]||"?"),chipX+13,chipY+18);
+          const pic=picImgs[owner.playerIdx];
+          if(pic){
+            // Draw circular profile pic with coloured border
+            ctx.save();
+            ctx.beginPath();ctx.arc(chipX+13,chipY+13,13,0,Math.PI*2);ctx.clip();
+            ctx.drawImage(pic,chipX,chipY,26,26);
+            ctx.restore();
+            ctx.strokeStyle=chipColor;ctx.lineWidth=2;
+            ctx.beginPath();ctx.arc(chipX+13,chipY+13,13,0,Math.PI*2);ctx.stroke();
+          } else {
+            ctx.fillStyle=chipColor;
+            ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,26,26,5):ctx.rect(chipX,chipY,26,26);ctx.fill();
+            ctx.fillStyle="#0a1628";ctx.font=`700 13px BebasNeue,Arial`;ctx.textAlign="center";
+            ctx.fillText((initials[owner.playerIdx]||"?"),chipX+13,chipY+18);
+          }
           if(ptsEarned>0){
             ctx.globalAlpha=1;
             ctx.fillStyle=chipColor;ctx.font=`700 10px DMSans,Arial`;

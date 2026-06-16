@@ -1465,6 +1465,41 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
   );
 }
 
+function ScheduleView({matchesByDate,today,matchResults,ownership,onSet,readOnly,initials,myTeams,setOpenChatId,setOpenPredictId,matchChat,predictions,myPlayerIdx,config,lang,showPast,setShowPast}) {
+  const pastDates=matchesByDate.filter(([date])=>date<today);
+  const presentFutureDates=matchesByDate.filter(([date])=>date>=today);
+  const totalPastScored=pastDates.reduce((acc,[,matches])=>acc+matches.filter(m=>matchResults[m.id]!=null).length,0);
+  const totalPastMatches=pastDates.reduce((acc,[,matches])=>acc+matches.length,0);
+  return(<>
+    {pastDates.length>0&&(
+      <div style={{marginBottom:12,marginTop:4}}>
+        <button onClick={()=>setShowPast(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,border:"1px solid #1e2f50",background:"rgba(26,39,68,0.3)",cursor:"pointer"}}>
+          <span style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"#5a6a8a"}}>{showPast?"▲":"▼"} {lang==="es"?"PARTIDOS ANTERIORES":"PAST MATCHES"}</span>
+          <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#3d5070",marginLeft:"auto"}}>{totalPastScored}/{totalPastMatches}</span>
+        </button>
+        {showPast&&pastDates.map(([date,matches])=>(
+          <PastDayRow key={date} date={date} matches={matches} matchResults={matchResults} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} openChat={setOpenChatId} openPredict={setOpenPredictId} matchChat={matchChat} predictions={predictions} myPlayerIdx={myPlayerIdx} playerCount={config.playerCount} lang={lang}/>
+        ))}
+      </div>
+    )}
+    {presentFutureDates.map(([date,matches])=>{
+      const isToday=date===today;
+      const scored=matches.filter(m=>matchResults[m.id]!=null).length;
+      return(
+        <div key={date} style={{marginBottom:18,marginTop:8,borderRadius:isToday?10:0,border:isToday?"1px solid rgba(201,168,76,0.2)":"none",background:isToday?"rgba(201,168,76,0.03)":"transparent",padding:isToday?"10px":"0"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingTop:4}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:isToday?22:18,letterSpacing:3,color:isToday?"var(--accent)":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
+            {isToday&&<div style={{padding:"2px 10px",borderRadius:10,background:"rgba(201,168,76,0.25)",border:"1px solid rgba(201,168,76,0.5)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:2}}>⚡ {t(lang,"today")}</div>}
+            <div style={{flex:1,height:isToday?2:1,background:isToday?"rgba(201,168,76,0.4)":"rgba(138,153,180,0.2)"}}/>
+            <span style={{fontFamily:"'DM Sans'",fontSize:10,color:isToday?"var(--accent)":"#5a6a8a",fontWeight:isToday?600:400}}>{scored}/{matches.length}</span>
+          </div>
+          {matches.map(m=><GroupMatchCard key={m.id} match={m} result={matchResults[m.id]} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} onOpenChat={()=>setOpenChatId(m.id)} chatCount={(matchChat[m.id]?.messages||[]).length} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)} onOpenPredict={()=>setOpenPredictId(m.id)} matchPredictions={predictions[m.id]||{}} myPlayerIdx={myPlayerIdx} playerCount={config.playerCount}/>)}
+        </div>
+      );
+    })}
+  </>);
+}
+
 function PastDayRow({date,matches,matchResults,ownership,onSet,readOnly,initials,myTeams,openChat,openPredict,matchChat,predictions,myPlayerIdx,playerCount,lang}) {
   const [open,setOpen]=useState(false);
   const scored=matches.filter(m=>matchResults[m.id]!=null).length;
@@ -1590,40 +1625,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
         {[{id:"schedule",icon:"📅",labelKey:"matchSchedule"},{id:"standings",icon:"📊",labelKey:"groupStandings"}].map(v=>{const active=v.id===view;return <button key={v.id} onClick={()=>setView(v.id)} style={{padding:"9px 16px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>{v.icon} {t(lang,v.labelKey)}</button>;})}
         <button onClick={()=>setShowShareDay(true)} style={{marginLeft:"auto",padding:"9px 12px",borderRadius:8,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer",flexShrink:0}}>📤</button>
       </div>
-      {view==="schedule"&&(()=>{
-        const pastDates=matchesByDate.filter(([date])=>date<today);
-        const presentFutureDates=matchesByDate.filter(([date])=>date>=today);
-        const totalPastScored=pastDates.reduce((acc,[,matches])=>acc+matches.filter(m=>matchResults[m.id]!=null).length,0);
-        const totalPastMatches=pastDates.reduce((acc,[,matches])=>acc+matches.length,0);
-        return(<>
-          {pastDates.length>0&&(
-            <div style={{marginBottom:12,marginTop:4}}>
-              <button onClick={()=>setShowPast(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,border:"1px solid #1e2f50",background:"rgba(26,39,68,0.3)",cursor:"pointer"}}>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"#5a6a8a"}}>{showPast?"▲":"▼"} {lang==="es"?"PARTIDOS ANTERIORES":"PAST MATCHES"}</span>
-                <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#3d5070",marginLeft:"auto"}}>{totalPastScored}/{totalPastMatches}</span>
-              </button>
-              {showPast&&pastDates.map(([date,matches])=>(
-                <PastDayRow key={date} date={date} matches={matches} matchResults={matchResults} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} openChat={setOpenChatId} openPredict={setOpenPredictId} matchChat={matchChat} predictions={predictions} myPlayerIdx={myPlayerIdx} playerCount={config.playerCount} lang={lang}/>
-              ))}
-            </div>
-          )}
-          {presentFutureDates.map(([date,matches])=>{
-            const isToday=date===today;
-            const scored=matches.filter(m=>matchResults[m.id]!=null).length;
-            return(
-              <div key={date} style={{marginBottom:18,marginTop:8,borderRadius:isToday?10:0,border:isToday?"1px solid rgba(201,168,76,0.2)":"none",background:isToday?"rgba(201,168,76,0.03)":"transparent",padding:isToday?"10px 10px 10px":"0"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingTop:4}}>
-                  <div style={{fontFamily:"'Bebas Neue'",fontSize:isToday?22:18,letterSpacing:3,color:isToday?"var(--accent)":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
-                  {isToday&&<div style={{padding:"2px 10px",borderRadius:10,background:"rgba(201,168,76,0.25)",border:"1px solid rgba(201,168,76,0.5)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:2}}>⚡ {t(lang,"today")}</div>}
-                  <div style={{flex:1,height:isToday?2:1,background:isToday?"rgba(201,168,76,0.4)":"rgba(138,153,180,0.2)"}}/>
-                  <span style={{fontFamily:"'DM Sans'",fontSize:10,color:isToday?"var(--accent)":"#5a6a8a",fontWeight:isToday?600:400}}>{scored}/{matches.length}</span>
-                </div>
-                {matches.map(m=><GroupMatchCard key={m.id} match={m} result={matchResults[m.id]} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} onOpenChat={()=>setOpenChatId(m.id)} chatCount={(matchChat[m.id]?.messages||[]).length} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)} onOpenPredict={()=>setOpenPredictId(m.id)} matchPredictions={predictions[m.id]||{}} myPlayerIdx={myPlayerIdx} playerCount={config.playerCount}/>)}
-              </div>
-            );
-          })}
-        </>);
-      })()}
+      {view==="schedule"&&<ScheduleView matchesByDate={matchesByDate} today={today} matchResults={matchResults} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} setOpenChatId={setOpenChatId} setOpenPredictId={setOpenPredictId} matchChat={matchChat} predictions={predictions} myPlayerIdx={myPlayerIdx} config={config} lang={lang} showPast={showPast} setShowPast={setShowPast}/>}
       {view==="standings"&&Object.keys(GROUPS).map(g=><GroupStandingsAccordion key={g} g={g} res={matchResults} ownership={ownership} initials={initials}/>)}
       <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
       {flash&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.4)",borderRadius:30,padding:"10px 22px",fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"var(--accent)",whiteSpace:"nowrap",zIndex:200,animation:"slideUp 0.3s ease-out"}}>⚽ {flash}</div>}

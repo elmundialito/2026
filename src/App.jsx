@@ -1788,26 +1788,26 @@ function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,in
       </button>
       {open&&(
         <div style={{padding:"8px 12px 12px"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 60px 60px 52px",gap:4,fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"4px 4px 8px",borderBottom:"1px solid #1a2d4a",marginBottom:6}}>
-            <span>{lang==="es"?"Jugador":"Player"}</span>
-            <span style={{textAlign:"center"}}>{lang==="es"?"Correctas":"Correct"}</span>
-            <span style={{textAlign:"center"}}>{lang==="es"?"Jugadas":"Played"}</span>
-            <span style={{textAlign:"center"}}>%</span>
+          <div style={{display:"flex",alignItems:"center",fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"4px 4px 8px",borderBottom:"1px solid #1a2d4a",marginBottom:6}}>
+            <span style={{flex:1}}>{lang==="es"?"Jugador":"Player"}</span>
+            <span style={{width:64,textAlign:"center"}}>{lang==="es"?"Correctas":"Correct"}</span>
+            <span style={{width:64,textAlign:"center"}}>{lang==="es"?"Jugadas":"Played"}</span>
+            <span style={{width:44,textAlign:"center"}}>%</span>
           </div>
           {stats.map((p,rank)=>{
             const color=getPlayerColor(p.idx,PC[p.idx]);
             const isTop=rank===0;
             return(
-              <div key={p.idx} style={{display:"grid",gridTemplateColumns:"1fr 60px 60px 52px",gap:4,alignItems:"center",padding:"6px 4px",borderBottom:rank<stats.length-1?"1px solid rgba(26,39,68,0.5)":"none"}}>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontFamily:"'Bebas Neue'",fontSize:12,color:isTop?"var(--accent)":"#3d5070",width:14}}>{rank+1}</span>
+              <div key={p.idx} style={{display:"flex",alignItems:"center",padding:"6px 4px",borderBottom:rank<stats.length-1?"1px solid rgba(26,39,68,0.5)":"none"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
+                  <span style={{fontFamily:"'Bebas Neue'",fontSize:12,color:isTop?"var(--accent)":"#3d5070",width:14,flexShrink:0}}>{rank+1}</span>
                   <PlayerAvatar idx={p.idx} name={playerNames[p.idx]||""} size={26} refresh={picVersion}/>
                   <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playerNames[p.idx]||`P${p.idx+1}`}</span>
-                  {isTop&&p.pct!==null&&<span style={{fontSize:10}}>🏆</span>}
+                  {isTop&&p.pct!==null&&<span style={{fontSize:10,flexShrink:0}}>🏆</span>}
                 </div>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color,textAlign:"center"}}>{p.correct}</span>
-                <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center"}}>{p.total}</span>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:isTop&&p.pct!==null?"var(--accent)":color,textAlign:"center"}}>{p.pct!==null?`${p.pct}%`:"—"}</span>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color,width:64,textAlign:"center",flexShrink:0}}>{p.correct}</span>
+                <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",width:64,textAlign:"center",flexShrink:0}}>{p.total}</span>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:isTop&&p.pct!==null?"var(--accent)":color,width:44,textAlign:"center",flexShrink:0}}>{p.pct!==null?`${p.pct}%`:"—"}</span>
               </div>
             );
           })}
@@ -1952,12 +1952,6 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         })}
       </div>
       <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",marginTop:20,lineHeight:1.7,fontStyle:"italic"}}>{t(lang,"tiebreaker")}</div>
-      <button onClick={onChangeUser} style={{width:"100%",marginTop:14,padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
-        {t(lang,"changeUser")}
-      </button>
-      <button onClick={onSuggestions} style={{width:"100%",marginTop:8,padding:"10px 0",borderRadius:10,border:"1px solid rgba(107,155,209,0.3)",background:"rgba(107,155,209,0.06)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
-        💡 {lang==="es"?"Sugerir una función":"Suggest a feature"}
-      </button>
       <PredictionRecap allPredictions={allPredictions} matchResults={matchResults} playerNames={config.playerNames} playerCount={config.playerCount} initials={initials} lang={lang}/>
       <button onClick={async()=>{
         try {
@@ -3706,6 +3700,14 @@ export default function Mundialito() {
         {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);const tabLabel=t(lang,tab.id==="standings"?"leaderboard":tab.id);return(<button key={tab.id} onClick={()=>{if(open){setActiveTab(tab.id);if(tab.id!=="group")window.scrollTo({top:0,behavior:"smooth"});}}} style={{padding:"7px 6px 10px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tabLabel}</div></button>);})}
       </div>
       <div style={{paddingBottom:48,paddingTop:20}}>{tabContent()}
+        <div style={{maxWidth:720,margin:"0 auto",padding:"24px 16px 0"}}>
+          <button onClick={()=>setShowSelectName(true)} style={{width:"100%",marginBottom:8,padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
+            {t(lang,"changeUser")}
+          </button>
+          <button onClick={()=>setShowSuggestions(true)} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid rgba(107,155,209,0.3)",background:"rgba(107,155,209,0.06)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
+            💡 {lang==="es"?"Sugerir una función":"Suggest a feature"}
+          </button>
+        </div>
         {isHost&&(
           <div style={{maxWidth:920,margin:"24px auto 0",padding:"0 16px 32px",display:"flex",gap:8}}>
             <button onClick={()=>setShowSync(true)} style={{flex:1,padding:"12px 0",borderRadius:10,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,cursor:"pointer"}}>{t(lang,"shareCode")}</button>

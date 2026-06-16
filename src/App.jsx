@@ -1465,6 +1465,21 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
   );
 }
 
+function PastDayRow({date,matches,matchResults,ownership,onSet,readOnly,initials,myTeams,openChat,openPredict,matchChat,predictions,myPlayerIdx,playerCount,lang}) {
+  const [open,setOpen]=useState(false);
+  const scored=matches.filter(m=>matchResults[m.id]!=null).length;
+  return(
+    <div style={{marginTop:6}}>
+      <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 4px",cursor:"pointer"}}>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:3,color:"#5a6a8a"}}>{fmtDate(date,lang)}</div>
+        <div style={{flex:1,height:1,background:"rgba(26,39,68,0.8)"}}/>
+        <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#3d5070",background:"rgba(26,39,68,0.6)",padding:"1px 8px",borderRadius:8}}>{scored}/{matches.length} {open?"▲":"▼"}</span>
+      </div>
+      {open&&matches.map(m=><GroupMatchCard key={m.id} match={m} result={matchResults[m.id]} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} onOpenChat={()=>openChat(m.id)} chatCount={(matchChat[m.id]?.messages||[]).length} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)} onOpenPredict={()=>openPredict(m.id)} matchPredictions={predictions[m.id]||{}} myPlayerIdx={myPlayerIdx} playerCount={playerCount}/>)}
+    </div>
+  );
+}
+
 function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx,onPicsLoaded,onPredictionsUpdate}) {
   const lang=useContext(LangContext);
   const bumpPicsCtx=useContext(PicBumpContext);
@@ -1474,6 +1489,14 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
   const [openPredictId,setOpenPredictId]=useState(null);
   const [showShareDay,setShowShareDay]=useState(false);
   const poolCode=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
+
+  // Load profile pics as soon as this screen mounts — guaranteed timing
+  useEffect(()=>{
+    if(!poolCode)return;
+    loadProfilePics(poolCode).then(()=>{
+      if(bumpPicsCtx)bumpPicsCtx();
+    });
+  },[]);
 
   // Subscribe to matchChat via onSnapshot — also grab pics/colours from same document
   useEffect(()=>{
@@ -1503,6 +1526,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
   },[poolCode]);
   const [flash,setFlash]=useState(null);
   const [view,setView]=useState("schedule");
+  const [showPast,setShowPast]=useState(false);
   const ownership=useMemo(()=>{const o={};(picks||[]).forEach(p=>{o[p.team]={playerIdx:p.playerIdx,name:config.playerNames[p.playerIdx]};});return o;},[picks,config.playerNames]);
   const myTeams=useMemo(()=>myPlayerIdx!==null?new Set((picks||[]).filter(p=>p.playerIdx===myPlayerIdx).map(p=>p.team)):new Set(),[picks,myPlayerIdx]);
   const playerPts=useMemo(()=>Array.from({length:config.playerCount},(_,i)=>playerGSPts(i,picks||[],matchResults)),[config.playerCount,picks,matchResults]);
@@ -1569,7 +1593,6 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
       {view==="schedule"&&(()=>{
         const pastDates=matchesByDate.filter(([date])=>date<today);
         const presentFutureDates=matchesByDate.filter(([date])=>date>=today);
-        const [showPast,setShowPast]=useState(false);
         const totalPastScored=pastDates.reduce((acc,[,matches])=>acc+matches.filter(m=>matchResults[m.id]!=null).length,0);
         const totalPastMatches=pastDates.reduce((acc,[,matches])=>acc+matches.length,0);
         return(<>
@@ -1579,20 +1602,9 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
                 <span style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"#5a6a8a"}}>{showPast?"▲":"▼"} {lang==="es"?"PARTIDOS ANTERIORES":"PAST MATCHES"}</span>
                 <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#3d5070",marginLeft:"auto"}}>{totalPastScored}/{totalPastMatches}</span>
               </button>
-              {showPast&&pastDates.map(([date,matches])=>{
-                const scored=matches.filter(m=>matchResults[m.id]!=null).length;
-                const [dayOpen,setDayOpen]=useState(false);
-                return(
-                  <div key={date} style={{marginTop:6}}>
-                    <div onClick={()=>setDayOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 4px",cursor:"pointer"}}>
-                      <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:3,color:"#5a6a8a"}}>{fmtDate(date,lang)}</div>
-                      <div style={{flex:1,height:1,background:"rgba(26,39,68,0.8)"}}/>
-                      <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#3d5070",background:"rgba(26,39,68,0.6)",padding:"1px 8px",borderRadius:8}}>{scored}/{matches.length} {dayOpen?"▲":"▼"}</span>
-                    </div>
-                    {dayOpen&&matches.map(m=><GroupMatchCard key={m.id} match={m} result={matchResults[m.id]} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} onOpenChat={()=>setOpenChatId(m.id)} chatCount={(matchChat[m.id]?.messages||[]).length} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)} onOpenPredict={()=>setOpenPredictId(m.id)} matchPredictions={predictions[m.id]||{}} myPlayerIdx={myPlayerIdx} playerCount={config.playerCount}/>)}
-                  </div>
-                );
-              })}
+              {showPast&&pastDates.map(([date,matches])=>(
+                <PastDayRow key={date} date={date} matches={matches} matchResults={matchResults} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} openChat={setOpenChatId} openPredict={setOpenPredictId} matchChat={matchChat} predictions={predictions} myPlayerIdx={myPlayerIdx} playerCount={config.playerCount} lang={lang}/>
+              ))}
             </div>
           )}
           {presentFutureDates.map(([date,matches])=>{
@@ -3399,8 +3411,6 @@ export default function Mundialito() {
           return merged;
           });
           bumpPics(setPicRefresh);
-          // Secondary: loadProfilePics after delay ensures pics are loaded even if _profiles was empty
-          setTimeout(()=>loadProfilePics(code).then(()=>bumpPics(setPicRefresh)), 1500);
         }
       });
     }

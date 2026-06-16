@@ -3290,7 +3290,7 @@ export default function Mundialito() {
   const [showSuggestions,setShowSuggestions]=useState(false);
   const [scrolled,setScrolled]=useState(false);
   useEffect(()=>{
-    const onScroll=()=>setScrolled(window.scrollY>300);
+    const onScroll=()=>setScrolled(window.scrollY>Math.max(400,document.body.scrollHeight*0.25));
     window.addEventListener("scroll",onScroll,{passive:true});
     return()=>window.removeEventListener("scroll",onScroll);
   },[]);

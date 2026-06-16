@@ -1394,28 +1394,27 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
         // Outer chip — profile pic if available, else initials square
         if(owner!=null){
           const chipColor=getPlayerColor(owner.playerIdx,PC[owner.playerIdx]);
-          const chipX=isHome?PAD+6:W-PAD-6-26;
-          const chipY=y+MH/2-13+OFFSET;
+          const chipX=isHome?PAD+2:W-PAD-2-36;
+          const chipY=y+MH/2-18+OFFSET;
           const pic=picImgs[owner.playerIdx];
           if(pic){
-            // Draw circular profile pic with coloured border
             ctx.save();
-            ctx.beginPath();ctx.arc(chipX+13,chipY+13,13,0,Math.PI*2);ctx.clip();
-            ctx.drawImage(pic,chipX,chipY,26,26);
+            ctx.beginPath();ctx.arc(chipX+18,chipY+18,18,0,Math.PI*2);ctx.clip();
+            ctx.drawImage(pic,chipX,chipY,36,36);
             ctx.restore();
             ctx.strokeStyle=chipColor;ctx.lineWidth=2;
-            ctx.beginPath();ctx.arc(chipX+13,chipY+13,13,0,Math.PI*2);ctx.stroke();
+            ctx.beginPath();ctx.arc(chipX+18,chipY+18,18,0,Math.PI*2);ctx.stroke();
           } else {
             ctx.fillStyle=chipColor;
-            ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,26,26,5):ctx.rect(chipX,chipY,26,26);ctx.fill();
-            ctx.fillStyle="#0a1628";ctx.font=`700 13px BebasNeue,Arial`;ctx.textAlign="center";
-            ctx.fillText((initials[owner.playerIdx]||"?"),chipX+13,chipY+18);
+            ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,36,36,6):ctx.rect(chipX,chipY,36,36);ctx.fill();
+            ctx.fillStyle="#0a1628";ctx.font=`700 15px BebasNeue,Arial`;ctx.textAlign="center";
+            ctx.fillText((initials[owner.playerIdx]||"?"),chipX+18,chipY+24);
           }
           if(ptsEarned>0){
             ctx.globalAlpha=1;
             ctx.fillStyle=chipColor;ctx.font=`700 10px DMSans,Arial`;
             ctx.textAlign=isHome?"left":"right";
-            ctx.fillText(`+${ptsEarned}`,isHome?chipX+30:chipX-4,chipY+18);
+            ctx.fillText(`+${ptsEarned}`,isHome?chipX+40:chipX-4,chipY+24);
           }
         }
 

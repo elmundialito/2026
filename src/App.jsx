@@ -1784,9 +1784,9 @@ function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,in
       {open&&(
         <div style={{padding:"8px 12px 12px"}}>
           <div style={{display:"flex",alignItems:"center",fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"4px 4px 8px",borderBottom:"1px solid #1a2d4a",marginBottom:6}}>
-            <span style={{flex:1}}>{lang==="es"?"Jugador":"Player"}</span>
-            <span style={{width:52,textAlign:"center"}}>{lang==="es"?"Correctas":"Correct"}</span>
-            <span style={{width:52,textAlign:"center"}}>{lang==="es"?"Jugadas":"Played"}</span>
+            <span style={{flex:1}}>{lang==="es"?"JUGADOR":"Player"}</span>
+            <span style={{width:52,textAlign:"center"}}>✓</span>
+            <span style={{width:52,textAlign:"center"}}>#</span>
             <span style={{width:40,textAlign:"center"}}>%</span>
           </div>
           {stats.map((p,rank)=>{

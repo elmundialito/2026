@@ -1301,7 +1301,7 @@ function GroupStandingsAccordion({g,res,ownership,initials}) {
       {open&&(
         <div style={{padding:"0 12px 12px"}}>
           <div style={{background:"rgba(10,22,40,0.4)",borderRadius:8,padding:"10px 12px",border:"1px solid #1e2f50"}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 40px 36px",gap:4,fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"0 2px 6px"}}><span>{lang==="es"?"Equipo":"Team"}</span><span style={{textAlign:"center"}}>P</span><span style={{textAlign:"center"}}>V</span><span style={{textAlign:"center"}}>E</span><span style={{textAlign:"center"}}>D</span><span style={{textAlign:"center"}}>GD</span><span style={{textAlign:"center"}}>Pts</span></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 40px 36px",gap:4,fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"0 2px 6px"}}><span>{lang==="es"?"Equipo":"Team"}</span><span style={{textAlign:"center"}}>P</span><span style={{textAlign:"center"}}>{lang==="es"?"V":"W"}</span><span style={{textAlign:"center"}}>{lang==="es"?"E":"D"}</span><span style={{textAlign:"center"}}>{lang==="es"?"D":"L"}</span><span style={{textAlign:"center"}}>GD</span><span style={{textAlign:"center"}}>Pts</span></div>
             {s.map((row,i)=>{const tm=TBN[row.team];const o=ownership[row.team];return(<div key={row.team} style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 40px 36px",gap:4,padding:"4px 2px",borderTop:i>0?"1px solid rgba(26,39,68,0.5)":"none",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:i<2?"#61a978":"#5a6a8a",width:10,textAlign:"center"}}>{i+1}</span><span style={{fontSize:13}}>{tm?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,color:o?PC[o.playerIdx]:"#e0dcd4",whiteSpace:"nowrap"}}>{code3(row.team)}</span>{o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16}/>}</div>{[row.P,row.W,row.D,row.L].map((v,j)=><span key={j} style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4"}}>{v}</span>)}<span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:row.GD>0?"#61a978":row.GD<0?"#d97757":"#8899b4"}}>{row.GD>0?"+":""}{row.GD}</span><span style={{textAlign:"center",fontFamily:"'Bebas Neue'",fontSize:14,color:"var(--accent)",letterSpacing:1}}>{row.Pts}</span></div>);})}
           </div>
         </div>
@@ -1483,8 +1483,32 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
 }
 
 function ScheduleView({matchesByDate,today,todaySGT,matchResults,ownership,onSet,readOnly,initials,myTeams,setOpenChatId,setOpenPredictId,matchChat,predictions,myPlayerIdx,config,lang,showPast,setShowPast,collapsedDays={},setCollapsedDays}) {
-  const pastDates=matchesByDate.filter(([date])=>date<todaySGT);
-  const presentFutureDates=matchesByDate.filter(([date])=>date>=todaySGT);
+  const yesterday=new Date(Date.now()-86400000).toLocaleDateString("en-CA");
+  const scrollTargetRef=useRef(null);
+
+  // Last fully completed day = last day where ALL matches have scores
+  const lastCompleteDay=useMemo(()=>{
+    let last=null;
+    for(const [date,matches] of matchesByDate){
+      const allScored=matches.every(m=>matchResults[m.id]!=null);
+      if(allScored)last=date;
+    }
+    return last;
+  },[matchesByDate,matchResults]);
+
+  const pastDates=lastCompleteDay?matchesByDate.filter(([date])=>date<lastCompleteDay):[];
+  const presentFutureDates=lastCompleteDay?matchesByDate.filter(([date])=>date>=lastCompleteDay):matchesByDate;
+
+  // Auto-scroll to today on mount
+  useEffect(()=>{
+    const t=setTimeout(()=>{
+      if(scrollTargetRef.current){
+        const rect=scrollTargetRef.current.getBoundingClientRect();
+        window.scrollTo({top:window.scrollY+rect.top-58,behavior:"smooth"});
+      }
+    },150);
+    return()=>clearTimeout(t);
+  },[]);
   const totalPastScored=pastDates.reduce((acc,[,matches])=>acc+matches.filter(m=>matchResults[m.id]!=null).length,0);
   const totalPastMatches=pastDates.reduce((acc,[,matches])=>acc+matches.length,0);
   return(<>
@@ -1501,14 +1525,17 @@ function ScheduleView({matchesByDate,today,todaySGT,matchResults,ownership,onSet
     )}
     {presentFutureDates.map(([date,matches])=>{
       const isToday=date===today;
+      const isYesterday=date===yesterday;
       const scored=matches.filter(m=>matchResults[m.id]!=null).length;
       const isCollapsed=!!collapsedDays[date];
       const toggleCollapse=()=>setCollapsedDays(p=>({...p,[date]:!p[date]}));
+      const isScrollTarget=date===today;
       return(
-        <div key={date} style={{marginBottom:isCollapsed?4:18,marginTop:8,borderRadius:isToday?10:0,border:isToday?"1px solid rgba(201,168,76,0.2)":"none",background:isToday?"rgba(201,168,76,0.03)":"transparent",padding:isToday?"10px":"0"}}>
+        <div key={date} ref={isScrollTarget?scrollTargetRef:null} style={{marginBottom:isCollapsed?4:18,marginTop:8,borderRadius:isToday?10:0,border:isToday?"1px solid rgba(201,168,76,0.2)":"none",background:isToday?"rgba(201,168,76,0.03)":"transparent",padding:isToday?"10px":"0"}}>
           <div onClick={toggleCollapse} style={{display:"flex",alignItems:"center",gap:10,marginBottom:isCollapsed?0:10,paddingTop:4,cursor:"pointer"}}>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:isToday?22:18,letterSpacing:3,color:isToday?"var(--accent)":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:isToday?22:18,letterSpacing:3,color:isToday?"var(--accent)":isYesterday?"#8899b4":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
             {isToday&&<div style={{padding:"2px 10px",borderRadius:10,background:"rgba(201,168,76,0.25)",border:"1px solid rgba(201,168,76,0.5)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:2}}>⚡ {t(lang,"today")}</div>}
+            {isYesterday&&<div style={{padding:"2px 8px",borderRadius:10,background:"rgba(138,153,180,0.1)",border:"1px solid rgba(138,153,180,0.2)",fontFamily:"'Bebas Neue'",fontSize:10,color:"#5a6a8a",letterSpacing:1}}>{lang==="es"?"AYER":"YESTERDAY"}</div>}
             <div style={{flex:1,height:isToday?2:1,background:isToday?"rgba(201,168,76,0.4)":"rgba(138,153,180,0.2)"}}/>
             <span style={{fontFamily:"'DM Sans'",fontSize:10,color:isToday?"var(--accent)":"#5a6a8a",fontWeight:isToday?600:400}}>{scored}/{matches.length} {isCollapsed?"▼":"▲"}</span>
           </div>

@@ -1484,6 +1484,7 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
 
 function ScheduleView({matchesByDate,today,todaySGT,matchResults,ownership,onSet,readOnly,initials,myTeams,setOpenChatId,setOpenPredictId,matchChat,predictions,myPlayerIdx,config,lang,showPast,setShowPast,collapsedDays={},setCollapsedDays}) {
   const yesterday=new Date(Date.now()-86400000).toLocaleDateString("en-CA");
+  const tomorrow=new Date(Date.now()+86400000).toLocaleDateString("en-CA");
   const scrollTargetRef=useRef(null);
 
   // Last fully completed day = last day where ALL matches have scores
@@ -1526,6 +1527,7 @@ function ScheduleView({matchesByDate,today,todaySGT,matchResults,ownership,onSet
     {presentFutureDates.map(([date,matches])=>{
       const isToday=date===today;
       const isYesterday=date===yesterday;
+      const isTomorrow=date===tomorrow;
       const scored=matches.filter(m=>matchResults[m.id]!=null).length;
       const isCollapsed=!!collapsedDays[date];
       const toggleCollapse=()=>setCollapsedDays(p=>({...p,[date]:!p[date]}));
@@ -1536,6 +1538,7 @@ function ScheduleView({matchesByDate,today,todaySGT,matchResults,ownership,onSet
             <div style={{fontFamily:"'Bebas Neue'",fontSize:isToday?22:18,letterSpacing:3,color:isToday?"var(--accent)":isYesterday?"#8899b4":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
             {isToday&&<div style={{padding:"2px 10px",borderRadius:10,background:"rgba(201,168,76,0.25)",border:"1px solid rgba(201,168,76,0.5)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:2}}>⚡ {t(lang,"today")}</div>}
             {isYesterday&&<div style={{padding:"2px 8px",borderRadius:10,background:"rgba(138,153,180,0.1)",border:"1px solid rgba(138,153,180,0.2)",fontFamily:"'Bebas Neue'",fontSize:10,color:"#5a6a8a",letterSpacing:1}}>{lang==="es"?"AYER":"YESTERDAY"}</div>}
+            {isTomorrow&&<div style={{padding:"2px 8px",borderRadius:10,background:"rgba(138,153,180,0.1)",border:"1px solid rgba(138,153,180,0.2)",fontFamily:"'Bebas Neue'",fontSize:10,color:"#5a6a8a",letterSpacing:1}}>{lang==="es"?"MAÑANA":"TOMORROW"}</div>}
             <div style={{flex:1,height:isToday?2:1,background:isToday?"rgba(201,168,76,0.4)":"rgba(138,153,180,0.2)"}}/>
             <span style={{fontFamily:"'DM Sans'",fontSize:10,color:isToday?"var(--accent)":"#5a6a8a",fontWeight:isToday?600:400}}>{scored}/{matches.length} {isCollapsed?"▼":"▲"}</span>
           </div>
@@ -3793,7 +3796,7 @@ export default function Mundialito() {
         );})()}
       </div>
       <div style={{position:"sticky",top:0,zIndex:50,background:"linear-gradient(180deg,rgba(10,22,40,0.97) 0%,rgba(15,30,56,0.97) 100%)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderBottom:"1px solid rgba(201,168,76,0.12)",display:"flex",justifyContent:"center",gap:2,padding:"10px 12px 0",marginBottom:0}}>
-        {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);const tabLabel=t(lang,tab.id==="standings"?"leaderboard":tab.id);return(<button key={tab.id} onClick={()=>{if(open){setActiveTab(tab.id);if(tab.id!=="group")window.scrollTo({top:0,behavior:"smooth"});if(tab.id==="standings"){const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");if(code)loadProfilePics(code).then(()=>bumpPics(setPicRefresh));}}}} style={{padding:"7px 6px 10px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tabLabel}</div></button>);})}
+        {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);const tabLabel=t(lang,tab.id==="standings"?"leaderboard":tab.id);return(<button key={tab.id} onClick={()=>{if(open){setActiveTab(tab.id);if(tab.id!=="group")setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);if(tab.id==="standings"){const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");if(code)loadProfilePics(code).then(()=>bumpPics(setPicRefresh));}}}} style={{padding:"7px 6px 10px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tabLabel}</div></button>);})}
       </div>
       <div style={{paddingBottom:48,paddingTop:20}}>{tabContent()}
         <div style={{maxWidth:720,margin:"0 auto",padding:"24px 16px 0"}}>

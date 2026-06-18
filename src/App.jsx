@@ -1946,7 +1946,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       // Final fallback: draft order
       const aPick=draftOrder.indexOf(a.idx);const bPick=draftOrder.indexOf(b.idx);if(aPick!==-1&&bPick!==-1)return aPick-bPick;return a.idx-b.idx;
     });
-  },[config,picks,matchResults,bracket,koResults,picRefresh]);
+  },[config,picks,matchResults,bracket,koResults,picRefresh,draftOrder]);
 
   // Track rank movements — compare live ranking vs ranking excluding today's SGT results
   const playerDataWithRanks=useMemo(()=>{

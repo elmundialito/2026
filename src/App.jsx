@@ -251,7 +251,7 @@ const UI = {
     today:"TODAY", draw:"DRAW", yourTeam:"YOUR TEAM", yourTeams:"YOUR TEAMS",
     leaderboardTitle:"LEADERBOARD", prizePool:"🏆 Prize pool", winnerTakesAll:"winner takes all",
     points:"points", group2:"Group", knockout2:"Knockout", pastR32:"Past R32", total:"Total",
-    teamBreakdown:"TEAM BREAKDOWN", tiebreaker:"Tiebreaker: Most teams past group stage → Most teams past R32 → Goal difference → Goals scored → Coin toss",
+    teamBreakdown:"TEAM BREAKDOWN", tiebreaker:"Tiebreaker: Most teams in Round of 32 → Most teams in Round of 16 → Goal difference → Goals scored → Head to head record → Draft order",
     changeUser:"👤 Change user", howItWorks:"HOW IT WORKS",
     looksGood:"LOOKS GOOD →", skipForNow:"SKIP FOR NOW →", addPhoto:"📷 ADD YOUR PHOTO",
     changePhoto:"📷 CHANGE PHOTO", yourColour:"YOUR COLOUR", yourProfile:"YOUR PROFILE",
@@ -278,7 +278,7 @@ const UI = {
     rulesTitle2:"The Draft", rulesBody2:"Take turns picking teams in a snake draft — direction reverses each round. Everyone ends up with the same number of teams (48 ÷ players).",
     rulesTitle3:"Group Stage", rulesBody3:"Your teams play 3 group games each. You earn 3 pts per win, 1 pt per draw. Losses = 0.",
     rulesTitle4:"Knockout Stage", rulesBody4:"Bonus points every time one of your teams wins a KO match. Stakes rise each round: R32=3, R16=5, QF=7, SF=9, 3rd Place=6, Final=11.",
-    rulesTitle5:"Winning", rulesBody5:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams past group stage → most teams past R32 → goal difference → goals scored → coin toss.",
+    rulesTitle5:"Winning", rulesBody5:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams in Round of 32 → most teams in Round of 16 → goal difference → goals scored → Head to head record → draft order.",
     tapToContinue:"Tap to continue",
     hostAccess:"HOST ACCESS", hostPwPlaceholder:"Host password",
     unlockHost:"UNLOCK HOST ACCESS", checking:"CHECKING…", cancel:"Cancel",
@@ -297,7 +297,7 @@ const UI = {
     today:"HOY", draw:"EMPATE", yourTeam:"TU EQUIPO", yourTeams:"TUS EQUIPOS",
     leaderboardTitle:"CLASIFICACIÓN", prizePool:"🏆 Premio total", winnerTakesAll:"el primero se lo lleva todo",
     points:"puntos", group2:"Grupos", knockout2:"KO", pastR32:"R32", total:"Total",
-    teamBreakdown:"TUS EQUIPOS", tiebreaker:"Desempate: Más equipos en fase de grupos → Más equipos en R32 → Diferencia de goles → Goles a favor → Sorteo",
+    teamBreakdown:"TUS EQUIPOS", tiebreaker:"Desempate: Más equipos en Ronda de 32 → Más equipos en Ronda de 16 → Diferencia de goles → Goles a favor → Récord H2H → Orden de sorteo",
     changeUser:"👤 Cambiar usuario", howItWorks:"CÓMO FUNCIONA",
     looksGood:"¡LISTO! →", skipForNow:"OMITIR POR AHORA →", addPhoto:"📷 AÑADIR FOTO",
     changePhoto:"📷 CAMBIAR FOTO", yourColour:"TU COLOR", yourProfile:"TU PERFIL",
@@ -324,7 +324,7 @@ const UI = {
     rulesTitle2:"El Sorteo", rulesBody2:"Eligen equipos por turnos en orden de serpiente — la dirección cambia cada ronda. Todos terminan con el mismo número de equipos (48 ÷ jugadores).",
     rulesTitle3:"Fase de Grupos", rulesBody3:"Tus equipos juegan 3 partidos de grupo. Ganas 3 pts por victoria, 1 pt por empate. Las derrotas = 0.",
     rulesTitle4:"Fase Eliminatoria", rulesBody4:"Puntos extra cada vez que uno de tus equipos gana un partido eliminatorio. Las apuestas suben cada ronda: R32=3, R16=5, CF=7, SF=9, 3er Puesto=6, Final=11.",
-    rulesTitle5:"Ganar", rulesBody5:"El TOTAL más alto (Grupos + Eliminatorias) se lleva el premio. Desempate: más equipos en fase de grupos → más equipos en R32 → diferencia de goles → goles a favor → sorteo.",
+    rulesTitle5:"Ganar", rulesBody5:"El TOTAL más alto (Grupos + Eliminatorias) se lleva el premio. Desempate: más equipos en Ronda de 32 → más equipos en Ronda de 16 → diferencia de goles → goles a favor → sorteo.",
     tapToContinue:"Toca para continuar",
     hostAccess:"ACCESO ANFITRIÓN", hostPwPlaceholder:"Contraseña del anfitrión",
     unlockHost:"DESBLOQUEAR ACCESO", checking:"VERIFICANDO…", cancel:"Cancelar",
@@ -592,7 +592,7 @@ const RULES_DATA = [
   {n:"2",title:"The Draft",body:"Take turns picking teams in a snake draft — direction reverses each round. Everyone ends up with the same number of teams (48 ÷ players)."},
   {n:"3",title:"Group Stage",body:"Your teams play 3 group games each. You earn 3 pts per win, 1 pt per draw. Losses = 0."},
   {n:"4",title:"Knockout Stage",body:"Bonus points every time one of your teams wins a KO match. Stakes rise each round: R32=3, R16=5, QF=7, SF=9, 3rd Place=6, Final=11."},
-  {n:"5",title:"Winning",body:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams past group stage → most teams past R32 → goal difference → goals scored → coin toss."},
+  {n:"5",title:"Winning",body:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams in Round of 32 → most teams in Round of 16 → goal difference → goals scored → Head to head record → draft order."},
 ];
 
 function RulesList() {
@@ -1551,7 +1551,7 @@ function PastDayRow({date,matches,matchResults,ownership,onSet,readOnly,initials
   );
 }
 
-function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx,onPicsLoaded,onPredictionsUpdate}) {
+function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx,onPicsLoaded,onPredictionsUpdate,bracket={},koResults={},playerRankings=[]}) {
   const lang=useContext(LangContext);
   const bumpPicsCtx=useContext(PicBumpContext);
   const [matchChat,setMatchChat]=useState({});
@@ -1566,6 +1566,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
     if(!poolCode)return;
     loadProfilePics(poolCode).then(()=>{
       if(bumpPicsCtx)bumpPicsCtx();
+      if(onPicsLoaded)onPicsLoaded();
     });
   },[]);
 
@@ -1641,20 +1642,13 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
           <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a"}}>{recorded}/72</span>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
-        {[...config.playerNames.map((n,i)=>{
-          const pts=playerPts[i];
-          // Same tiebreakers as main leaderboard: gd then gf across all owned teams
-          let gd=0,gf=0;
-          const mine=new Set((picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team));
-          GM.forEach(m=>{const r=matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]&&mine.has(m.t[0]),isAway=m.t[1]&&mine.has(m.t[1]);if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});
-          return{n,i,pts,gd,gf};
-        })].sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf).map(({n,i})=>{
+        {playerRankings.map(({name:n,idx:i,total})=>{
           const pcolor=getPlayerColor(i,PC[i]);
           return(
           <div key={i} style={{display:"flex",alignItems:"center",gap:5,padding:"4px 8px",borderRadius:8,background:`${pcolor}12`,border:`1px solid ${pcolor}33`}}>
             <div style={{width:18,height:18,borderRadius:4,background:pcolor,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{initials[i]}</div>
             <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:pcolor,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n}</span>
-            <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,letterSpacing:1,flexShrink:0}}>{playerPts[i]}<span style={{fontSize:8,color:`${pcolor}99`,marginLeft:1}}>pts</span></span>
+            <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,letterSpacing:1,flexShrink:0}}>{total}<span style={{fontSize:8,color:`${pcolor}99`,marginLeft:1}}>pts</span></span>
           </div>
           );
         })}
@@ -1923,8 +1917,35 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         return pos<=1; // top 2 qualify directly; 3rd place qualification handled separately
       }).length;
       const color=getPlayerColor(i,PC[i]);
-      return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,pastGroups,teamBreakdown,color,gd,gf,todayPts};
-    }).sort((a,b)=>b.total-a.total||b.pastGroups-a.pastGroups||b.r32-a.r32||b.gd-a.gd||b.gf-a.gf);
+      return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,pastGroups,teamBreakdown,color,gd,gf,todayPts,myTeams};
+    }).sort((a,b)=>{
+      if(b.total!==a.total)return b.total-a.total;
+      if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;
+      if(b.r32!==a.r32)return b.r32-a.r32;
+      if(b.gd!==a.gd)return b.gd-a.gd;
+      if(b.gf!==a.gf)return b.gf-a.gf;
+      // H2H: find matches where one player's team played the other's
+      let aWins=0,bWins=0,aH2HGD=0,bH2HGD=0,aH2HGF=0,bH2HGF=0;
+      GM.forEach(m=>{
+        const r=matchResults[m.id];if(!r||r.home==null||r.away==null)return;
+        const aHome=a.myTeams.includes(m.t[0]),aAway=a.myTeams.includes(m.t[1]);
+        const bHome=b.myTeams.includes(m.t[0]),bAway=b.myTeams.includes(m.t[1]);
+        if(aHome&&bAway){
+          aH2HGF+=r.home;bH2HGF+=r.away;
+          aH2HGD+=(r.home-r.away);bH2HGD+=(r.away-r.home);
+          if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;
+        } else if(aAway&&bHome){
+          aH2HGF+=r.away;bH2HGF+=r.home;
+          aH2HGD+=(r.away-r.home);bH2HGD+=(r.home-r.away);
+          if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;
+        }
+      });
+      if(aWins!==bWins)return bWins-aWins;
+      if(aH2HGD!==bH2HGD)return bH2HGD-aH2HGD;
+      if(aH2HGF!==bH2HGF)return bH2HGF-aH2HGF;
+      // Final fallback: draft order
+      return a.idx-b.idx;
+    });
   },[config,picks,matchResults,bracket,koResults,picRefresh]);
 
   // Track rank movements — compare live ranking vs ranking excluding today's SGT results
@@ -1962,7 +1983,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       }).length;
       const r32=KM.filter(m=>m.round==="r32").filter(m=>{const r=koResults[m.id];if(!r)return false;const b=bracket[m.id];if(!b)return false;const w=r==="A"?b.a:b.b;return w&&myTeams.includes(w);}).length;
       return{idx:i,total:gs+ko,pastGroups,r32,gd,gf};
-    }).sort((a,b)=>b.total-a.total||b.pastGroups-a.pastGroups||b.r32-a.r32||b.gd-a.gd||b.gf-a.gf);
+    }).sort((a,b)=>b.total-a.total||b.pastGroups-a.pastGroups||b.r32-a.r32||b.gd-a.gd||b.gf-a.gf||a.idx-b.idx);
     const yesterdayRankMap={};
     yesterdayRanks.forEach((p,ri)=>{yesterdayRankMap[p.idx]=ri;});
     return playerData.map((p,ri)=>({
@@ -3654,6 +3675,7 @@ export default function Mundialito() {
   const initials=useMemo(()=>getInitials(st.config.playerNames||[]),[st.config.playerNames]);
   const anyGroupDone=useMemo(()=>Object.keys(GROUPS).some(g=>GM.filter(m=>m.g===g).every(m=>st.matchResults[m.id]!=null)),[st.matchResults]);
   const resolvedBracket=useMemo(()=>resolveKOBracket(st.matchResults,st.koResults,st.koOverrides),[st.matchResults,st.koResults,st.koOverrides]);
+  const playerRankings=useMemo(()=>{return Array.from({length:st.config.playerCount},(_,i)=>{const gsPts=playerGSPts(i,st.picks||[],st.matchResults);const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);let gd=0,gf=0;myTeams.forEach(team=>{GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]===team,isAway=m.t[1]===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});});const pastGroups=myTeams.filter(team=>{const grp=Object.entries(GROUPS).find(([,ts])=>ts.includes(team))?.[0];if(!grp)return false;const s=groupStandings(grp,st.matchResults);return s.findIndex(x=>x.team===team)<=1;}).length;const r32=KM.filter(m=>m.round==="r32").filter(m=>{const r=st.koResults[m.id];if(!r)return false;const bk=resolvedBracket[m.id];if(!bk)return false;const w=r==="A"?bk.a:bk.b;return w&&myTeams.includes(w);}).length;return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,pastGroups,r32,gd,gf,myTeams};}).sort((a,b)=>{if(b.total!==a.total)return b.total-a.total;if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;if(b.r32!==a.r32)return b.r32-a.r32;if(b.gd!==a.gd)return b.gd-a.gd;if(b.gf!==a.gf)return b.gf-a.gf;let aWins=0,bWins=0,aGD=0,bGD=0,aGF=0,bGF=0;GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const aH=a.myTeams.includes(m.t[0]),aA=a.myTeams.includes(m.t[1]),bH=b.myTeams.includes(m.t[0]),bA=b.myTeams.includes(m.t[1]);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});if(aWins!==bWins)return bWins-aWins;if(aGD!==bGD)return bGD-aGD;if(aGF!==bGF)return bGF-aGF;return a.idx-b.idx;});},[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
   const syncCode=useMemo(()=>encode(st),[st]);
   const readOnly=!isHost;
 
@@ -3714,7 +3736,7 @@ export default function Mundialito() {
     if(activeTab==="setup"){if(st.setupLocked&&!readOnly)return(<SetupLockedScreen config={st.config} onRename={(i,name)=>{setSt(p=>{const updated={...p,config:{...p.config,playerNames:p.config.playerNames.map((n,j)=>j===i?name:n)}};const code=window.localStorage?.getItem("mundi_pool_code")||poolCode||window.localStorage?.getItem("mundi_spectator_code");const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;if(code)savePool(code,updated,pw).then(ok=>{if(ok&&code!==poolCode){try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}setPoolCode(code);}});return updated;});}} onColorChange={(i,color)=>{colorCache[i]=color;saveCaches();savePlayerColor(i,color);bumpPics(setPicRefresh);}} onUnlock={()=>setSt(p=>({...p,setupLocked:false,draftOrder:null,draftMode:null,picks:[],draftLocked:false,matchResults:{},koResults:{},koOverrides:{}}))}/>);
       return <SetupScreen config={st.config} setConfig={c=>setSt(p=>({...p,config:typeof c==="function"?c(p.config):c}))} onLock={()=>{setSt(p=>({...p,setupLocked:true}));setActiveTab("draft");}} readOnly={readOnly}/>;}
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
-    if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx} onPicsLoaded={()=>setPicRefresh(n=>n+1)} onPredictionsUpdate={p=>setAllPredictions(p)}/>;
+    if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx} onPicsLoaded={()=>setPicRefresh(n=>n+1)} onPredictionsUpdate={p=>setAllPredictions(p)} bracket={resolvedBracket} koResults={st.koResults} playerRankings={playerRankings}/>;
     if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly}/>;
     if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} onSuggestions={()=>setShowSuggestions(true)} picRefresh={picRefresh} allPredictions={allPredictions}/>;
     return null;

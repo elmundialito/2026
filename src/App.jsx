@@ -251,7 +251,7 @@ const UI = {
     today:"TODAY", draw:"DRAW", yourTeam:"YOUR TEAM", yourTeams:"YOUR TEAMS",
     leaderboardTitle:"LEADERBOARD", prizePool:"🏆 Prize pool", winnerTakesAll:"winner takes all",
     points:"points", group2:"Group", knockout2:"Knockout", pastR32:"Past R32", total:"Total",
-    teamBreakdown:"TEAM BREAKDOWN", tiebreaker:"Tiebreaker: Most teams past R32 → Highest GS total → Coin toss",
+    teamBreakdown:"TEAM BREAKDOWN", tiebreaker:"Tiebreaker: Most teams past group stage → Most teams past R32 → Goal difference → Goals scored → Coin toss",
     changeUser:"👤 Change user", howItWorks:"HOW IT WORKS",
     looksGood:"LOOKS GOOD →", skipForNow:"SKIP FOR NOW →", addPhoto:"📷 ADD YOUR PHOTO",
     changePhoto:"📷 CHANGE PHOTO", yourColour:"YOUR COLOUR", yourProfile:"YOUR PROFILE",
@@ -278,7 +278,7 @@ const UI = {
     rulesTitle2:"The Draft", rulesBody2:"Take turns picking teams in a snake draft — direction reverses each round. Everyone ends up with the same number of teams (48 ÷ players).",
     rulesTitle3:"Group Stage", rulesBody3:"Your teams play 3 group games each. You earn 3 pts per win, 1 pt per draw. Losses = 0.",
     rulesTitle4:"Knockout Stage", rulesBody4:"Bonus points every time one of your teams wins a KO match. Stakes rise each round: R32=3, R16=5, QF=7, SF=9, 3rd Place=6, Final=11.",
-    rulesTitle5:"Winning", rulesBody5:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams past R32 → higher GS total → coin toss.",
+    rulesTitle5:"Winning", rulesBody5:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams past group stage → most teams past R32 → goal difference → goals scored → coin toss.",
     tapToContinue:"Tap to continue",
     hostAccess:"HOST ACCESS", hostPwPlaceholder:"Host password",
     unlockHost:"UNLOCK HOST ACCESS", checking:"CHECKING…", cancel:"Cancel",
@@ -297,7 +297,7 @@ const UI = {
     today:"HOY", draw:"EMPATE", yourTeam:"TU EQUIPO", yourTeams:"TUS EQUIPOS",
     leaderboardTitle:"CLASIFICACIÓN", prizePool:"🏆 Premio total", winnerTakesAll:"el primero se lo lleva todo",
     points:"puntos", group2:"Grupos", knockout2:"KO", pastR32:"R32", total:"Total",
-    teamBreakdown:"TUS EQUIPOS", tiebreaker:"Desempate: Más equipos en R32 → Diferencia de goles → Goles a favor",
+    teamBreakdown:"TUS EQUIPOS", tiebreaker:"Desempate: Más equipos en fase de grupos → Más equipos en R32 → Diferencia de goles → Goles a favor → Sorteo",
     changeUser:"👤 Cambiar usuario", howItWorks:"CÓMO FUNCIONA",
     looksGood:"¡LISTO! →", skipForNow:"OMITIR POR AHORA →", addPhoto:"📷 AÑADIR FOTO",
     changePhoto:"📷 CAMBIAR FOTO", yourColour:"TU COLOR", yourProfile:"TU PERFIL",
@@ -324,7 +324,7 @@ const UI = {
     rulesTitle2:"El Sorteo", rulesBody2:"Eligen equipos por turnos en orden de serpiente — la dirección cambia cada ronda. Todos terminan con el mismo número de equipos (48 ÷ jugadores).",
     rulesTitle3:"Fase de Grupos", rulesBody3:"Tus equipos juegan 3 partidos de grupo. Ganas 3 pts por victoria, 1 pt por empate. Las derrotas = 0.",
     rulesTitle4:"Fase Eliminatoria", rulesBody4:"Puntos extra cada vez que uno de tus equipos gana un partido eliminatorio. Las apuestas suben cada ronda: R32=3, R16=5, CF=7, SF=9, 3er Puesto=6, Final=11.",
-    rulesTitle5:"Ganar", rulesBody5:"El TOTAL más alto (Grupos + Eliminatorias) se lleva el premio. Desempate: más equipos que pasan R32 → mayor total de grupos → sorteo.",
+    rulesTitle5:"Ganar", rulesBody5:"El TOTAL más alto (Grupos + Eliminatorias) se lleva el premio. Desempate: más equipos en fase de grupos → más equipos en R32 → diferencia de goles → goles a favor → sorteo.",
     tapToContinue:"Toca para continuar",
     hostAccess:"ACCESO ANFITRIÓN", hostPwPlaceholder:"Contraseña del anfitrión",
     unlockHost:"DESBLOQUEAR ACCESO", checking:"VERIFICANDO…", cancel:"Cancelar",
@@ -592,7 +592,7 @@ const RULES_DATA = [
   {n:"2",title:"The Draft",body:"Take turns picking teams in a snake draft — direction reverses each round. Everyone ends up with the same number of teams (48 ÷ players)."},
   {n:"3",title:"Group Stage",body:"Your teams play 3 group games each. You earn 3 pts per win, 1 pt per draw. Losses = 0."},
   {n:"4",title:"Knockout Stage",body:"Bonus points every time one of your teams wins a KO match. Stakes rise each round: R32=3, R16=5, QF=7, SF=9, 3rd Place=6, Final=11."},
-  {n:"5",title:"Winning",body:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams past R32 → higher GS total → coin toss."},
+  {n:"5",title:"Winning",body:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams past group stage → most teams past R32 → goal difference → goals scored → coin toss."},
 ];
 
 function RulesList() {
@@ -1914,9 +1914,17 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           else if(out==="D")todayPts+=1;
         });
       });
+      // Count teams that qualified from group stage (finished top 2 or as qualifying 3rd)
+      const pastGroups=myTeams.filter(team=>{
+        const grp=Object.entries(GROUPS).find(([,ts])=>ts.includes(team))?.[0];
+        if(!grp)return false;
+        const standings=groupStandings(grp,matchResults);
+        const pos=standings.findIndex(s=>s.team===team);
+        return pos<=1; // top 2 qualify directly; 3rd place qualification handled separately
+      }).length;
       const color=getPlayerColor(i,PC[i]);
-      return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,teamBreakdown,color,gd,gf,todayPts};
-    }).sort((a,b)=>b.total-a.total||b.r32-a.r32||b.gsPts-a.gsPts||b.gd-a.gd||b.gf-a.gf);
+      return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,pastGroups,teamBreakdown,color,gd,gf,todayPts};
+    }).sort((a,b)=>b.total-a.total||b.pastGroups-a.pastGroups||b.r32-a.r32||b.gd-a.gd||b.gf-a.gf);
   },[config,picks,matchResults,bracket,koResults,picRefresh]);
 
   // Track rank movements — compare live ranking vs ranking excluding today's SGT results
@@ -1935,8 +1943,9 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
     const yesterdayRanks=Array.from({length:config.playerCount},(_,i)=>{
       const gs=playerGSPts(i,picks||[],yesterdayResults);
       const ko=playerKOPts(i,picks||[],bracket,koResults,config.koPoints);
+      const myTeams=(picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);
       let gd=0,gf=0;
-      (picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team).forEach(team=>{
+      myTeams.forEach(team=>{
         GM.forEach(m=>{
           const r=yesterdayResults[m.id];if(!r||r.home==null||r.away==null)return;
           const isHome=m.t[0]===team,isAway=m.t[1]===team;
@@ -1944,8 +1953,16 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           else if(isAway){gf+=r.away;gd+=(r.away-r.home);}
         });
       });
-      return{idx:i,total:gs+ko,gd,gf};
-    }).sort((a,b)=>b.total-a.total||b.gd-a.gd||b.gf-a.gf);
+      const pastGroups=myTeams.filter(team=>{
+        const grp=Object.entries(GROUPS).find(([,ts])=>ts.includes(team))?.[0];
+        if(!grp)return false;
+        const standings=groupStandings(grp,yesterdayResults);
+        const pos=standings.findIndex(s=>s.team===team);
+        return pos<=1;
+      }).length;
+      const r32=KM.filter(m=>m.round==="r32").filter(m=>{const r=koResults[m.id];if(!r)return false;const b=bracket[m.id];if(!b)return false;const w=r==="A"?b.a:b.b;return w&&myTeams.includes(w);}).length;
+      return{idx:i,total:gs+ko,pastGroups,r32,gd,gf};
+    }).sort((a,b)=>b.total-a.total||b.pastGroups-a.pastGroups||b.r32-a.r32||b.gd-a.gd||b.gf-a.gf);
     const yesterdayRankMap={};
     yesterdayRanks.forEach((p,ri)=>{yesterdayRankMap[p.idx]=ri;});
     return playerData.map((p,ri)=>({

@@ -455,12 +455,33 @@ function getMatchOutcome(r) {
 
 function groupStandings(grp, res) {
   const s = Object.fromEntries(GROUPS[grp].map(t=>[t,{P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0}]));
-  GM.filter(m=>m.g===grp).forEach(m=>{
+  const grpMatches = GM.filter(m=>m.g===grp);
+  grpMatches.forEach(m=>{
     const r=res[m.id]; const out=getMatchOutcome(r); if(!out)return;
     const[a,b]=m.t; s[a].P++;s[b].P++;s[a].GF+=r.home;s[a].GA+=r.away;s[a].GD+=r.home-r.away;s[b].GF+=r.away;s[b].GA+=r.home;s[b].GD+=r.away-r.home;
     if(out==="A"){s[a].W++;s[a].Pts+=3;s[b].L++;}else if(out==="B"){s[b].W++;s[b].Pts+=3;s[a].L++;}else{s[a].D++;s[a].Pts++;s[b].D++;s[b].Pts++;}
   });
-  return GROUPS[grp].map(t=>({team:t,...s[t]})).sort((a,b)=>b.Pts-a.Pts||b.GD-a.GD||b.GF-a.GF||a.team.localeCompare(b.team));
+  // H2H mini-table among tied teams (FIFA tiebreaker: H2H pts → H2H GD → H2H GF, before overall GD/GF)
+  const h2h=(a,b)=>{
+    let aPts=0,bPts=0,aGD=0,bGD=0,aGF=0,bGF=0;
+    grpMatches.forEach(m=>{
+      const r=res[m.id]; if(!r||r.home==null||r.away==null) return;
+      const[t1,t2]=m.t;
+      if(t1===a&&t2===b){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aPts+=3;else if(r.away>r.home)bPts+=3;else{aPts++;bPts++;}}
+      else if(t1===b&&t2===a){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aPts+=3;else if(r.home>r.away)bPts+=3;else{aPts++;bPts++;}}
+    });
+    return{aPts,bPts,aGD,bGD,aGF,bGF};
+  };
+  return GROUPS[grp].map(t=>({team:t,...s[t]})).sort((a,b)=>{
+    if(b.Pts!==a.Pts)return b.Pts-a.Pts;
+    const{aPts,bPts,aGD,bGD,aGF,bGF}=h2h(a.team,b.team);
+    if(bPts!==aPts)return bPts-aPts;
+    if(bGD!==aGD)return bGD-aGD;
+    if(bGF!==aGF)return bGF-aGF;
+    if(b.GD!==a.GD)return b.GD-a.GD;
+    if(b.GF!==a.GF)return b.GF-a.GF;
+    return a.team.localeCompare(b.team);
+  });
 }
 
 function get3rdPlaceTeams(mr) {

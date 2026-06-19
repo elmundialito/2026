@@ -1561,7 +1561,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
   const [showShareDay,setShowShareDay]=useState(false);
   const poolCode=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
 
-  // Load profile pics as soon as this screen mounts — guaranteed timing
+  // Load profile pics as soon as this screen mounts
   useEffect(()=>{
     if(!poolCode)return;
     loadProfilePics(poolCode).then(()=>{
@@ -2640,9 +2640,11 @@ function SuggestionModal({open, onClose, poolCode, myPlayerIdx, playerNames, ini
   );
 }
 
-function ReactionRow({reactions, allEmojis, myPlayerIdx, playerNames, onReact, onAddEmoji}) {
+function ReactionRow({reactions, allEmojis, myPlayerIdx, playerNames, onReact}) {
   const [popover, setPopover] = useState(null);
+  const [showPicker, setShowPicker] = useState(false);
   const longPressTimer = useRef(null);
+  const EXTRA_EMOJIS = ["😂","😭","🙌","🤬","😱","🥳","👏","🤝","🫡","💀","🐐","🥹","😬","🤡","🎯","🍿","⚡","💥","🤯","🤔"];
 
   const handlePressStart = (emoji) => {
     longPressTimer.current = setTimeout(() => setPopover(emoji), 400);
@@ -2685,8 +2687,15 @@ function ReactionRow({reactions, allEmojis, myPlayerIdx, playerNames, onReact, o
             </div>
           );
         })}
-        <button onClick={onAddEmoji} style={{width:30,height:30,borderRadius:"50%",border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#5a6a8a",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>➕</button>
+        <button onClick={()=>setShowPicker(o=>!o)} style={{width:30,height:30,borderRadius:"50%",border:`1px solid ${showPicker?"var(--accent)":"#2a3a5c"}`,background:showPicker?"rgba(201,168,76,0.15)":"rgba(26,39,68,0.5)",color:showPicker?"var(--accent)":"#5a6a8a",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>➕</button>
       </div>
+      {showPicker&&(
+        <div style={{marginTop:8,padding:10,borderRadius:10,background:"#0a1628",border:"1px solid #1e2f50",display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+          {EXTRA_EMOJIS.map(emoji=>(
+            <button key={emoji} onClick={()=>{onReact(emoji);setShowPicker(false);}} style={{background:"transparent",border:"none",fontSize:20,padding:"5px 0",cursor:"pointer",borderRadius:6}}>{emoji}</button>
+          ))}
+        </div>
+      )}
       {popover&&<div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setPopover(null)}/>}
     </div>
   );
@@ -2855,7 +2864,6 @@ function MatchChatModal({open, onClose, match, poolCode, myPlayerIdx, playerName
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
-  const emojiInputRef = useRef(null);
   const reactions = matchChat.reactions || {};
   const messages = matchChat.messages || [];
   const [a, b] = match.t;
@@ -2902,8 +2910,7 @@ function MatchChatModal({open, onClose, match, poolCode, myPlayerIdx, playerName
 
         {/* Reactions */}
         <div style={{padding:"12px 16px",borderBottom:"1px solid #1e2f50",flexShrink:0}}>
-          <ReactionRow reactions={reactions} allEmojis={allEmojis} myPlayerIdx={myPlayerIdx} playerNames={playerNames} onReact={doReaction} onAddEmoji={()=>emojiInputRef.current?.click()}/>
-          <input ref={emojiInputRef} type="text" style={{position:"absolute",opacity:0,width:1,height:1,fontSize:16,pointerEvents:"none"}} onInput={e=>{const v=e.target.value.trim();if(v){doReaction(v);e.target.value="";emojiInputRef.current?.blur();}}}/>
+          <ReactionRow reactions={reactions} allEmojis={allEmojis} myPlayerIdx={myPlayerIdx} playerNames={playerNames} onReact={doReaction}/>
         </div>
 
         {/* Messages */}

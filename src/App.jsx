@@ -2162,7 +2162,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           }
           ctx.restore();
 
-          // Player name — bigger, in their colour
+          // Player name — bigger, in their colour. Centre the [name + pts-line] block on the avatar's vertical centre
           const nameSize=isFirst?22:20;
           ctx.textAlign="left";
           ctx.font=`700 ${nameSize}px DMSans,Arial`;
@@ -2171,12 +2171,13 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           const nameX=PAD+98;
           const maxNameW=W-PAD-nameX-60;
           while(ctx.measureText(name).width>maxNameW&&name.length>3) name=name.slice(0,-1)+"…";
-          const nameY=p.todayPts>0?y+ROW/2-3:y+ROW/2+6;
+          const blockCenterY=y+ROW/2;
+          const nameY=p.todayPts>0?blockCenterY-5:blockCenterY+6;
           ctx.fillText(name,nameX,nameY);
           if(p.todayPts>0){
             ctx.font=`600 9px DMSans,Arial`;
             ctx.fillStyle=`${color}99`;
-            ctx.fillText(`+${p.todayPts} ${lang==="es"?"hoy":"today"}`,nameX,nameY+13);
+            ctx.fillText(`+${p.todayPts} ${lang==="es"?"hoy":"today"}`,nameX,nameY+15);
           }
 
           // Points
@@ -2902,7 +2903,7 @@ function MatchChatModal({open, onClose, match, poolCode, myPlayerIdx, playerName
         {/* Reactions */}
         <div style={{padding:"12px 16px",borderBottom:"1px solid #1e2f50",flexShrink:0}}>
           <ReactionRow reactions={reactions} allEmojis={allEmojis} myPlayerIdx={myPlayerIdx} playerNames={playerNames} onReact={doReaction} onAddEmoji={()=>emojiInputRef.current?.click()}/>
-          <input ref={emojiInputRef} type="text" inputMode="none" style={{position:"absolute",opacity:0,width:0,height:0}} onInput={e=>{const v=e.target.value.trim();if(v){doReaction(v);e.target.value="";}}}/>
+          <input ref={emojiInputRef} type="text" style={{position:"absolute",opacity:0,width:1,height:1,fontSize:16,pointerEvents:"none"}} onInput={e=>{const v=e.target.value.trim();if(v){doReaction(v);e.target.value="";emojiInputRef.current?.blur();}}}/>
         </div>
 
         {/* Messages */}

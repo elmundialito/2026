@@ -1490,7 +1490,11 @@ function ShareDayModal({open,onClose,dates,today,matchesByDate,matchResults,owne
   );
 }
 
-function ScheduleView({matchesByDate,today,todaySGT,matchResults,ownership,onSet,readOnly,initials,myTeams,setOpenChatId,setOpenPredictId,matchChat,predictions,myPlayerIdx,config,lang,showPast,setShowPast,collapsedDays={},setCollapsedDays}) {
+function ScheduleView({matchesByDate,today,todaySGT,matchResults,ownership,onSet,readOnly,initials,myTeams,setOpenChatId,setOpenPredictId,matchChat,predictions,myPlayerIdx,config,lang,showPast,setShowPast,collapsedDays={},setCollapsedDays,myTeamsOnly=false}) {
+  const filteredByDate=useMemo(()=>{
+    if(!myTeamsOnly)return matchesByDate;
+    return matchesByDate.map(([date,matches])=>[date,matches.filter(m=>myTeams.has(m.t[0])||myTeams.has(m.t[1]))]).filter(([,matches])=>matches.length>0);
+  },[matchesByDate,myTeamsOnly,myTeams]);
   const yesterday=new Date(Date.now()-86400000).toLocaleDateString("en-CA");
   const tomorrow=new Date(Date.now()+86400000).toLocaleDateString("en-CA");
   const scrollTargetRef=useRef(null);
@@ -1505,8 +1509,8 @@ function ScheduleView({matchesByDate,today,todaySGT,matchResults,ownership,onSet
     return last;
   },[matchesByDate,matchResults]);
 
-  const pastDates=lastCompleteDay?matchesByDate.filter(([date])=>date<lastCompleteDay):[];
-  const presentFutureDates=lastCompleteDay?matchesByDate.filter(([date])=>date>=lastCompleteDay):matchesByDate;
+  const pastDates=lastCompleteDay?filteredByDate.filter(([date])=>date<lastCompleteDay):[];
+  const presentFutureDates=lastCompleteDay?filteredByDate.filter(([date])=>date>=lastCompleteDay):filteredByDate;
 
   // Auto-scroll to today on mount
   useEffect(()=>{
@@ -1621,6 +1625,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
   const [view,setView]=useState("schedule");
   const [showPast,setShowPast]=useState(false);
   const [collapsedDays,setCollapsedDays]=useState({});
+  const [myTeamsOnly,setMyTeamsOnly]=useState(false);
   const ownership=useMemo(()=>{const o={};(picks||[]).forEach(p=>{o[p.team]={playerIdx:p.playerIdx,name:config.playerNames[p.playerIdx]};});return o;},[picks,config.playerNames]);
   const myTeams=useMemo(()=>myPlayerIdx!==null?new Set((picks||[]).filter(p=>p.playerIdx===myPlayerIdx).map(p=>p.team)):new Set(),[picks,myPlayerIdx]);
   const playerPts=useMemo(()=>Array.from({length:config.playerCount},(_,i)=>playerGSPts(i,picks||[],matchResults)),[config.playerCount,picks,matchResults]);
@@ -1679,7 +1684,12 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
         {[{id:"schedule",icon:"📅",labelKey:"matchSchedule"},{id:"standings",icon:"📊",labelKey:"groupStandings"}].map(v=>{const active=v.id===view;return <button key={v.id} onClick={()=>setView(v.id)} style={{padding:"9px 16px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>{v.icon} {t(lang,v.labelKey)}</button>;})}
         <button onClick={()=>setShowShareDay(true)} style={{marginLeft:"auto",padding:"9px 12px",borderRadius:8,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer",flexShrink:0}}>📤</button>
       </div>
-      {view==="schedule"&&<ScheduleView matchesByDate={matchesByDate} today={today} todaySGT={todaySGT} matchResults={matchResults} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} setOpenChatId={setOpenChatId} setOpenPredictId={setOpenPredictId} matchChat={matchChat} predictions={predictions} myPlayerIdx={myPlayerIdx} config={config} lang={lang} showPast={showPast} setShowPast={setShowPast} collapsedDays={collapsedDays} setCollapsedDays={setCollapsedDays}/>}
+      {view==="schedule"&&<ScheduleView matchesByDate={matchesByDate} today={today} todaySGT={todaySGT} matchResults={matchResults} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} setOpenChatId={setOpenChatId} setOpenPredictId={setOpenPredictId} matchChat={matchChat} predictions={predictions} myPlayerIdx={myPlayerIdx} config={config} lang={lang} showPast={showPast} setShowPast={setShowPast} collapsedDays={collapsedDays} setCollapsedDays={setCollapsedDays} myTeamsOnly={myTeamsOnly}/>}
+      {view==="schedule"&&myTeams.size>0&&(
+        <button onClick={()=>setMyTeamsOnly(o=>!o)} style={{position:"fixed",bottom:28,left:16,zIndex:100,padding:"8px 14px",borderRadius:20,background:myTeamsOnly?"rgba(201,168,76,0.95)":"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.5)",color:myTeamsOnly?"#0a1628":"var(--accent)",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 16px rgba(0,0,0,0.5)"}}>
+          ⭐ {myTeamsOnly?(lang==="es"?"TODOS":"ALL GAMES"):(lang==="es"?"MIS EQUIPOS":"MY TEAMS")}
+        </button>
+      )}
       {view==="standings"&&Object.keys(GROUPS).map(g=><GroupStandingsAccordion key={g} g={g} res={matchResults} ownership={ownership} initials={initials}/>)}
       <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
       {flash&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.4)",borderRadius:30,padding:"10px 22px",fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"var(--accent)",whiteSpace:"nowrap",zIndex:200,animation:"slideUp 0.3s ease-out"}}>⚽ {flash}</div>}

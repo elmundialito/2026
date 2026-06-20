@@ -3468,10 +3468,9 @@ export default function Mundialito() {
   const [showSuggestions,setShowSuggestions]=useState(false);
   const [scrolled,setScrolled]=useState(false);
   useEffect(()=>{
-    const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
-    if(!code)return;
     const onFirstTouch=()=>{
-      loadProfilePics(code).then(()=>bumpPics(setPicRefresh));
+      const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
+      if(code)loadProfilePics(code).then(()=>bumpPics(setPicRefresh));
       document.removeEventListener("touchstart",onFirstTouch);
       document.removeEventListener("mousedown",onFirstTouch);
     };

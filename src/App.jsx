@@ -251,7 +251,7 @@ const UI = {
     today:"TODAY", draw:"DRAW", yourTeam:"YOUR TEAM", yourTeams:"YOUR TEAMS",
     leaderboardTitle:"LEADERBOARD", prizePool:"🏆 Prize pool", winnerTakesAll:"winner takes all",
     points:"points", group2:"Group", knockout2:"Knockout", pastR32:"Past R32", total:"Total",
-    teamBreakdown:"TEAM BREAKDOWN", tiebreaker:"Tiebreaker: Most teams in Round of 32 → Most teams in Round of 16 → Goal difference → Goals scored → Head to head record → Draft order",
+    teamBreakdown:"TEAM BREAKDOWN", tiebreaker:"Tiebreaker: Most teams in Round of 32 → Goal difference → Goals scored → Head to head record → Draft order",
     changeUser:"👤 Change user", howItWorks:"HOW IT WORKS",
     looksGood:"LOOKS GOOD →", skipForNow:"SKIP FOR NOW →", addPhoto:"📷 ADD YOUR PHOTO",
     changePhoto:"📷 CHANGE PHOTO", yourColour:"YOUR COLOUR", yourProfile:"YOUR PROFILE",
@@ -278,7 +278,7 @@ const UI = {
     rulesTitle2:"The Draft", rulesBody2:"Take turns picking teams in a snake draft — direction reverses each round. Everyone ends up with the same number of teams (48 ÷ players).",
     rulesTitle3:"Group Stage", rulesBody3:"Your teams play 3 group games each. You earn 3 pts per win, 1 pt per draw. Losses = 0.",
     rulesTitle4:"Knockout Stage", rulesBody4:"Bonus points every time one of your teams wins a KO match. Stakes rise each round: R32=3, R16=5, QF=7, SF=9, 3rd Place=6, Final=11.",
-    rulesTitle5:"Winning", rulesBody5:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams in Round of 32 → most teams in Round of 16 → goal difference → goals scored → Head to head record → draft order.",
+    rulesTitle5:"Winning", rulesBody5:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams in Round of 32 → goal difference → goals scored → Head to head record → draft order.",
     tapToContinue:"Tap to continue",
     hostAccess:"HOST ACCESS", hostPwPlaceholder:"Host password",
     unlockHost:"UNLOCK HOST ACCESS", checking:"CHECKING…", cancel:"Cancel",
@@ -297,7 +297,7 @@ const UI = {
     today:"HOY", draw:"EMPATE", yourTeam:"TU EQUIPO", yourTeams:"TUS EQUIPOS",
     leaderboardTitle:"CLASIFICACIÓN", prizePool:"🏆 Premio total", winnerTakesAll:"el primero se lo lleva todo",
     points:"puntos", group2:"Grupos", knockout2:"KO", pastR32:"R32", total:"Total",
-    teamBreakdown:"TUS EQUIPOS", tiebreaker:"Desempate: Más equipos en Ronda de 32 → Más equipos en Ronda de 16 → Diferencia de goles → Goles a favor → Récord H2H → Orden de sorteo",
+    teamBreakdown:"TUS EQUIPOS", tiebreaker:"Desempate: Más equipos en Ronda de 32 → Diferencia de goles → Goles a favor → Récord H2H → Orden de sorteo",
     changeUser:"👤 Cambiar usuario", howItWorks:"CÓMO FUNCIONA",
     looksGood:"¡LISTO! →", skipForNow:"OMITIR POR AHORA →", addPhoto:"📷 AÑADIR FOTO",
     changePhoto:"📷 CAMBIAR FOTO", yourColour:"TU COLOR", yourProfile:"TU PERFIL",
@@ -324,7 +324,7 @@ const UI = {
     rulesTitle2:"El Sorteo", rulesBody2:"Eligen equipos por turnos en orden de serpiente — la dirección cambia cada ronda. Todos terminan con el mismo número de equipos (48 ÷ jugadores).",
     rulesTitle3:"Fase de Grupos", rulesBody3:"Tus equipos juegan 3 partidos de grupo. Ganas 3 pts por victoria, 1 pt por empate. Las derrotas = 0.",
     rulesTitle4:"Fase Eliminatoria", rulesBody4:"Puntos extra cada vez que uno de tus equipos gana un partido eliminatorio. Las apuestas suben cada ronda: R32=3, R16=5, CF=7, SF=9, 3er Puesto=6, Final=11.",
-    rulesTitle5:"Ganar", rulesBody5:"El TOTAL más alto (Grupos + Eliminatorias) se lleva el premio. Desempate: más equipos en Ronda de 32 → más equipos en Ronda de 16 → diferencia de goles → goles a favor → sorteo.",
+    rulesTitle5:"Ganar", rulesBody5:"El TOTAL más alto (Grupos + Eliminatorias) se lleva el premio. Desempate: más equipos en Ronda de 32 → diferencia de goles → goles a favor → récord H2H → sorteo.",
     tapToContinue:"Toca para continuar",
     hostAccess:"ACCESO ANFITRIÓN", hostPwPlaceholder:"Contraseña del anfitrión",
     unlockHost:"DESBLOQUEAR ACCESO", checking:"VERIFICANDO…", cancel:"Cancelar",
@@ -624,7 +624,7 @@ const RULES_DATA = [
   {n:"2",title:"The Draft",body:"Take turns picking teams in a snake draft — direction reverses each round. Everyone ends up with the same number of teams (48 ÷ players)."},
   {n:"3",title:"Group Stage",body:"Your teams play 3 group games each. You earn 3 pts per win, 1 pt per draw. Losses = 0."},
   {n:"4",title:"Knockout Stage",body:"Bonus points every time one of your teams wins a KO match. Stakes rise each round: R32=3, R16=5, QF=7, SF=9, 3rd Place=6, Final=11."},
-  {n:"5",title:"Winning",body:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams in Round of 32 → most teams in Round of 16 → goal difference → goals scored → Head to head record → draft order."},
+  {n:"5",title:"Winning",body:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams in Round of 32 → goal difference → goals scored → Head to head record → draft order."},
 ];
 
 function RulesList() {
@@ -2096,7 +2096,6 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
     }).sort((a,b)=>{
       if(b.total!==a.total)return b.total-a.total;
       if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;
-      if(b.r32!==a.r32)return b.r32-a.r32;
       if(b.gd!==a.gd)return b.gd-a.gd;
       if(b.gf!==a.gf)return b.gf-a.gf;
       // H2H: find matches (group + knockout) where one player's team played the other's
@@ -2176,7 +2175,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       }).length;
       const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(koResults[m.id]);if(!w0)return false;const b=bracket[m.id];if(!b)return false;const w=w0==="A"?b.a:b.b;return w&&myTeams.includes(w);}).length;
       return{idx:i,total:gs+ko,pastGroups,r32,gd,gf};
-    }).sort((a,b)=>b.total-a.total||b.pastGroups-a.pastGroups||b.r32-a.r32||b.gd-a.gd||b.gf-a.gf||a.idx-b.idx);
+    }).sort((a,b)=>b.total-a.total||b.pastGroups-a.pastGroups||b.gd-a.gd||b.gf-a.gf||a.idx-b.idx);
     const yesterdayRankMap={};
     yesterdayRanks.forEach((p,ri)=>{yesterdayRankMap[p.idx]=ri;});
     return playerData.map((p,ri)=>({
@@ -2225,7 +2224,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                   <div style={{display:"flex",flexDirection:"column",gap:5}}>
                     {p.teamBreakdown.map(({team,gsPts,koPts,eliminated})=>{const tm=TBN[team];const tp=gsPts+koPts;const displayName=countryName(team,lang);const pastR32=koPts>0||eliminated;return(<div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:"rgba(10,22,40,0.3)",opacity:eliminated?0.45:1}}><span style={{fontSize:15,flexShrink:0}}>{tm?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,flex:1,color:eliminated?"#5a6a8a":"#e0dcd4",textDecoration:eliminated?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>{pastR32&&!eliminated&&<span style={{fontFamily:"'Bebas Neue'",fontSize:9,color:"#61a978",background:"rgba(97,169,120,0.15)",border:"1px solid rgba(97,169,120,0.3)",padding:"1px 5px",borderRadius:4,flexShrink:0,letterSpacing:1}}>R32</span>}{eliminated&&<span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",background:"rgba(26,39,68,0.5)",padding:"1px 5px",borderRadius:4,flexShrink:0}}>{t(lang,"out")}</span>}<div style={{textAlign:"right",flexShrink:0}}><div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:tp>0?color:"#5a6a8a",letterSpacing:1,lineHeight:1}}>{tp}<span style={{fontSize:8,opacity:0.7}}>pts</span></div>{koPts>0&&<div style={{fontFamily:"'DM Sans'",fontSize:9,color:`${color}88`}}>GS {gsPts} + KO {koPts}</div>}</div></div>);})}
                   </div>
-                  {p.r32>0&&<div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginTop:8,fontStyle:"italic"}}>{lang==="es"?`${p.r32} equipo${p.r32>1?"s":""} pasó a eliminatorias`:`${p.r32} team${p.r32>1?"s":""} past R32 · tiebreaker`}</div>}
+                  {p.r32>0&&<div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginTop:8,fontStyle:"italic"}}>{lang==="es"?`${p.r32} equipo${p.r32>1?"s":""} pasó a octavos`:`${p.r32} team${p.r32>1?"s":""} reached Round of 16`}</div>}
                 </div>
               )}
             </div>
@@ -3875,7 +3874,7 @@ export default function Mundialito() {
   const initials=useMemo(()=>getInitials(st.config.playerNames||[]),[st.config.playerNames]);
   const anyGroupDone=useMemo(()=>Object.keys(GROUPS).some(g=>GM.filter(m=>m.g===g).every(m=>st.matchResults[m.id]!=null)),[st.matchResults]);
   const resolvedBracket=useMemo(()=>resolveKOBracket(st.matchResults,st.koResults,st.koOverrides),[st.matchResults,st.koResults,st.koOverrides]);
-  const playerRankings=useMemo(()=>{return Array.from({length:st.config.playerCount},(_,i)=>{const gsPts=playerGSPts(i,st.picks||[],st.matchResults);const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);let gd=0,gf=0;myTeams.forEach(team=>{GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]===team,isAway=m.t[1]===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const isHome=bk.a===team,isAway=bk.b===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});});const pastGroups=myTeams.filter(team=>{const grp=Object.entries(GROUPS).find(([,ts])=>ts.includes(team))?.[0];if(!grp)return false;const grpMs=GM.filter(m=>m.g===grp);if(!grpMs.every(m=>st.matchResults[m.id]!=null))return false;const s=groupStandings(grp,st.matchResults);return s.findIndex(x=>x.team===team)<=1;}).length;const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(st.koResults[m.id]);if(!w0)return false;const bk=resolvedBracket[m.id];if(!bk)return false;const w=w0==="A"?bk.a:bk.b;return w&&myTeams.includes(w);}).length;return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,pastGroups,r32,gd,gf,myTeams};}).sort((a,b)=>{if(b.total!==a.total)return b.total-a.total;if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;if(b.r32!==a.r32)return b.r32-a.r32;if(b.gd!==a.gd)return b.gd-a.gd;if(b.gf!==a.gf)return b.gf-a.gf;let aWins=0,bWins=0,aGD=0,bGD=0,aGF=0,bGF=0;GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const aH=a.myTeams.includes(m.t[0]),aA=a.myTeams.includes(m.t[1]),bH=b.myTeams.includes(m.t[0]),bA=b.myTeams.includes(m.t[1]);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const aH=a.myTeams.includes(bk.a),aA=a.myTeams.includes(bk.b),bH=b.myTeams.includes(bk.a),bA=b.myTeams.includes(bk.b);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});if(aWins!==bWins)return bWins-aWins;if(aGD!==bGD)return bGD-aGD;if(aGF!==bGF)return bGF-aGF;const draftOrd=st.draftOrder||[];const aPick=draftOrd.indexOf(a.idx);const bPick=draftOrd.indexOf(b.idx);if(aPick!==-1&&bPick!==-1)return aPick-bPick;return a.idx-b.idx;});},[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
+  const playerRankings=useMemo(()=>{return Array.from({length:st.config.playerCount},(_,i)=>{const gsPts=playerGSPts(i,st.picks||[],st.matchResults);const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);let gd=0,gf=0;myTeams.forEach(team=>{GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]===team,isAway=m.t[1]===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const isHome=bk.a===team,isAway=bk.b===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});});const pastGroups=myTeams.filter(team=>{const grp=Object.entries(GROUPS).find(([,ts])=>ts.includes(team))?.[0];if(!grp)return false;const grpMs=GM.filter(m=>m.g===grp);if(!grpMs.every(m=>st.matchResults[m.id]!=null))return false;const s=groupStandings(grp,st.matchResults);return s.findIndex(x=>x.team===team)<=1;}).length;const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(st.koResults[m.id]);if(!w0)return false;const bk=resolvedBracket[m.id];if(!bk)return false;const w=w0==="A"?bk.a:bk.b;return w&&myTeams.includes(w);}).length;return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,pastGroups,r32,gd,gf,myTeams};}).sort((a,b)=>{if(b.total!==a.total)return b.total-a.total;if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;if(b.gd!==a.gd)return b.gd-a.gd;if(b.gf!==a.gf)return b.gf-a.gf;let aWins=0,bWins=0,aGD=0,bGD=0,aGF=0,bGF=0;GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const aH=a.myTeams.includes(m.t[0]),aA=a.myTeams.includes(m.t[1]),bH=b.myTeams.includes(m.t[0]),bA=b.myTeams.includes(m.t[1]);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const aH=a.myTeams.includes(bk.a),aA=a.myTeams.includes(bk.b),bH=b.myTeams.includes(bk.a),bA=b.myTeams.includes(bk.b);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});if(aWins!==bWins)return bWins-aWins;if(aGD!==bGD)return bGD-aGD;if(aGF!==bGF)return bGF-aGF;const draftOrd=st.draftOrder||[];const aPick=draftOrd.indexOf(a.idx);const bPick=draftOrd.indexOf(b.idx);if(aPick!==-1&&bPick!==-1)return aPick-bPick;return a.idx-b.idx;});},[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
   const syncCode=useMemo(()=>encode(st),[st]);
   const readOnly=!isHost;
 

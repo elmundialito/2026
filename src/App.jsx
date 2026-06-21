@@ -440,7 +440,7 @@ const GM = [
 
 const KM = [
   // R32 — dates/times verified via worldcupwiki ET table + Al Jazeera direct GMT conversions (cross-checked). Slot labels unchanged from prior verified version.
-  {id:"K73",round:"r32",n:73,sA:"2nd A",sB:"2nd B",v:"Los Angeles",ko:"19:00",d:"2026-06-28"},{id:"K74",round:"r32",n:74,sA:"Win C",sB:"2nd F",v:"Houston",ko:"17:00",d:"2026-06-29"},{id:"K75",round:"r32",n:75,sA:"Win E",sB:"3rd A/B/C/D/F",v:"Boston",ko:"20:30",d:"2026-06-29"},{id:"K76",round:"r32",n:76,sA:"Win F",sB:"2nd C",v:"Monterrey",ko:"01:00",d:"2026-06-30"},{id:"K77",round:"r32",n:77,sA:"2nd E",sB:"2nd I",v:"Dallas",ko:"17:00",d:"2026-06-30"},{id:"K78",round:"r32",n:78,sA:"Win I",sB:"3rd C/D/F/G/H",v:"New York/NJ",ko:"21:00",d:"2026-06-30"},{id:"K79",round:"r32",n:79,sA:"Win A",sB:"3rd C/E/F/H/I",v:"Mexico City",ko:"01:00",d:"2026-07-01"},{id:"K80",round:"r32",n:80,sA:"Win L",sB:"3rd E/H/I/J/K",v:"Atlanta",ko:"16:00",d:"2026-07-01"},{id:"K81",round:"r32",n:81,sA:"Win G",sB:"3rd A/E/H/I/J",v:"Seattle",ko:"20:00",d:"2026-07-01"},{id:"K82",round:"r32",n:82,sA:"Win D",sB:"3rd B/E/F/I/J",v:"San Francisco",ko:"00:00",d:"2026-07-02"},{id:"K83",round:"r32",n:83,sA:"Win H",sB:"2nd J",v:"Los Angeles",ko:"19:00",d:"2026-07-02"},{id:"K84",round:"r32",n:84,sA:"2nd K",sB:"2nd L",v:"Toronto",ko:"23:00",d:"2026-07-02"},{id:"K85",round:"r32",n:85,sA:"Win B",sB:"3rd D/E/I/J/L",v:"Vancouver",ko:"03:00",d:"2026-07-03"},{id:"K86",round:"r32",n:86,sA:"2nd D",sB:"2nd G",v:"Dallas",ko:"18:00",d:"2026-07-03"},{id:"K87",round:"r32",n:87,sA:"Win J",sB:"2nd H",v:"Miami",ko:"22:00",d:"2026-07-03"},{id:"K88",round:"r32",n:88,sA:"Win K",sB:"3rd D/E/I/J/L",v:"Kansas City",ko:"01:30",d:"2026-07-04"},
+  {id:"K73",round:"r32",n:73,sA:"2nd A",sB:"2nd B",v:"Los Angeles",ko:"19:00",d:"2026-06-28"},{id:"K74",round:"r32",n:74,sA:"1st C",sB:"2nd F",v:"Houston",ko:"17:00",d:"2026-06-29"},{id:"K75",round:"r32",n:75,sA:"1st E",sB:"3rd A/B/C/D/F",v:"Boston",ko:"20:30",d:"2026-06-29"},{id:"K76",round:"r32",n:76,sA:"1st F",sB:"2nd C",v:"Monterrey",ko:"01:00",d:"2026-06-30"},{id:"K77",round:"r32",n:77,sA:"2nd E",sB:"2nd I",v:"Dallas",ko:"17:00",d:"2026-06-30"},{id:"K78",round:"r32",n:78,sA:"1st I",sB:"3rd C/D/F/G/H",v:"New York/NJ",ko:"21:00",d:"2026-06-30"},{id:"K79",round:"r32",n:79,sA:"1st A",sB:"3rd C/E/F/H/I",v:"Mexico City",ko:"01:00",d:"2026-07-01"},{id:"K80",round:"r32",n:80,sA:"1st L",sB:"3rd E/H/I/J/K",v:"Atlanta",ko:"16:00",d:"2026-07-01"},{id:"K81",round:"r32",n:81,sA:"1st G",sB:"3rd A/E/H/I/J",v:"Seattle",ko:"20:00",d:"2026-07-01"},{id:"K82",round:"r32",n:82,sA:"1st D",sB:"3rd B/E/F/I/J",v:"San Francisco",ko:"00:00",d:"2026-07-02"},{id:"K83",round:"r32",n:83,sA:"1st H",sB:"2nd J",v:"Los Angeles",ko:"19:00",d:"2026-07-02"},{id:"K84",round:"r32",n:84,sA:"2nd K",sB:"2nd L",v:"Toronto",ko:"23:00",d:"2026-07-02"},{id:"K85",round:"r32",n:85,sA:"1st B",sB:"3rd D/E/I/J/L",v:"Vancouver",ko:"03:00",d:"2026-07-03"},{id:"K86",round:"r32",n:86,sA:"2nd D",sB:"2nd G",v:"Dallas",ko:"18:00",d:"2026-07-03"},{id:"K87",round:"r32",n:87,sA:"1st J",sB:"2nd H",v:"Miami",ko:"22:00",d:"2026-07-03"},{id:"K88",round:"r32",n:88,sA:"1st K",sB:"3rd D/E/I/J/L",v:"Kansas City",ko:"01:30",d:"2026-07-04"},
   // R16 — dates/times verified via Al Jazeera direct GMT conversions. Slot labels unchanged from prior verified version.
   {id:"K89",round:"r16",n:89,sA:"Win M73",sB:"Win M75",v:"Houston",ko:"17:00",d:"2026-07-04"},{id:"K90",round:"r16",n:90,sA:"Win M74",sB:"Win M77",v:"Philadelphia",ko:"21:00",d:"2026-07-04"},{id:"K91",round:"r16",n:91,sA:"Win M76",sB:"Win M78",v:"New York/NJ",ko:"20:00",d:"2026-07-05"},{id:"K92",round:"r16",n:92,sA:"Win M79",sB:"Win M80",v:"Mexico City",ko:"00:00",d:"2026-07-06"},{id:"K93",round:"r16",n:93,sA:"Win M83",sB:"Win M84",v:"Dallas",ko:"19:00",d:"2026-07-06"},{id:"K94",round:"r16",n:94,sA:"Win M81",sB:"Win M82",v:"Seattle",ko:"00:00",d:"2026-07-07"},{id:"K95",round:"r16",n:95,sA:"Win M86",sB:"Win M88",v:"Atlanta",ko:"16:00",d:"2026-07-07"},{id:"K96",round:"r16",n:96,sA:"Win M85",sB:"Win M87",v:"Vancouver",ko:"20:00",d:"2026-07-07"},
   // QF — dates/times verified via Al Jazeera direct GMT + CBS/ESPN/Yahoo ET cross-checks. Slot labels unchanged.
@@ -518,7 +518,7 @@ function resolveKOBracket(mr, kr, kov) {
   KM.forEach(m=>{
     const res=(slot,side)=>{
       const ov=kov[m.id]?.[side]; if(ov!==undefined)return ov;
-      if(/^Win [A-L]$/.test(slot)){const g=slot[4];if(!GM.filter(m=>m.g===g).every(m=>mr[m.id]!=null))return null;return st[g]?.[0]?.team||null;}
+      if(/^1st [A-L]$/.test(slot)){const g=slot[4];if(!GM.filter(m=>m.g===g).every(m=>mr[m.id]!=null))return null;return st[g]?.[0]?.team||null;}
       if(/^2nd [A-L]$/.test(slot)){const g=slot[4];if(!GM.filter(m=>m.g===g).every(m=>mr[m.id]!=null))return null;return st[g]?.[1]?.team||null;}
       if(/^Win M(\d+)$/.test(slot)){const mid=`K${parseInt(slot.replace("Win M",""))}`;const w=koWinner(kr[mid]);if(!w)return null;return w==="A"?bk[mid]?.a:bk[mid]?.b;}
       if(/^Loss M(\d+)$/.test(slot)){const mid=`K${parseInt(slot.replace("Loss M",""))}`;const w=koWinner(kr[mid]);if(!w)return null;return w==="A"?bk[mid]?.b:bk[mid]?.a;}
@@ -4025,9 +4025,6 @@ export default function Mundialito() {
       </div>
       <div style={{paddingBottom:48,paddingTop:20}}>{tabContent()}
         <div style={{maxWidth:720,margin:"0 auto",padding:"24px 16px 0"}}>
-          <button onClick={()=>setShowSelectName(true)} style={{width:"100%",marginBottom:8,padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
-            {t(lang,"changeUser")}
-          </button>
           <button onClick={()=>setShowSuggestions(true)} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid rgba(107,155,209,0.3)",background:"rgba(107,155,209,0.06)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
             💡 {lang==="es"?"Sugerir una función":"Suggest a feature"}
           </button>
@@ -4038,6 +4035,11 @@ export default function Mundialito() {
             <button onClick={()=>setShowPoolMgr(true)} style={{padding:"12px 14px",borderRadius:10,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.4)",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>🏆 {activePoolName}</button>
           </div>
         )}
+        <div style={{maxWidth:720,margin:"0 auto",padding:isHost?"0 16px":"24px 16px 0"}}>
+          <button onClick={()=>setShowSelectName(true)} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
+            {t(lang,"changeUser")}
+          </button>
+        </div>
       </div>
       <Modal open={showRules} onClose={()=>setShowRules(false)} title={t(lang,"howItWorks")}><RulesList/></Modal>
       <SyncModal open={showSync} onClose={()=>setShowSync(false)} st={st} poolCode={poolCode} setPoolCode={setPoolCode}/>

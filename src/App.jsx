@@ -1772,7 +1772,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
   );
 }
 
-function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly}) {
+function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false}) {
   const [activeRound,setActiveRound]=useState("r32");
   const roundMatches=useMemo(()=>{const m={};ROUND_ORDER.forEach(r=>m[r]=[]);KM.forEach(k=>m[k.round]&&m[k.round].push(k));return m;},[]);
   const ownership=useMemo(()=>{const o={};(picks||[]).forEach(p=>{o[p.team]={playerIdx:p.playerIdx};});return o;},[picks]);
@@ -1783,6 +1783,12 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   const koInitials=(config.playerNames||[]).map(n=>nameToInitial(n||""));
   return(
     <div style={{maxWidth:920,margin:"0 auto",padding:"0 16px"}}>
+      {isPreview&&(
+        <div style={{background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.35)",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:14}}>👀</span>
+          <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"var(--accent)",fontWeight:600}}>Host preview — players can't see this tab yet. Bracket fills in as group stage completes.</span>
+        </div>
+      )}
       <div style={{background:"linear-gradient(135deg,rgba(107,155,209,0.08),rgba(26,39,68,0.5))",border:"1px solid rgba(107,155,209,0.2)",borderRadius:14,padding:"14px 18px",marginBottom:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:6}}>
           <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:"#6b9bd1"}}>RUNNING TOTALS</div>
@@ -2086,7 +2092,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           document.fonts.add(bebas);document.fonts.add(dm);
         } catch(e){}
 
-        const W=420,HEADER=108,ROW=80,PAD=14,FOOT=44;
+        const W=420,HEADER=92,ROW=68,PAD=14,FOOT=36;
         const H=HEADER+ROW*playerDataWithRanks.length+FOOT;
         const canvas=document.createElement("canvas");
         const DPR=2;
@@ -2164,7 +2170,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
 
           // Avatar — bigger for top 3, glow effect
           const ax=PAD+64,ay=y+ROW/2;
-          const AR=isTop3?24:20;
+          const AR=isTop3?20:17;
           ctx.save();
           if(isTop3){
             // Glow ring
@@ -2194,7 +2200,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           ctx.restore();
 
           // Player name — bigger, in their colour. Centre the [name + pts-line] block on the avatar's vertical centre
-          const nameSize=isFirst?22:20;
+          const nameSize=isFirst?20:18;
           ctx.textAlign="left";
           ctx.font=`700 ${nameSize}px DMSans,Arial`;
           ctx.fillStyle=color;
@@ -3723,7 +3729,7 @@ export default function Mundialito() {
   const syncCode=useMemo(()=>encode(st),[st]);
   const readOnly=!isHost;
 
-  const isUnlocked=id=>{if(id==="setup")return true;if(id==="draft")return st.setupLocked;if(id==="knockout")return st.draftLocked&&anyGroupDone;return st.draftLocked;};
+  const isUnlocked=id=>{if(id==="setup")return true;if(id==="draft")return st.setupLocked;if(id==="knockout")return (st.draftLocked&&anyGroupDone)||(isHost&&st.draftLocked);return st.draftLocked;};
   const setKoOverride=(matchId,side,val)=>setSt(prev=>{const curr=prev.koOverrides[matchId]||{};const updated=val===undefined?{...curr,[side]:undefined}:{...curr,[side]:val};return{...prev,koOverrides:{...prev.koOverrides,[matchId]:updated}};});
 
   const handleBeHost=()=>{const id="pool_"+Date.now();setPools([{id,name:"My Pool"}]);setActivePoolId(id);setActivePoolName("My Pool");setSt(EMPTY);setIsHost(true);setAppState("host");};
@@ -3781,7 +3787,7 @@ export default function Mundialito() {
       return <SetupScreen config={st.config} setConfig={c=>setSt(p=>({...p,config:typeof c==="function"?c(p.config):c}))} onLock={()=>{setSt(p=>({...p,setupLocked:true}));setActiveTab("draft");}} readOnly={readOnly}/>;}
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
     if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx} onPicsLoaded={()=>setPicRefresh(n=>n+1)} onPredictionsUpdate={p=>setAllPredictions(p)} bracket={resolvedBracket} koResults={st.koResults} playerRankings={playerRankings}/>;
-    if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly}/>;
+    if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly} isPreview={isHost&&!anyGroupDone}/>;
     if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} onSuggestions={()=>setShowSuggestions(true)} picRefresh={picRefresh} allPredictions={allPredictions} draftOrder={st.draftOrder||[]}/>;
     return null;
   };

@@ -1293,12 +1293,12 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
         </div>
       </div>
       {centreLabel()&&<div style={{display:"flex",justifyContent:"center",marginBottom:4}}>{centreLabel()}</div>}
-      <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
-        <div style={{paddingTop:4}}>{teamRow(a,ta?.flag,oa?.playerIdx!=null?oa:null,true)}</div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        {teamRow(a,ta?.flag,oa?.playerIdx!=null?oa:null,true)}
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
           <ScoreEntry matchId={match.id} result={result} onSet={onSet} readOnly={readOnly} teamA={a} teamB={b} ownership={ownership} initials={initials}/>
         </div>
-        <div style={{paddingTop:4}}>{teamRow(b,tb?.flag,ob?.playerIdx!=null?ob:null,false)}</div>
+        {teamRow(b,tb?.flag,ob?.playerIdx!=null?ob:null,false)}
       </div>
     </div>
   );
@@ -1840,9 +1840,9 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
           </div>
         </div>
       )}
-      <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
-        <div style={{paddingTop:hasResult&&teamA?6:0}}><KoTeamDisplay team={teamA} slot={match.sA} owner={oA} initials={initials} isWinner={winA} hasResult={hasResult} isHome={true} playerNames={playerNames}/></div>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,minWidth:88,minHeight:hasResult?0:34}}>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <KoTeamDisplay team={teamA} slot={match.sA} owner={oA} initials={initials} isWinner={winA} hasResult={hasResult} isHome={true} playerNames={playerNames}/>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,minWidth:88}}>
           {!(teamA||teamB)?(
             <span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",fontStyle:"italic",textAlign:"center"}}>TBD</span>
           ):hasResult?(
@@ -1863,7 +1863,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
             <KoScoreEntry matchId={match.id} teamA={teamA} teamB={teamB} result={result} onSetResult={val=>!readOnly&&onSetResult(match.id,val)} readOnly={readOnly}/>
           )}
         </div>
-        <div style={{paddingTop:hasResult&&teamB?6:0}}><KoTeamDisplay team={teamB} slot={match.sB} owner={oB} initials={initials} isWinner={winB} hasResult={hasResult} isHome={false} playerNames={playerNames}/></div>
+        <KoTeamDisplay team={teamB} slot={match.sB} owner={oB} initials={initials} isWinner={winB} hasResult={hasResult} isHome={false} playerNames={playerNames}/>
       </div>
     </div>
   );

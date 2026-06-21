@@ -1887,22 +1887,22 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"var(--accent)",fontWeight:600}}>Host preview — players can't see this tab yet. Bracket fills in as group stage completes.</span>
         </div>
       )}
-      <div style={{background:"linear-gradient(135deg,rgba(107,155,209,0.08),rgba(26,39,68,0.5))",border:"1px solid rgba(107,155,209,0.2)",borderRadius:14,padding:"14px 18px",marginBottom:16}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:6}}>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:"#6b9bd1"}}>RUNNING TOTALS</div>
-          <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a"}}>{recorded}/{KM.length} KO matches</div>
+      <div style={{background:"linear-gradient(135deg,rgba(201,168,76,0.06),rgba(26,39,68,0.4))",border:"1px solid rgba(201,168,76,0.15)",borderRadius:12,padding:"10px 14px",marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <span style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#5a6a8a"}}>{t(lang,"players")}</span>
+          <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a"}}>{recorded}/{KM.length}</span>
         </div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {playerTotals.map((p,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 12px",borderRadius:10,background:`${PC[i]}15`,border:`1px solid ${PC[i]}44`,minWidth:90}}>
-              <div style={{width:22,height:22,borderRadius:5,background:getPlayerColor(i,PC[i]),color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"}}>{nameToInitial(config.playerNames[i]||"")}</div>
-              <div>
-                <div style={{fontFamily:"'DM Sans'",fontSize:10,fontWeight:600,color:getPlayerColor(i,PC[i]),lineHeight:1}}>{config.playerNames[i]}</div>
-                <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"#e0dcd4",letterSpacing:1,lineHeight:1}}>{p.gs+p.ko}</div>
-                <div style={{fontFamily:"'DM Sans'",fontSize:9,color:`${PC[i]}88`}}>GS {p.gs} + KO {p.ko}</div>
-              </div>
-            </div>
-          ))}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+        {playerTotals.map((p,i)=>{
+          const pcolor=getPlayerColor(i,PC[i]);
+          return(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:5,padding:"4px 8px",borderRadius:8,background:`${pcolor}12`,border:`1px solid ${pcolor}33`}}>
+            <div style={{width:18,height:18,borderRadius:4,background:pcolor,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{nameToInitial(config.playerNames[i]||"")}</div>
+            <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:pcolor,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{config.playerNames[i]}</span>
+            <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,letterSpacing:1,flexShrink:0}}>{p.gs+p.ko}<span style={{fontSize:8,color:`${pcolor}99`,marginLeft:1}}>pts</span></span>
+          </div>
+          );
+        })}
         </div>
       </div>
       {allGroupsDone&&top8.length>=1&&(
@@ -1918,7 +1918,16 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
       {(()=>{
         const today=new Date().toLocaleDateString("en-CA");
         const byDate={};
-        (roundMatches[activeRound]||[]).forEach(m=>{(byDate[m.d]=byDate[m.d]||[]).push(m);});
+        (roundMatches[activeRound]||[]).forEach(m=>{
+          let localDate=m.d;
+          if(m.ko){
+            try{
+              const utcDt=new Date(m.d+"T"+m.ko+":00Z");
+              localDate=utcDt.toLocaleDateString("en-CA");
+            }catch(e){}
+          }
+          (byDate[localDate]=byDate[localDate]||[]).push(m);
+        });
         const dates=Object.keys(byDate).sort();
         return dates.map(date=>{
           const matches=byDate[date];
@@ -2090,12 +2099,27 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       if(b.r32!==a.r32)return b.r32-a.r32;
       if(b.gd!==a.gd)return b.gd-a.gd;
       if(b.gf!==a.gf)return b.gf-a.gf;
-      // H2H: find matches where one player's team played the other's
+      // H2H: find matches (group + knockout) where one player's team played the other's
       let aWins=0,bWins=0,aH2HGD=0,bH2HGD=0,aH2HGF=0,bH2HGF=0;
       GM.forEach(m=>{
         const r=matchResults[m.id];if(!r||r.home==null||r.away==null)return;
         const aHome=a.myTeams.includes(m.t[0]),aAway=a.myTeams.includes(m.t[1]);
         const bHome=b.myTeams.includes(m.t[0]),bAway=b.myTeams.includes(m.t[1]);
+        if(aHome&&bAway){
+          aH2HGF+=r.home;bH2HGF+=r.away;
+          aH2HGD+=(r.home-r.away);bH2HGD+=(r.away-r.home);
+          if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;
+        } else if(aAway&&bHome){
+          aH2HGF+=r.away;bH2HGF+=r.home;
+          aH2HGD+=(r.away-r.home);bH2HGD+=(r.home-r.away);
+          if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;
+        }
+      });
+      KM.forEach(m=>{
+        const r=koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;
+        const bk=bracket[m.id];if(!bk)return;
+        const aHome=a.myTeams.includes(bk.a),aAway=a.myTeams.includes(bk.b);
+        const bHome=b.myTeams.includes(bk.a),bAway=b.myTeams.includes(bk.b);
         if(aHome&&bAway){
           aH2HGF+=r.home;bH2HGF+=r.away;
           aH2HGD+=(r.home-r.away);bH2HGD+=(r.away-r.home);
@@ -3851,7 +3875,7 @@ export default function Mundialito() {
   const initials=useMemo(()=>getInitials(st.config.playerNames||[]),[st.config.playerNames]);
   const anyGroupDone=useMemo(()=>Object.keys(GROUPS).some(g=>GM.filter(m=>m.g===g).every(m=>st.matchResults[m.id]!=null)),[st.matchResults]);
   const resolvedBracket=useMemo(()=>resolveKOBracket(st.matchResults,st.koResults,st.koOverrides),[st.matchResults,st.koResults,st.koOverrides]);
-  const playerRankings=useMemo(()=>{return Array.from({length:st.config.playerCount},(_,i)=>{const gsPts=playerGSPts(i,st.picks||[],st.matchResults);const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);let gd=0,gf=0;myTeams.forEach(team=>{GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]===team,isAway=m.t[1]===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const isHome=bk.a===team,isAway=bk.b===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});});const pastGroups=myTeams.filter(team=>{const grp=Object.entries(GROUPS).find(([,ts])=>ts.includes(team))?.[0];if(!grp)return false;const grpMs=GM.filter(m=>m.g===grp);if(!grpMs.every(m=>st.matchResults[m.id]!=null))return false;const s=groupStandings(grp,st.matchResults);return s.findIndex(x=>x.team===team)<=1;}).length;const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(st.koResults[m.id]);if(!w0)return false;const bk=resolvedBracket[m.id];if(!bk)return false;const w=w0==="A"?bk.a:bk.b;return w&&myTeams.includes(w);}).length;return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,pastGroups,r32,gd,gf,myTeams};}).sort((a,b)=>{if(b.total!==a.total)return b.total-a.total;if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;if(b.r32!==a.r32)return b.r32-a.r32;if(b.gd!==a.gd)return b.gd-a.gd;if(b.gf!==a.gf)return b.gf-a.gf;let aWins=0,bWins=0,aGD=0,bGD=0,aGF=0,bGF=0;GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const aH=a.myTeams.includes(m.t[0]),aA=a.myTeams.includes(m.t[1]),bH=b.myTeams.includes(m.t[0]),bA=b.myTeams.includes(m.t[1]);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});if(aWins!==bWins)return bWins-aWins;if(aGD!==bGD)return bGD-aGD;if(aGF!==bGF)return bGF-aGF;const draftOrd=st.draftOrder||[];const aPick=draftOrd.indexOf(a.idx);const bPick=draftOrd.indexOf(b.idx);if(aPick!==-1&&bPick!==-1)return aPick-bPick;return a.idx-b.idx;});},[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
+  const playerRankings=useMemo(()=>{return Array.from({length:st.config.playerCount},(_,i)=>{const gsPts=playerGSPts(i,st.picks||[],st.matchResults);const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);let gd=0,gf=0;myTeams.forEach(team=>{GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]===team,isAway=m.t[1]===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const isHome=bk.a===team,isAway=bk.b===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});});const pastGroups=myTeams.filter(team=>{const grp=Object.entries(GROUPS).find(([,ts])=>ts.includes(team))?.[0];if(!grp)return false;const grpMs=GM.filter(m=>m.g===grp);if(!grpMs.every(m=>st.matchResults[m.id]!=null))return false;const s=groupStandings(grp,st.matchResults);return s.findIndex(x=>x.team===team)<=1;}).length;const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(st.koResults[m.id]);if(!w0)return false;const bk=resolvedBracket[m.id];if(!bk)return false;const w=w0==="A"?bk.a:bk.b;return w&&myTeams.includes(w);}).length;return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,pastGroups,r32,gd,gf,myTeams};}).sort((a,b)=>{if(b.total!==a.total)return b.total-a.total;if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;if(b.r32!==a.r32)return b.r32-a.r32;if(b.gd!==a.gd)return b.gd-a.gd;if(b.gf!==a.gf)return b.gf-a.gf;let aWins=0,bWins=0,aGD=0,bGD=0,aGF=0,bGF=0;GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const aH=a.myTeams.includes(m.t[0]),aA=a.myTeams.includes(m.t[1]),bH=b.myTeams.includes(m.t[0]),bA=b.myTeams.includes(m.t[1]);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const aH=a.myTeams.includes(bk.a),aA=a.myTeams.includes(bk.b),bH=b.myTeams.includes(bk.a),bA=b.myTeams.includes(bk.b);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});if(aWins!==bWins)return bWins-aWins;if(aGD!==bGD)return bGD-aGD;if(aGF!==bGF)return bGF-aGF;const draftOrd=st.draftOrder||[];const aPick=draftOrd.indexOf(a.idx);const bPick=draftOrd.indexOf(b.idx);if(aPick!==-1&&bPick!==-1)return aPick-bPick;return a.idx-b.idx;});},[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
   const syncCode=useMemo(()=>encode(st),[st]);
   const readOnly=!isHost;
 

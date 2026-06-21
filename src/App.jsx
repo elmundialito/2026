@@ -1293,12 +1293,12 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
         </div>
       </div>
       {centreLabel()&&<div style={{display:"flex",justifyContent:"center",marginBottom:4}}>{centreLabel()}</div>}
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        {teamRow(a,ta?.flag,oa?.playerIdx!=null?oa:null,true)}
+      <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+        <div style={{paddingTop:4}}>{teamRow(a,ta?.flag,oa?.playerIdx!=null?oa:null,true)}</div>
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
           <ScoreEntry matchId={match.id} result={result} onSet={onSet} readOnly={readOnly} teamA={a} teamB={b} ownership={ownership} initials={initials}/>
         </div>
-        {teamRow(b,tb?.flag,ob?.playerIdx!=null?ob:null,false)}
+        <div style={{paddingTop:4}}>{teamRow(b,tb?.flag,ob?.playerIdx!=null?ob:null,false)}</div>
       </div>
     </div>
   );
@@ -1840,9 +1840,9 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
           </div>
         </div>
       )}
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <KoTeamDisplay team={teamA} slot={match.sA} owner={oA} initials={initials} isWinner={winA} hasResult={hasResult} isHome={true} playerNames={playerNames}/>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,minWidth:88}}>
+      <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+        <div style={{paddingTop:hasResult&&teamA?6:0}}><KoTeamDisplay team={teamA} slot={match.sA} owner={oA} initials={initials} isWinner={winA} hasResult={hasResult} isHome={true} playerNames={playerNames}/></div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,minWidth:88,minHeight:hasResult?0:34}}>
           {!(teamA||teamB)?(
             <span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",fontStyle:"italic",textAlign:"center"}}>TBD</span>
           ):hasResult?(
@@ -1863,13 +1863,13 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
             <KoScoreEntry matchId={match.id} teamA={teamA} teamB={teamB} result={result} onSetResult={val=>!readOnly&&onSetResult(match.id,val)} readOnly={readOnly}/>
           )}
         </div>
-        <KoTeamDisplay team={teamB} slot={match.sB} owner={oB} initials={initials} isWinner={winB} hasResult={hasResult} isHome={false} playerNames={playerNames}/>
+        <div style={{paddingTop:hasResult&&teamB?6:0}}><KoTeamDisplay team={teamB} slot={match.sB} owner={oB} initials={initials} isWinner={winB} hasResult={hasResult} isHome={false} playerNames={playerNames}/></div>
       </div>
     </div>
   );
 }
 
-function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false}) {
+function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false,playerRankings=[]}) {
   const lang=useContext(LangContext);
   const [activeRound,setActiveRound]=useState("r32");
   const roundMatches=useMemo(()=>{const m={};ROUND_ORDER.forEach(r=>m[r]=[]);KM.forEach(k=>m[k.round]&&m[k.round].push(k));return m;},[]);
@@ -1893,13 +1893,13 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a"}}>{recorded}/{KM.length}</span>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
-        {playerTotals.map((p,i)=>{
+        {playerRankings.map(({name:n,idx:i,total})=>{
           const pcolor=getPlayerColor(i,PC[i]);
           return(
           <div key={i} style={{display:"flex",alignItems:"center",gap:5,padding:"4px 8px",borderRadius:8,background:`${pcolor}12`,border:`1px solid ${pcolor}33`}}>
-            <div style={{width:18,height:18,borderRadius:4,background:pcolor,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{nameToInitial(config.playerNames[i]||"")}</div>
-            <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:pcolor,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{config.playerNames[i]}</span>
-            <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,letterSpacing:1,flexShrink:0}}>{p.gs+p.ko}<span style={{fontSize:8,color:`${pcolor}99`,marginLeft:1}}>pts</span></span>
+            <div style={{width:18,height:18,borderRadius:4,background:pcolor,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{nameToInitial(n||"")}</div>
+            <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:pcolor,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n}</span>
+            <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,letterSpacing:1,flexShrink:0}}>{total}<span style={{fontSize:8,color:`${pcolor}99`,marginLeft:1}}>pts</span></span>
           </div>
           );
         })}
@@ -3937,7 +3937,7 @@ export default function Mundialito() {
       return <SetupScreen config={st.config} setConfig={c=>setSt(p=>({...p,config:typeof c==="function"?c(p.config):c}))} onLock={()=>{setSt(p=>({...p,setupLocked:true}));setActiveTab("draft");}} readOnly={readOnly}/>;}
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
     if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx} onPicsLoaded={()=>setPicRefresh(n=>n+1)} onPredictionsUpdate={p=>setAllPredictions(p)} bracket={resolvedBracket} koResults={st.koResults} playerRankings={playerRankings}/>;
-    if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly} isPreview={isHost&&!anyGroupDone}/>;
+    if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly} isPreview={isHost&&!anyGroupDone} playerRankings={playerRankings}/>;
     if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} onSuggestions={()=>setShowSuggestions(true)} picRefresh={picRefresh} allPredictions={allPredictions} draftOrder={st.draftOrder||[]}/>;
     return null;
   };

@@ -177,7 +177,7 @@ function mergeState(base, loaded) {
     config:{
       ...base.config, ...(loaded.config||{}),
       playerNames: Array.isArray(loaded.config?.playerNames) ? loaded.config.playerNames : base.config.playerNames,
-      koPoints: {...DEFAULT_KO,...(loaded.config?.koPoints||{})},
+      koPoints: {...(loaded.config?.koPoints||{}), ...DEFAULT_KO},
     },
     picks: Array.isArray(loaded.picks) ? loaded.picks : [],
     matchResults: (loaded.matchResults && typeof loaded.matchResults==="object") ? loaded.matchResults : {},

@@ -167,7 +167,7 @@ const TABS = [
 const EMPTY = {
   config:{ playerCount:4, playerNames:["","","",""], entryFee:"", koPoints:{...DEFAULT_KO} },
   setupLocked:false, draftLocked:false, draftOrder:null, draftMode:null, picks:[],
-  matchResults:{}, koResults:{}, koOverrides:{},
+  matchResults:{}, koResults:{}, koOverrides:{}, groupOrderOverride:{},
 };
 
 function mergeState(base, loaded) {
@@ -183,6 +183,7 @@ function mergeState(base, loaded) {
     matchResults: (loaded.matchResults && typeof loaded.matchResults==="object") ? loaded.matchResults : {},
     koResults: (loaded.koResults && typeof loaded.koResults==="object") ? loaded.koResults : {},
     koOverrides: (loaded.koOverrides && typeof loaded.koOverrides==="object") ? loaded.koOverrides : {},
+    groupOrderOverride: (loaded.groupOrderOverride && typeof loaded.groupOrderOverride==="object") ? loaded.groupOrderOverride : {},
     draftOrder: Array.isArray(loaded.draftOrder) ? loaded.draftOrder : null,
     draftMode: loaded.draftMode||null,
   };
@@ -468,7 +469,7 @@ function isInR32Bracket(team, bracket) {
   return KM.some(m=>m.round==="r32"&&bracket[m.id]&&(bracket[m.id].a===team||bracket[m.id].b===team));
 }
 
-function groupStandings(grp, res) {
+function groupStandings(grp, res, override) {
   const s = Object.fromEntries(GROUPS[grp].map(t=>[t,{P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0}]));
   const grpMatches = GM.filter(m=>m.g===grp);
   grpMatches.forEach(m=>{
@@ -476,6 +477,10 @@ function groupStandings(grp, res) {
     const[a,b]=m.t; s[a].P++;s[b].P++;s[a].GF+=r.home;s[a].GA+=r.away;s[a].GD+=r.home-r.away;s[b].GF+=r.away;s[b].GA+=r.home;s[b].GD+=r.away-r.home;
     if(out==="A"){s[a].W++;s[a].Pts+=3;s[b].L++;}else if(out==="B"){s[b].W++;s[b].Pts+=3;s[a].L++;}else{s[a].D++;s[a].Pts++;s[b].D++;s[b].Pts++;}
   });
+  // Host manual override (e.g. yellow cards / FIFA ranking tiebreaker the app can't calculate) takes priority
+  if(Array.isArray(override)&&override.length===GROUPS[grp].length&&override.every(t=>GROUPS[grp].includes(t))){
+    return override.map(t=>({team:t,...s[t]}));
+  }
   // H2H mini-table among tied teams (FIFA tiebreaker: H2H pts → H2H GD → H2H GF, before overall GD/GF)
   const h2h=(a,b)=>{
     let aPts=0,bPts=0,aGD=0,bGD=0,aGF=0,bGF=0;
@@ -499,35 +504,34 @@ function groupStandings(grp, res) {
   });
 }
 
-function get3rdPlaceTeams(mr) {
+function get3rdPlaceTeams(mr, overrides={}) {
   const out=[];
   Object.keys(GROUPS).forEach(g=>{
     if(!GM.filter(m=>m.g===g).every(m=>mr[m.id]!=null))return;
-    const s=groupStandings(g,mr); if(s[2])out.push({team:s[2].team,group:g,pts:s[2].Pts,gd:s[2].GD,gf:s[2].GF});
+    const s=groupStandings(g,mr,overrides[g]); if(s[2])out.push({team:s[2].team,group:g,pts:s[2].Pts,gd:s[2].GD,gf:s[2].GF});
   });
   return out.sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
 }
 
 // Live version — shows CURRENT 3rd place from each group regardless of completeness,
 // as long as that group has played at least one match. Used for the live tracking table.
-function getLive3rdPlaceTeams(mr) {
+function getLive3rdPlaceTeams(mr, overrides={}) {
   const out=[];
   Object.keys(GROUPS).forEach(g=>{
     const grpMatches=GM.filter(m=>m.g===g);
     const anyPlayed=grpMatches.some(m=>mr[m.id]!=null);
     if(!anyPlayed)return;
-    const allPlayed=grpMatches.every(m=>mr[m.id]!=null);
-    const s=groupStandings(g,mr);
-    if(s[2])out.push({team:s[2].team,group:g,pts:s[2].Pts,gd:s[2].GD,gf:s[2].GF,complete:allPlayed});
+    const s=groupStandings(g,mr,overrides[g]);
+    if(s[2])out.push({team:s[2].team,group:g,P:s[2].P,W:s[2].W,D:s[2].D,L:s[2].L,GF:s[2].GF,GA:s[2].GA,gd:s[2].GD,pts:s[2].Pts});
   });
-  return out.sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
+  return out.sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.GF-a.GF);
 }
 
-function resolveKOBracket(mr, kr, kov) {
-  const st={}; Object.keys(GROUPS).forEach(g=>{st[g]=groupStandings(g,mr);});
+function resolveKOBracket(mr, kr, kov, groupOverrides={}) {
+  const st={}; Object.keys(GROUPS).forEach(g=>{st[g]=groupStandings(g,mr,groupOverrides[g]);});
   const a3={};
   if(Object.keys(GROUPS).every(g=>GM.filter(m=>m.g===g).every(m=>mr[m.id]!=null))) {
-    const top8=get3rdPlaceTeams(mr).slice(0,8);
+    const top8=get3rdPlaceTeams(mr,groupOverrides).slice(0,8);
     const sl=Object.entries(SLOT_3RD);
     const used=new Set(sl.filter(([id])=>kov[id]?.b!=null).map(([id])=>kov[id].b));
     function bt(i){if(i===sl.length)return true;const[id,gs]=sl[i];if(kov[id]?.b!=null)return bt(i+1);for(const t of top8){if(!used.has(t.team)&&gs.includes(t.group)){a3[id]=t.team;used.add(t.team);if(bt(i+1))return true;delete a3[id];used.delete(t.team);}}return false;}
@@ -1323,10 +1327,23 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
   );
 }
 
-function GroupStandingsAccordion({g,res,ownership,initials}) {
+function GroupStandingsAccordion({g,res,ownership,initials,isHost,groupOverride,setGroupOverride}) {
   const lang=useContext(LangContext);
   const [open,setOpen]=useState(false);
-  const s=useMemo(()=>groupStandings(g,res),[g,res]);
+  const [reordering,setReordering]=useState(false);
+  const s=useMemo(()=>groupStandings(g,res,groupOverride),[g,res,groupOverride]);
+  const autoOrder=useMemo(()=>groupStandings(g,res).map(r=>r.team),[g,res]);
+  const isOverridden=Array.isArray(groupOverride)&&groupOverride.length===4;
+  const [draftOrder,setDraftOrder]=useState(null);
+  const startReorder=()=>{setDraftOrder(isOverridden?[...groupOverride]:[...autoOrder]);setReordering(true);};
+  const moveTeam=(idx,dir)=>{
+    setDraftOrder(prev=>{
+      const arr=[...prev];const swapIdx=idx+dir;
+      if(swapIdx<0||swapIdx>=arr.length)return arr;
+      [arr[idx],arr[swapIdx]]=[arr[swapIdx],arr[idx]];
+      return arr;
+    });
+  };
   return(
     <div style={{background:"rgba(26,39,68,0.2)",borderRadius:10,border:"1px solid #1e2f50",marginBottom:6,overflow:"hidden"}}>
       <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",padding:"11px 14px",border:"none",background:"transparent",display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left"}}>
@@ -1334,10 +1351,35 @@ function GroupStandingsAccordion({g,res,ownership,initials}) {
         <div style={{flex:1,display:"flex",gap:4,flexWrap:"wrap"}}>
           {s.map(({team},i)=>{const tm=TBN[team];const o=ownership[team];return(<span key={team} style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:4,background:i<2?"rgba(97,169,120,0.1)":"transparent",fontSize:11,fontFamily:"'DM Sans'",color:o?PC[o.playerIdx]:(i<2?"#61a978":"#8899b4"),fontWeight:500}}><span style={{fontSize:12}}>{tm?.flag}</span><span>{countryName(team,lang)}</span>{o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16}/>}</span>);})}
         </div>
+        {isOverridden&&<span title={lang==="es"?"Orden manual":"Manual order"} style={{fontSize:11,flexShrink:0}}>✋</span>}
         <span style={{fontSize:11,color:"#5a6a8a",transform:open?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
       </button>
       {open&&(
         <div style={{padding:"0 12px 12px"}}>
+          {isHost&&!reordering&&(
+            <div style={{display:"flex",gap:6,marginBottom:8}}>
+              <button onClick={startReorder} style={{flex:1,padding:"6px 0",borderRadius:6,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:11,cursor:"pointer"}}>↕ {lang==="es"?"Ordenar manualmente":"Manual reorder"}</button>
+              {isOverridden&&<button onClick={()=>setGroupOverride(g,null)} style={{padding:"6px 10px",borderRadius:6,border:"1px solid #d97757",background:"transparent",color:"#d97757",fontFamily:"'DM Sans'",fontSize:11,cursor:"pointer"}}>{lang==="es"?"Quitar":"Clear"}</button>}
+            </div>
+          )}
+          {isHost&&reordering&&draftOrder&&(
+            <div style={{background:"rgba(201,168,76,0.06)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:8,padding:"10px",marginBottom:10}}>
+              <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#8899b4",marginBottom:8}}>{lang==="es"?"Usa las flechas para fijar el orden final (ej. por tarjetas amarillas o ranking FIFA)":"Use arrows to set the final order (e.g. by yellow cards or FIFA ranking)"}</div>
+              {draftOrder.map((team,i)=>{const tm=TBN[team];const o=ownership[team];return(
+                <div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderTop:i>0?"1px solid rgba(26,39,68,0.5)":"none"}}>
+                  <span style={{fontFamily:"'Bebas Neue'",fontSize:12,color:i<2?"#61a978":"#5a6a8a",width:14,textAlign:"center"}}>{i+1}</span>
+                  <span style={{fontSize:14}}>{tm?.flag}</span>
+                  <span style={{flex:1,fontFamily:"'DM Sans'",fontSize:12,fontWeight:500,color:o?PC[o.playerIdx]:"#e0dcd4"}}>{countryName(team,lang)}</span>
+                  <button onClick={()=>moveTeam(i,-1)} disabled={i===0} style={{width:26,height:26,borderRadius:6,border:"1px solid #2a3a5c",background:"rgba(10,22,40,0.6)",color:i===0?"#3d5070":"#8899b4",cursor:i===0?"default":"pointer"}}>▲</button>
+                  <button onClick={()=>moveTeam(i,1)} disabled={i===draftOrder.length-1} style={{width:26,height:26,borderRadius:6,border:"1px solid #2a3a5c",background:"rgba(10,22,40,0.6)",color:i===draftOrder.length-1?"#3d5070":"#8899b4",cursor:i===draftOrder.length-1?"default":"pointer"}}>▼</button>
+                </div>
+              );})}
+              <div style={{display:"flex",gap:6,marginTop:10}}>
+                <button onClick={()=>{setGroupOverride(g,draftOrder);setReordering(false);}} style={{flex:1,padding:"7px 0",borderRadius:6,border:"none",background:"var(--accent)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:1.5,cursor:"pointer"}}>SAVE</button>
+                <button onClick={()=>setReordering(false)} style={{padding:"7px 12px",borderRadius:6,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontSize:11,cursor:"pointer"}}>{lang==="es"?"Cancelar":"Cancel"}</button>
+              </div>
+            </div>
+          )}
           <div style={{background:"rgba(10,22,40,0.4)",borderRadius:8,padding:"10px 12px",border:"1px solid #1e2f50"}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 40px 36px",gap:4,fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"0 2px 6px"}}><span>{lang==="es"?"Equipo":"Team"}</span><span style={{textAlign:"center"}}>P</span><span style={{textAlign:"center"}}>{lang==="es"?"V":"W"}</span><span style={{textAlign:"center"}}>{lang==="es"?"E":"D"}</span><span style={{textAlign:"center"}}>{lang==="es"?"D":"L"}</span><span style={{textAlign:"center"}}>GD</span><span style={{textAlign:"center"}}>Pts</span></div>
             {s.map((row,i)=>{const tm=TBN[row.team];const o=ownership[row.team];return(<div key={row.team} style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 40px 36px",gap:4,padding:"4px 2px",borderTop:i>0?"1px solid rgba(26,39,68,0.5)":"none",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:i<2?"#61a978":"#5a6a8a",width:10,textAlign:"center"}}>{i+1}</span><span style={{fontSize:13}}>{tm?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,color:o?PC[o.playerIdx]:"#e0dcd4",whiteSpace:"nowrap"}}>{code3(row.team)}</span>{o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16}/>}</div>{[row.P,row.W,row.D,row.L].map((v,j)=><span key={j} style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4"}}>{v}</span>)}<span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:row.GD>0?"#61a978":row.GD<0?"#d97757":"#8899b4"}}>{row.GD>0?"+":""}{row.GD}</span><span style={{textAlign:"center",fontFamily:"'Bebas Neue'",fontSize:14,color:"var(--accent)",letterSpacing:1}}>{row.Pts}</span></div>);})}
@@ -1348,35 +1390,36 @@ function GroupStandingsAccordion({g,res,ownership,initials}) {
   );
 }
 
-function Live3rdPlaceTable({matchResults,ownership,initials,lang}) {
+function Live3rdPlaceTable({matchResults,ownership,initials,lang,groupOrderOverride={}}) {
   const allTeamsPlayed=useMemo(()=>{
     const played=new Set();
     GM.forEach(m=>{if(matchResults[m.id]!=null)m.t.forEach(team=>played.add(team));});
     return TEAMS.every(t=>played.has(t.name));
   },[matchResults]);
-  const rows=useMemo(()=>getLive3rdPlaceTeams(matchResults),[matchResults]);
+  const rows=useMemo(()=>getLive3rdPlaceTeams(matchResults,groupOrderOverride),[matchResults,groupOrderOverride]);
   if(!allTeamsPlayed||rows.length===0)return null;
   return(
     <div style={{background:"rgba(26,39,68,0.2)",borderRadius:10,border:"1px solid #1e2f50",marginTop:14,marginBottom:6,overflow:"hidden",padding:"12px 14px"}}>
       <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:"var(--accent)",marginBottom:3}}>{lang==="es"?"MEJORES TERCEROS":"BEST 3RD PLACE TEAMS"}</div>
       <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:10}}>{lang==="es"?"Los 8 mejores avanzan a octavos · en vivo":"Top 8 advance to Round of 32 · live"}</div>
-      <div style={{display:"grid",gridTemplateColumns:"20px 1fr 50px 28px 28px 36px",gap:4,fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"0 2px 6px"}}>
-        <span></span><span>{lang==="es"?"Equipo":"Team"}</span><span style={{textAlign:"center"}}>{lang==="es"?"Grupo":"Group"}</span><span style={{textAlign:"center"}}>GD</span><span style={{textAlign:"center"}}>GF</span><span style={{textAlign:"center"}}>Pts</span>
+      <div style={{display:"grid",gridTemplateColumns:"16px 1fr 24px 22px 22px 22px 36px 32px",gap:3,fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontWeight:600,letterSpacing:1,textTransform:"uppercase",padding:"0 2px 6px"}}>
+        <span></span><span>{lang==="es"?"Equipo":"Team"}</span><span style={{textAlign:"center"}}>P</span><span style={{textAlign:"center"}}>{lang==="es"?"V":"W"}</span><span style={{textAlign:"center"}}>{lang==="es"?"E":"D"}</span><span style={{textAlign:"center"}}>{lang==="es"?"D":"L"}</span><span style={{textAlign:"center"}}>GD</span><span style={{textAlign:"center"}}>Pts</span>
       </div>
       {rows.map((row,i)=>{
         const tm=TBN[row.team];const o=ownership[row.team];const inTop8=i<8;
         return(<div key={row.team}>
-          <div style={{display:"grid",gridTemplateColumns:"20px 1fr 50px 28px 28px 36px",gap:4,padding:"5px 2px",alignItems:"center",opacity:inTop8?1:0.55}}>
+          <div style={{display:"grid",gridTemplateColumns:"16px 1fr 24px 22px 22px 22px 36px 32px",gap:3,padding:"5px 2px",alignItems:"center",opacity:inTop8?1:0.55}}>
             <span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:inTop8?"#61a978":"#5a6a8a",textAlign:"center"}}>{i+1}</span>
             <div style={{display:"flex",alignItems:"center",gap:5,minWidth:0}}>
               <span style={{fontSize:13,flexShrink:0}}>{tm?.flag}</span>
               <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,color:o?PC[o.playerIdx]:"#e0dcd4",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{code3(row.team)}</span>
               {o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16}/>}
-              {!row.complete&&<span style={{fontSize:8,color:"#5a6a8a",fontStyle:"italic",flexShrink:0}}>{lang==="es"?"parcial":"partial"}</span>}
             </div>
-            <span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:10,color:"#8899b4"}}>{row.group}</span>
+            <span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4"}}>{row.P}</span>
+            <span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4"}}>{row.W}</span>
+            <span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4"}}>{row.D}</span>
+            <span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4"}}>{row.L}</span>
             <span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:row.gd>0?"#61a978":row.gd<0?"#d97757":"#8899b4"}}>{row.gd>0?"+":""}{row.gd}</span>
-            <span style={{textAlign:"center",fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4"}}>{row.gf}</span>
             <span style={{textAlign:"center",fontFamily:"'Bebas Neue'",fontSize:13,color:inTop8?"var(--accent)":"#5a6a8a",letterSpacing:1}}>{row.pts}</span>
           </div>
           {i===7&&rows.length>8&&<div style={{borderTop:"2px dashed rgba(201,168,76,0.3)",margin:"2px 0 4px"}}/>}
@@ -1644,7 +1687,7 @@ function PastDayRow({date,matches,matchResults,ownership,onSet,readOnly,initials
   );
 }
 
-function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx,onPicsLoaded,onPredictionsUpdate,bracket={},koResults={},playerRankings=[]}) {
+function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,initials,myPlayerIdx,onPicsLoaded,onPredictionsUpdate,bracket={},koResults={},playerRankings=[],groupOrderOverride={},setGroupOrderOverride}) {
   const lang=useContext(LangContext);
   const bumpPicsCtx=useContext(PicBumpContext);
   const [matchChat,setMatchChat]=useState({});
@@ -1758,8 +1801,8 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
           ⭐ {myTeamsOnly?(lang==="es"?"TODOS":"ALL GAMES"):(lang==="es"?"MIS EQUIPOS":"MY TEAMS")}
         </button>
       )}
-      {view==="standings"&&Object.keys(GROUPS).map(g=><GroupStandingsAccordion key={g} g={g} res={matchResults} ownership={ownership} initials={initials}/>)}
-      {view==="standings"&&<Live3rdPlaceTable matchResults={matchResults} ownership={ownership} initials={initials} lang={lang}/>}
+      {view==="standings"&&Object.keys(GROUPS).map(g=><GroupStandingsAccordion key={g} g={g} res={matchResults} ownership={ownership} initials={initials} isHost={!readOnly} groupOverride={groupOrderOverride[g]||null} setGroupOverride={(grp,order)=>setGroupOrderOverride&&setGroupOrderOverride(grp,order)}/>)}
+      {view==="standings"&&<Live3rdPlaceTable matchResults={matchResults} ownership={ownership} initials={initials} lang={lang} groupOrderOverride={groupOrderOverride}/>}
       <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
       {flash&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.4)",borderRadius:30,padding:"10px 22px",fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"var(--accent)",whiteSpace:"nowrap",zIndex:200,animation:"slideUp 0.3s ease-out"}}>⚽ {flash}</div>}
       {showShareDay&&(()=>{
@@ -1927,7 +1970,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
   );
 }
 
-function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false,playerRankings=[]}) {
+function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false,playerRankings=[],groupOrderOverride={}}) {
   const lang=useContext(LangContext);
   const [activeRound,setActiveRound]=useState("r32");
   const roundMatches=useMemo(()=>{const m={};ROUND_ORDER.forEach(r=>m[r]=[]);KM.forEach(k=>m[k.round]&&m[k.round].push(k));return m;},[]);
@@ -1935,7 +1978,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   const playerTotals=useMemo(()=>Array.from({length:config.playerCount},(_,i)=>({gs:playerGSPts(i,picks||[],matchResults),ko:playerKOPts(i,picks||[],bracket,koResults,config.koPoints)})),[config,picks,matchResults,bracket,koResults]);
   const recorded=Object.values(koResults).filter(Boolean).length;
   const allGroupsDone=Object.keys(GROUPS).every(g=>GM.filter(m=>m.g===g).every(m=>matchResults[m.id]!=null));
-  const top8=useMemo(()=>get3rdPlaceTeams(matchResults).slice(0,8),[matchResults]);
+  const top8=useMemo(()=>get3rdPlaceTeams(matchResults,groupOrderOverride).slice(0,8),[matchResults,groupOrderOverride]);
   const koInitials=(config.playerNames||[]).map(n=>nameToInitial(n||""));
   return(
     <div style={{maxWidth:920,margin:"0 auto",padding:"0 16px"}}>
@@ -3923,7 +3966,7 @@ export default function Mundialito() {
 
   const initials=useMemo(()=>getInitials(st.config.playerNames||[]),[st.config.playerNames]);
   const anyGroupDone=useMemo(()=>Object.keys(GROUPS).some(g=>GM.filter(m=>m.g===g).every(m=>st.matchResults[m.id]!=null)),[st.matchResults]);
-  const resolvedBracket=useMemo(()=>resolveKOBracket(st.matchResults,st.koResults,st.koOverrides),[st.matchResults,st.koResults,st.koOverrides]);
+  const resolvedBracket=useMemo(()=>resolveKOBracket(st.matchResults,st.koResults,st.koOverrides,st.groupOrderOverride||{}),[st.matchResults,st.koResults,st.koOverrides,st.groupOrderOverride]);
   const playerRankings=useMemo(()=>{return Array.from({length:st.config.playerCount},(_,i)=>{const gsPts=playerGSPts(i,st.picks||[],st.matchResults);const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);let gd=0,gf=0;myTeams.forEach(team=>{GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]===team,isAway=m.t[1]===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const isHome=bk.a===team,isAway=bk.b===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});});const pastGroups=myTeams.filter(team=>isInR32Bracket(team,resolvedBracket)).length;const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(st.koResults[m.id]);if(!w0)return false;const bk=resolvedBracket[m.id];if(!bk)return false;const w=w0==="A"?bk.a:bk.b;return w&&myTeams.includes(w);}).length;return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,pastGroups,r32,gd,gf,myTeams};}).sort((a,b)=>{if(b.total!==a.total)return b.total-a.total;if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;if(b.gd!==a.gd)return b.gd-a.gd;if(b.gf!==a.gf)return b.gf-a.gf;let aWins=0,bWins=0,aGD=0,bGD=0,aGF=0,bGF=0;GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const aH=a.myTeams.includes(m.t[0]),aA=a.myTeams.includes(m.t[1]),bH=b.myTeams.includes(m.t[0]),bA=b.myTeams.includes(m.t[1]);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const aH=a.myTeams.includes(bk.a),aA=a.myTeams.includes(bk.b),bH=b.myTeams.includes(bk.a),bA=b.myTeams.includes(bk.b);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});if(aWins!==bWins)return bWins-aWins;if(aGD!==bGD)return bGD-aGD;if(aGF!==bGF)return bGF-aGF;const draftOrd=st.draftOrder||[];const aPick=draftOrd.indexOf(a.idx);const bPick=draftOrd.indexOf(b.idx);if(aPick!==-1&&bPick!==-1)return aPick-bPick;return a.idx-b.idx;});},[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
   const syncCode=useMemo(()=>encode(st),[st]);
   const readOnly=!isHost;
@@ -3985,8 +4028,8 @@ export default function Mundialito() {
     if(activeTab==="setup"){if(st.setupLocked&&!readOnly)return(<SetupLockedScreen config={st.config} onRename={(i,name)=>{setSt(p=>{const updated={...p,config:{...p.config,playerNames:p.config.playerNames.map((n,j)=>j===i?name:n)}};const code=window.localStorage?.getItem("mundi_pool_code")||poolCode||window.localStorage?.getItem("mundi_spectator_code");const pw=window.localStorage?.getItem("mundi_host_pw")||undefined;if(code)savePool(code,updated,pw).then(ok=>{if(ok&&code!==poolCode){try{window.localStorage?.setItem("mundi_pool_code",code);}catch(e){}setPoolCode(code);}});return updated;});}} onColorChange={(i,color)=>{colorCache[i]=color;saveCaches();savePlayerColor(i,color);bumpPics(setPicRefresh);}} onUnlock={()=>setSt(p=>({...p,setupLocked:false,draftOrder:null,draftMode:null,picks:[],draftLocked:false,matchResults:{},koResults:{},koOverrides:{}}))}/>);
       return <SetupScreen config={st.config} setConfig={c=>setSt(p=>({...p,config:typeof c==="function"?c(p.config):c}))} onLock={()=>{setSt(p=>({...p,setupLocked:true}));setActiveTab("draft");}} readOnly={readOnly}/>;}
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
-    if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx} onPicsLoaded={()=>setPicRefresh(n=>n+1)} onPredictionsUpdate={p=>setAllPredictions(p)} bracket={resolvedBracket} koResults={st.koResults} playerRankings={playerRankings}/>;
-    if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly} isPreview={isHost&&!anyGroupDone} playerRankings={playerRankings}/>;
+    if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx} onPicsLoaded={()=>setPicRefresh(n=>n+1)} onPredictionsUpdate={p=>setAllPredictions(p)} bracket={resolvedBracket} koResults={st.koResults} playerRankings={playerRankings} groupOrderOverride={st.groupOrderOverride||{}} setGroupOrderOverride={(grp,order)=>setSt(p=>{const next={...(p.groupOrderOverride||{})};if(order)next[grp]=order;else delete next[grp];return{...p,groupOrderOverride:next};})}/>;
+    if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly} isPreview={isHost&&!anyGroupDone} playerRankings={playerRankings} groupOrderOverride={st.groupOrderOverride||{}}/>;
     if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} onSuggestions={()=>setShowSuggestions(true)} picRefresh={picRefresh} allPredictions={allPredictions} draftOrder={st.draftOrder||[]}/>;
     return null;
   };

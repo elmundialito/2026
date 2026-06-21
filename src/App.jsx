@@ -453,6 +453,13 @@ function getMatchOutcome(r) {
   if (r.home>r.away) return "A"; if (r.away>r.home) return "B"; return "D";
 }
 
+// koResults can be legacy "A"/"B" string, or new {home,away,winner,pens} object — this normalises to the winner side
+function koWinner(r) {
+  if (!r) return null;
+  if (typeof r === "string") return r;
+  return r.winner || null;
+}
+
 function groupStandings(grp, res) {
   const s = Object.fromEntries(GROUPS[grp].map(t=>[t,{P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0}]));
   const grpMatches = GM.filter(m=>m.g===grp);
@@ -509,8 +516,8 @@ function resolveKOBracket(mr, kr, kov) {
       const ov=kov[m.id]?.[side]; if(ov!==undefined)return ov;
       if(/^Win [A-L]$/.test(slot)){const g=slot[4];if(!GM.filter(m=>m.g===g).every(m=>mr[m.id]!=null))return null;return st[g]?.[0]?.team||null;}
       if(/^2nd [A-L]$/.test(slot)){const g=slot[4];if(!GM.filter(m=>m.g===g).every(m=>mr[m.id]!=null))return null;return st[g]?.[1]?.team||null;}
-      if(/^Win M(\d+)$/.test(slot)){const mid=`K${parseInt(slot.replace("Win M",""))}`;const r=kr[mid];if(!r)return null;return r==="A"?bk[mid]?.a:bk[mid]?.b;}
-      if(/^Loss M(\d+)$/.test(slot)){const mid=`K${parseInt(slot.replace("Loss M",""))}`;const r=kr[mid];if(!r)return null;return r==="A"?bk[mid]?.b:bk[mid]?.a;}
+      if(/^Win M(\d+)$/.test(slot)){const mid=`K${parseInt(slot.replace("Win M",""))}`;const w=koWinner(kr[mid]);if(!w)return null;return w==="A"?bk[mid]?.a:bk[mid]?.b;}
+      if(/^Loss M(\d+)$/.test(slot)){const mid=`K${parseInt(slot.replace("Loss M",""))}`;const w=koWinner(kr[mid]);if(!w)return null;return w==="A"?bk[mid]?.b:bk[mid]?.a;}
       if(side==="b"&&a3[m.id])return a3[m.id];
       return null;
     };
@@ -529,13 +536,13 @@ function playerGSPts(pi, picks, mr) {
 function playerKOPts(pi, picks, bk, kr, kp) {
   const mine=new Set(picks.filter(p=>p.playerIdx===pi).map(p=>p.team));
   let pts=0;
-  KM.forEach(m=>{const r=kr[m.id];if(!r)return;const b=bk[m.id];if(!b)return;const w=r==="A"?b.a:b.b;if(w&&mine.has(w))pts+=(kp[m.round]||0);});
+  KM.forEach(m=>{const w=koWinner(kr[m.id]);if(!w)return;const b=bk[m.id];if(!b)return;const team=w==="A"?b.a:b.b;if(team&&mine.has(team))pts+=(kp[m.round]||0);});
   return pts;
 }
 
 function teamGSPts(team,mr){let pts=0;GM.filter(m=>m.t.includes(team)).forEach(m=>{const out=getMatchOutcome(mr[m.id]);if(!out)return;const h=m.t[0]===team;if(h&&out==="A")pts+=3;else if(!h&&out==="B")pts+=3;else if(out==="D")pts+=1;});return pts;}
-function teamKOPts(team,bk,kr,kp){let pts=0;KM.forEach(m=>{const r=kr[m.id];if(!r)return;const b=bk[m.id];if(!b)return;const w=r==="A"?b.a:b.b;if(w===team)pts+=(kp[m.round]||0);});return pts;}
-function isEliminated(team,bk,kr){let inB=false;for(const m of KM){const b=bk?.[m.id];if(!b)continue;if(b.a===team||b.b===team)inB=true;const r=kr[m.id];if(!r)continue;const l=r==="A"?b.b:b.a;if(l===team)return true;}const kc=Object.values(kr||{}).filter(Boolean).length;if(kc>0){const f=KM.filter(m=>bk?.[m.id]?.a||bk?.[m.id]?.b).length;if(f>=8&&!inB)return true;}return false;}
+function teamKOPts(team,bk,kr,kp){let pts=0;KM.forEach(m=>{const w=koWinner(kr[m.id]);if(!w)return;const b=bk[m.id];if(!b)return;const winTeam=w==="A"?b.a:b.b;if(winTeam===team)pts+=(kp[m.round]||0);});return pts;}
+function isEliminated(team,bk,kr){let inB=false;for(const m of KM){const b=bk?.[m.id];if(!b)continue;if(b.a===team||b.b===team)inB=true;const w=koWinner(kr[m.id]);if(!w)continue;const l=w==="A"?b.b:b.a;if(l===team)return true;}const kc=Object.values(kr||{}).filter(Boolean).length;if(kc>0){const f=KM.filter(m=>bk?.[m.id]?.a||bk?.[m.id]?.b).length;if(f>=8&&!inB)return true;}return false;}
 
 function generateAutoAssignment(draftOrder, teams) {
   const N=draftOrder.length; const picks=[]; const tr=Math.ceil(teams.length/N);
@@ -1716,29 +1723,100 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
   );
 }
 
-function KoTeamDisplay({team,slot,owner,initials,isWinner,hasResult,isHome}) {
-  const t=team?TBN[team]:null;const color=owner!=null?PC[owner.playerIdx]:"#8899b4";const faded=hasResult&&!isWinner;
+function KoTeamDisplay({team,slot,owner,initials,isWinner,hasResult,isHome,playerNames=[]}) {
+  const lang=useContext(LangContext);
+  const t=team?TBN[team]:null;const color=owner!=null?PC[owner.playerIdx]:null;const faded=hasResult&&!isWinner;
+  const fn=team?countryFixture(team,lang):"";
+  const fs=fn.length>9?9:10;
   return(
-    <div style={{flex:1,display:"flex",alignItems:"center",gap:4,minWidth:0,flexDirection:isHome?"row-reverse":"row"}}>
-      {team?(<>{!isHome&&t&&<span style={{fontSize:16,flexShrink:0}}>{t.flag}</span>}<span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:faded?"#4a5a7a":color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",opacity:faded?0.6:1}}>{team}</span>{isHome&&t&&<span style={{fontSize:16,flexShrink:0}}>{t.flag}</span>}{owner!=null&&<OwnerChip playerIdx={owner.playerIdx} initials={initials} size={15}/>}</>):(<span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#3d5070",fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{slot}</span>)}
+    <div style={{flex:1,display:"flex",alignItems:"center",minWidth:0,opacity:faded?0.5:1,flexDirection:isHome?"row-reverse":"row",gap:4}}>
+      {team?(<>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,width:72,background:isWinner&&color?`${color}15`:"transparent",border:isWinner&&color?`1px solid ${color}44`:"1px solid transparent",borderRadius:6,padding:"3px 5px"}}>
+          <span style={{fontSize:15,lineHeight:1,flexShrink:0,display:"block",textAlign:"center"}}>{t?.flag}</span>
+          <span style={{fontFamily:"'DM Sans'",fontSize:fs,fontWeight:600,color:color||"#e0dcd4",lineHeight:1.2,textAlign:"center",hyphens:"manual",marginTop:2,display:"block",minHeight:24}} dangerouslySetInnerHTML={{__html:fn}}/>
+        </div>
+        <div style={{flex:1,minWidth:0}}/>
+        {owner!=null
+          ?<OwnerChip playerIdx={owner.playerIdx} initials={initials} size={20} playerName={playerNames[owner.playerIdx]||""}/>
+          :<div style={{width:20,height:20,flexShrink:0}}/>}
+      </>):(
+        <div style={{flex:1,display:"flex",justifyContent:isHome?"flex-end":"flex-start"}}>
+          <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#3d5070",fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{slot}</span>
+        </div>
+      )}
     </div>
   );
 }
 
-function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownership,initials,readOnly}) {
-  const [editOpen,setEditOpen]=useState(false);const [editA,setEditA]=useState("");const [editB,setEditB]=useState("");
-  const winA=result==="A";const winB=result==="B";const hasResult=!!result;
-  const oA=teamA?ownership[teamA]:null;const oB=teamB?ownership[teamB]:null;
-  const cb=oA?PC[oA.playerIdx]:oB?PC[oB.playerIdx]:"#1e2f50";
+function PenaltyModal({open,onClose,teamA,teamB,onPick}) {
+  if(!open)return null;
+  const ta=TBN[teamA],tb=TBN[teamB];
+  const lang=useContext(LangContext);
   return(
-    <div style={{background:"rgba(10,22,40,0.4)",borderRadius:10,padding:"10px 12px",border:"1px solid #1e2f50",borderLeft:`3px solid ${cb}`,marginBottom:8}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-        <span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"#8899b4",letterSpacing:1}}>M{match.n}</span>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {match.ko&&!hasResult&&<span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1}}>{fmtKickoff(match.d,match.ko)}</span>}
-          <span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",fontStyle:"italic"}}>{match.v}</span>
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:340,background:"linear-gradient(165deg,#0a1628,#0f1e38)",borderRadius:16,border:"1px solid #2a3a5c",padding:"20px 18px",textAlign:"center"}}>
+        <div style={{fontSize:26,marginBottom:6}}>🥅</div>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,color:"var(--accent)",marginBottom:4}}>{lang==="es"?"EMPATE — PENALES":"DRAW — PENALTIES"}</div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#8899b4",marginBottom:18}}>{lang==="es"?"¿Quién avanzó?":"Who advanced?"}</div>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={()=>onPick("A")} style={{flex:1,padding:"16px 8px",borderRadius:12,border:"1.5px solid rgba(97,169,120,0.4)",background:"rgba(97,169,120,0.08)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+            <span style={{fontSize:26}}>{ta?.flag}</span>
+            <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:"#e0dcd4"}}>{teamA}</span>
+          </button>
+          <button onClick={()=>onPick("B")} style={{flex:1,padding:"16px 8px",borderRadius:12,border:"1.5px solid rgba(107,155,209,0.4)",background:"rgba(107,155,209,0.08)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+            <span style={{fontSize:26}}>{tb?.flag}</span>
+            <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:"#e0dcd4"}}>{teamB}</span>
+          </button>
         </div>
-        {!readOnly&&<button onClick={()=>{setEditA(teamA||"");setEditB(teamB||"");setEditOpen(!editOpen);}} style={{fontSize:9,color:"#5a6a8a",background:"transparent",border:"1px solid #2a3a5c",borderRadius:4,padding:"2px 5px",cursor:"pointer"}}>✎ Override</button>}
+      </div>
+    </div>
+  );
+}
+
+function KoScoreEntry({matchId,teamA,teamB,result,onSetResult,readOnly}) {
+  const [hv,setHv]=useState("");
+  const [av,setAv]=useState("");
+  const [showPenalty,setShowPenalty]=useState(false);
+  const inp=(val,setVal,side)=><input type="number" min="0" max="20" value={val} readOnly={readOnly} onChange={e=>{
+    const v=e.target.value;setVal(v);
+    const h=side==="home"?v:hv, a=side==="away"?v:av;
+    const hi=h===""?null:parseInt(h), ai=a===""?null:parseInt(a);
+    if(hi!=null&&ai!=null&&!isNaN(hi)&&!isNaN(ai)){
+      if(hi===ai){setShowPenalty(true);}
+      else{onSetResult({home:hi,away:ai,winner:hi>ai?"A":"B",pens:false});}
+    }
+  }} style={{width:40,padding:"6px 0",textAlign:"center",borderRadius:8,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.6)",color:"#e0dcd4",fontFamily:"'Bebas Neue'",fontSize:22,outline:"none",cursor:readOnly?"default":"text"}} onFocus={e=>!readOnly&&(e.target.style.borderColor="var(--accent)")} onBlur={e=>e.target.style.borderColor="#2a3a5c"}/>;
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"center",flexShrink:0}}>
+      {inp(hv,setHv,"home")}
+      <span style={{fontFamily:"'Bebas Neue'",fontSize:14,color:"#5a6a8a",letterSpacing:1}}>–</span>
+      {inp(av,setAv,"away")}
+      <PenaltyModal open={showPenalty} onClose={()=>setShowPenalty(false)} teamA={teamA} teamB={teamB} onPick={side=>{
+        const hi=parseInt(hv),ai=parseInt(av);
+        onSetResult({home:hi,away:ai,winner:side,pens:true});
+        setShowPenalty(false);
+      }}/>
+    </div>
+  );
+}
+
+function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownership,initials,readOnly,playerNames=[]}) {
+  const lang=useContext(LangContext);
+  const w=koWinner(result);
+  const winA=w==="A";const winB=w==="B";const hasResult=!!w;
+  const hasScore=result&&typeof result==="object"&&result.home!=null&&result.away!=null;
+  const wasPens=hasScore&&result.pens;
+  const oA=teamA?ownership[teamA]:null;const oB=teamB?ownership[teamB]:null;
+  const [editOpen,setEditOpen]=useState(false);const [editA,setEditA]=useState("");const [editB,setEditB]=useState("");
+  const winColor=winA?(oA?PC[oA.playerIdx]:"#61a978"):winB?(oB?PC[oB.playerIdx]:"#6b9bd1"):null;
+  const cardBg=hasResult&&winColor?`${winColor}08`:"rgba(10,22,40,0.4)";
+  const cardBorder=hasResult&&winColor?`1px solid ${winColor}44`:"1px solid #1e2f50";
+  return(
+    <div style={{background:cardBg,borderRadius:10,padding:"10px 12px",border:cardBorder,marginBottom:6,position:"relative"}}>
+      <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative"}}>
+        <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>M{match.n}</span>
+        {match.ko&&!hasResult&&<span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1,whiteSpace:"nowrap"}}>{fmtKickoff(match.d,match.ko)}</span>}
+        {!readOnly&&<button onClick={()=>{setEditA(teamA||"");setEditB(teamB||"");setEditOpen(o=>!o);}} style={{fontSize:9,color:"#5a6a8a",background:"transparent",border:"1px solid #2a3a5c",borderRadius:4,padding:"2px 6px",cursor:"pointer",flexShrink:0}}>✎ {lang==="es"?"Anular":"Override"}</button>}
       </div>
       {editOpen&&!readOnly&&(
         <div style={{background:"rgba(26,39,68,0.6)",borderRadius:8,padding:"10px",marginBottom:8,border:"1px solid #2a3a5c"}}>
@@ -1747,7 +1825,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
               <span style={{fontSize:10,color:"#5a6a8a",width:12}}>{side.toUpperCase()}</span>
               <select value={side==="a"?editA:editB} onChange={e=>side==="a"?setEditA(e.target.value):setEditB(e.target.value)} style={{flex:1,padding:"5px 8px",borderRadius:6,border:"1px solid #2a3a5c",background:"rgba(10,22,40,0.8)",color:"#e0dcd4",fontSize:11,outline:"none"}}>
                 <option value="">Keep auto ({side==="a"?match.sA:match.sB})</option>
-                {TEAMS.map(t=><option key={t.name} value={t.name}>{t.name}</option>)}
+                {TEAMS.map(tm=><option key={tm.name} value={tm.name}>{tm.name}</option>)}
               </select>
             </div>
           ))}
@@ -1758,21 +1836,37 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
           </div>
         </div>
       )}
-      <div style={{display:"flex",alignItems:"center",gap:6}}>
-        <KoTeamDisplay team={teamA} slot={match.sA} owner={oA} initials={initials} isWinner={winA} hasResult={hasResult} isHome={true}/>
-        <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
-          {(teamA||teamB)?(<>
-            <button onClick={()=>!readOnly&&onSetResult(match.id,winA?undefined:"A")} style={{padding:"4px 8px",borderRadius:5,border:winA?"1.5px solid var(--accent)":"1.5px solid transparent",background:winA?"rgba(201,168,76,0.2)":"rgba(26,39,68,0.4)",color:winA?"var(--accent)":"#5a6a8a",fontFamily:"'DM Sans'",fontSize:9,fontWeight:700,cursor:readOnly?"default":"pointer",textTransform:"uppercase",whiteSpace:"nowrap"}}>{winA?"✓ ":""}{teamA?btnName(teamA):"A"}</button>
-            <button onClick={()=>!readOnly&&onSetResult(match.id,winB?undefined:"B")} style={{padding:"4px 8px",borderRadius:5,border:winB?"1.5px solid #6b9bd1":"1.5px solid transparent",background:winB?"rgba(107,155,209,0.2)":"rgba(26,39,68,0.4)",color:winB?"#6b9bd1":"#5a6a8a",fontFamily:"'DM Sans'",fontSize:9,fontWeight:700,cursor:readOnly?"default":"pointer",textTransform:"uppercase",whiteSpace:"nowrap"}}>{winB?"✓ ":""}{teamB?btnName(teamB):"B"}</button>
-          </>):<span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",fontStyle:"italic",textAlign:"center"}}>TBD</span>}
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <KoTeamDisplay team={teamA} slot={match.sA} owner={oA} initials={initials} isWinner={winA} hasResult={hasResult} isHome={true} playerNames={playerNames}/>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,minWidth:88}}>
+          {!(teamA||teamB)?(
+            <span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",fontStyle:"italic",textAlign:"center"}}>TBD</span>
+          ):hasResult?(
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+              {hasScore&&(
+                <div style={{display:"flex",alignItems:"center",gap:6,fontFamily:"'Bebas Neue'",fontSize:18,color:"#e0dcd4",letterSpacing:1}}>
+                  <span>{result.home}</span><span style={{color:"#5a6a8a",fontSize:13}}>–</span><span>{result.away}</span>
+                </div>
+              )}
+              {wasPens&&<span style={{fontFamily:"'DM Sans'",fontSize:8,color:"#8899b4",letterSpacing:0.5,textTransform:"uppercase"}}>{lang==="es"?"penales":"on pens"}</span>}
+              <div style={{display:"flex",alignItems:"center",gap:4,padding:"4px 9px",borderRadius:8,background:winColor?`${winColor}1a`:"rgba(26,39,68,0.4)",border:winColor?`1px solid ${winColor}44`:"1px solid #2a3a5c"}}>
+                <span style={{fontSize:13}}>{TBN[winA?teamA:teamB]?.flag}</span>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:winColor||"#e0dcd4",letterSpacing:1}}>{lang==="es"?"AVANZA":"ADVANCES"}</span>
+              </div>
+              {!readOnly&&<button onClick={()=>onSetResult(match.id,undefined)} style={{fontSize:9,color:"#5a6a8a",background:"transparent",border:"none",cursor:"pointer",textDecoration:"underline"}}>{lang==="es"?"editar":"edit"}</button>}
+            </div>
+          ):(
+            <KoScoreEntry matchId={match.id} teamA={teamA} teamB={teamB} result={result} onSetResult={val=>!readOnly&&onSetResult(match.id,val)} readOnly={readOnly}/>
+          )}
         </div>
-        <KoTeamDisplay team={teamB} slot={match.sB} owner={oB} initials={initials} isWinner={winB} hasResult={hasResult} isHome={false}/>
+        <KoTeamDisplay team={teamB} slot={match.sB} owner={oB} initials={initials} isWinner={winB} hasResult={hasResult} isHome={false} playerNames={playerNames}/>
       </div>
     </div>
   );
 }
 
 function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false}) {
+  const lang=useContext(LangContext);
   const [activeRound,setActiveRound]=useState("r32");
   const roundMatches=useMemo(()=>{const m={};ROUND_ORDER.forEach(r=>m[r]=[]);KM.forEach(k=>m[k.round]&&m[k.round].push(k));return m;},[]);
   const ownership=useMemo(()=>{const o={};(picks||[]).forEach(p=>{o[p.team]={playerIdx:p.playerIdx};});return o;},[picks]);
@@ -1817,7 +1911,28 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
         {ROUND_ORDER.map(r=>{const active=activeRound===r;const cnt=roundMatches[r]?.length||0;const done=roundMatches[r]?.filter(m=>koResults[m.id]).length||0;return(<button key={r} onClick={()=>setActiveRound(r)} style={{padding:"7px 12px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1.5,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}}>{KO_LABELS[r]}<span style={{fontFamily:"'DM Sans'",fontSize:9,color:active?"#c9a84c88":"#3d5070",marginLeft:5}}>{done}/{cnt}</span></button>);})}
       </div>
       <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",textAlign:"center",marginBottom:12}}>Win = <span style={{color:"var(--accent)",fontWeight:700}}>{config.koPoints[activeRound]} pts</span></div>
-      {roundMatches[activeRound]?.map(m=>{const bk=bracket[m.id];return(<KoMatchCard key={m.id} match={m} teamA={bk?.a||null} teamB={bk?.b||null} result={koResults[m.id]} onSetOverride={(mid,side,val)=>setKoOverride(mid,side,val)} onSetResult={(mid,val)=>setKoResults(r=>({...r,[mid]:val}))} ownership={ownership} initials={koInitials} readOnly={readOnly}/>);})}
+      {(()=>{
+        const today=new Date().toLocaleDateString("en-CA");
+        const byDate={};
+        (roundMatches[activeRound]||[]).forEach(m=>{(byDate[m.d]=byDate[m.d]||[]).push(m);});
+        const dates=Object.keys(byDate).sort();
+        return dates.map(date=>{
+          const matches=byDate[date];
+          const isToday=date===today;
+          const scored=matches.filter(m=>koResults[m.id]).length;
+          return(
+            <div key={date} style={{marginBottom:18,marginTop:8,borderRadius:isToday?10:0,border:isToday?"1px solid rgba(201,168,76,0.2)":"none",background:isToday?"rgba(201,168,76,0.03)":"transparent",padding:isToday?"10px":"0"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingTop:4}}>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:isToday?20:16,letterSpacing:3,color:isToday?"var(--accent)":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
+                {isToday&&<div style={{padding:"2px 10px",borderRadius:10,background:"rgba(201,168,76,0.25)",border:"1px solid rgba(201,168,76,0.5)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:2}}>⚡ {t(lang,"today")}</div>}
+                <div style={{flex:1,height:isToday?2:1,background:isToday?"rgba(201,168,76,0.4)":"rgba(138,153,180,0.2)"}}/>
+                <span style={{fontFamily:"'DM Sans'",fontSize:10,color:isToday?"var(--accent)":"#5a6a8a",fontWeight:isToday?600:400}}>{scored}/{matches.length}</span>
+              </div>
+              {matches.map(m=>{const bk=bracket[m.id];return(<KoMatchCard key={m.id} match={m} teamA={bk?.a||null} teamB={bk?.b||null} result={koResults[m.id]} onSetOverride={(mid,side,val)=>setKoOverride(mid,side,val)} onSetResult={(mid,val)=>setKoResults(r=>({...r,[mid]:val}))} ownership={ownership} initials={koInitials} readOnly={readOnly} playerNames={config.playerNames||[]}/>);})}
+            </div>
+          );
+        });
+      })()}
     </div>
   );
 }
@@ -1906,7 +2021,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
     return Array.from({length:config.playerCount},(_,i)=>{
       const gsPts=playerGSPts(i,picks||[],matchResults);
       const koPts=playerKOPts(i,picks||[],bracket,koResults,config.koPoints);
-      const r32=KM.filter(m=>m.round==="r32").filter(m=>{const r=koResults[m.id];if(!r)return false;const b=bracket[m.id];if(!b)return false;const w=r==="A"?b.a:b.b;return w&&(picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team).includes(w);}).length;
+      const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(koResults[m.id]);if(!w0)return false;const b=bracket[m.id];if(!b)return false;const w=w0==="A"?b.a:b.b;return w&&(picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team).includes(w);}).length;
       const myTeams=(picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);
       const teamBreakdown=myTeams.map(t=>{
         const tgs=teamGSPts(t,matchResults);
@@ -1926,6 +2041,13 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         GM.forEach(m=>{
           const r=matchResults[m.id];if(!r||r.home==null||r.away==null)return;
           const isHome=m.t[0]===team,isAway=m.t[1]===team;
+          if(isHome){gf+=r.home;gd+=(r.home-r.away);}
+          else if(isAway){gf+=r.away;gd+=(r.away-r.home);}
+        });
+        KM.forEach(m=>{
+          const r=koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;
+          const bk=bracket[m.id];if(!bk)return;
+          const isHome=bk.a===team,isAway=bk.b===team;
           if(isHome){gf+=r.home;gd+=(r.home-r.away);}
           else if(isAway){gf+=r.away;gd+=(r.away-r.home);}
         });
@@ -2024,7 +2146,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         const pos=standings.findIndex(s=>s.team===team);
         return pos<=1;
       }).length;
-      const r32=KM.filter(m=>m.round==="r32").filter(m=>{const r=koResults[m.id];if(!r)return false;const b=bracket[m.id];if(!b)return false;const w=r==="A"?b.a:b.b;return w&&myTeams.includes(w);}).length;
+      const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(koResults[m.id]);if(!w0)return false;const b=bracket[m.id];if(!b)return false;const w=w0==="A"?b.a:b.b;return w&&myTeams.includes(w);}).length;
       return{idx:i,total:gs+ko,pastGroups,r32,gd,gf};
     }).sort((a,b)=>b.total-a.total||b.pastGroups-a.pastGroups||b.r32-a.r32||b.gd-a.gd||b.gf-a.gf||a.idx-b.idx);
     const yesterdayRankMap={};
@@ -3725,7 +3847,7 @@ export default function Mundialito() {
   const initials=useMemo(()=>getInitials(st.config.playerNames||[]),[st.config.playerNames]);
   const anyGroupDone=useMemo(()=>Object.keys(GROUPS).some(g=>GM.filter(m=>m.g===g).every(m=>st.matchResults[m.id]!=null)),[st.matchResults]);
   const resolvedBracket=useMemo(()=>resolveKOBracket(st.matchResults,st.koResults,st.koOverrides),[st.matchResults,st.koResults,st.koOverrides]);
-  const playerRankings=useMemo(()=>{return Array.from({length:st.config.playerCount},(_,i)=>{const gsPts=playerGSPts(i,st.picks||[],st.matchResults);const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);let gd=0,gf=0;myTeams.forEach(team=>{GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]===team,isAway=m.t[1]===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});});const pastGroups=myTeams.filter(team=>{const grp=Object.entries(GROUPS).find(([,ts])=>ts.includes(team))?.[0];if(!grp)return false;const grpMs=GM.filter(m=>m.g===grp);if(!grpMs.every(m=>st.matchResults[m.id]!=null))return false;const s=groupStandings(grp,st.matchResults);return s.findIndex(x=>x.team===team)<=1;}).length;const r32=KM.filter(m=>m.round==="r32").filter(m=>{const r=st.koResults[m.id];if(!r)return false;const bk=resolvedBracket[m.id];if(!bk)return false;const w=r==="A"?bk.a:bk.b;return w&&myTeams.includes(w);}).length;return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,pastGroups,r32,gd,gf,myTeams};}).sort((a,b)=>{if(b.total!==a.total)return b.total-a.total;if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;if(b.r32!==a.r32)return b.r32-a.r32;if(b.gd!==a.gd)return b.gd-a.gd;if(b.gf!==a.gf)return b.gf-a.gf;let aWins=0,bWins=0,aGD=0,bGD=0,aGF=0,bGF=0;GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const aH=a.myTeams.includes(m.t[0]),aA=a.myTeams.includes(m.t[1]),bH=b.myTeams.includes(m.t[0]),bA=b.myTeams.includes(m.t[1]);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});if(aWins!==bWins)return bWins-aWins;if(aGD!==bGD)return bGD-aGD;if(aGF!==bGF)return bGF-aGF;const draftOrd=st.draftOrder||[];const aPick=draftOrd.indexOf(a.idx);const bPick=draftOrd.indexOf(b.idx);if(aPick!==-1&&bPick!==-1)return aPick-bPick;return a.idx-b.idx;});},[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
+  const playerRankings=useMemo(()=>{return Array.from({length:st.config.playerCount},(_,i)=>{const gsPts=playerGSPts(i,st.picks||[],st.matchResults);const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);let gd=0,gf=0;myTeams.forEach(team=>{GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]===team,isAway=m.t[1]===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const isHome=bk.a===team,isAway=bk.b===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});});const pastGroups=myTeams.filter(team=>{const grp=Object.entries(GROUPS).find(([,ts])=>ts.includes(team))?.[0];if(!grp)return false;const grpMs=GM.filter(m=>m.g===grp);if(!grpMs.every(m=>st.matchResults[m.id]!=null))return false;const s=groupStandings(grp,st.matchResults);return s.findIndex(x=>x.team===team)<=1;}).length;const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(st.koResults[m.id]);if(!w0)return false;const bk=resolvedBracket[m.id];if(!bk)return false;const w=w0==="A"?bk.a:bk.b;return w&&myTeams.includes(w);}).length;return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,pastGroups,r32,gd,gf,myTeams};}).sort((a,b)=>{if(b.total!==a.total)return b.total-a.total;if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;if(b.r32!==a.r32)return b.r32-a.r32;if(b.gd!==a.gd)return b.gd-a.gd;if(b.gf!==a.gf)return b.gf-a.gf;let aWins=0,bWins=0,aGD=0,bGD=0,aGF=0,bGF=0;GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const aH=a.myTeams.includes(m.t[0]),aA=a.myTeams.includes(m.t[1]),bH=b.myTeams.includes(m.t[0]),bA=b.myTeams.includes(m.t[1]);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});if(aWins!==bWins)return bWins-aWins;if(aGD!==bGD)return bGD-aGD;if(aGF!==bGF)return bGF-aGF;const draftOrd=st.draftOrder||[];const aPick=draftOrd.indexOf(a.idx);const bPick=draftOrd.indexOf(b.idx);if(aPick!==-1&&bPick!==-1)return aPick-bPick;return a.idx-b.idx;});},[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
   const syncCode=useMemo(()=>encode(st),[st]);
   const readOnly=!isHost;
 

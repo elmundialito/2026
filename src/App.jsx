@@ -1980,12 +1980,12 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
 }
 
 function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
+  const [open,setOpen]=useState(false);
   const [odds,setOdds]=useState(null);
   const [loading,setLoading]=useState(false);
   const [lastFetched,setLastFetched]=useState(null);
   const [err,setErr]=useState(null);
 
-  // Map Polymarket team names to our internal team names
   const POLY_TO_TEAM={
     'France':'FRANCE','Spain':'SPAIN','Argentina':'ARGENTINA','England':'ENGLAND',
     'Portugal':'PORTUGAL','Germany':'GERMANY','Brazil':'BRAZIL','Netherlands':'NETHERLANDS',
@@ -2007,7 +2007,7 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
 
   const fetchOdds=async()=>{
     setLoading(true);setErr(null);
-    try {
+    try{
       const res=await fetch('https://gamma-api.polymarket.com/events?slug=world-cup-winner');
       const data=await res.json();
       const markets=data[0]?.markets||[];
@@ -2017,58 +2017,81 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
         const name=(m.groupItemTitle||m.question||'').replace(/Will (.+) win.*/i,'$1').trim();
         return{name,pct:Math.round(price*100)};
       }).filter(t=>t.pct>=1).sort((a,b)=>b.pct-a.pct);
-      setOdds(teams);
-      setLastFetched(new Date());
-    }catch(e){setErr('Could not load odds. Try again.');}
+      setOdds(teams);setLastFetched(new Date());
+    }catch(e){setErr(lang==="es"?"No se pudieron cargar. Intenta de nuevo.":"Could not load odds. Try again.");}
     setLoading(false);
   };
 
+  const handleOpen=()=>{setOpen(true);fetchOdds();};
   const fmtTime=d=>d?d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):null;
 
-  return(
-    <div style={{background:"linear-gradient(135deg,rgba(201,168,76,0.06),rgba(26,39,68,0.4))",border:"1px solid rgba(201,168,76,0.2)",borderRadius:12,padding:"12px 14px",marginBottom:16}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+  return(<>
+    {/* Tappable banner */}
+    <button onClick={handleOpen} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(135deg,rgba(201,168,76,0.08),rgba(26,39,68,0.5))",border:"1px solid rgba(201,168,76,0.25)",borderRadius:12,padding:"12px 16px",marginBottom:14,cursor:"pointer",textAlign:"left"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:20}}>🏆</span>
         <div>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:"var(--accent)"}}>{lang==="es"?"🏆 MÁS PROBABLE GANADOR":"🏆 MOST LIKELY TO WIN"}</div>
-          <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",marginTop:1}}>
-            {lang==="es"?"Polymarket · probabilidad en tiempo real":"Polymarket · live probability"}
-            {lastFetched&&<span> · {lang==="es"?"actualizado":"updated"} {fmtTime(lastFetched)}</span>}
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:"var(--accent)"}}>{lang==="es"?"MÁS PROBABLE GANADOR":"MOST LIKELY TO WIN"}</div>
+          <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a"}}>Polymarket · {lang==="es"?"probabilidad en vivo":"live probability"}</div>
+        </div>
+      </div>
+      <span style={{fontFamily:"'Bebas Neue'",fontSize:12,color:"var(--accent)",letterSpacing:1,flexShrink:0}}>TAP TO VIEW →</span>
+    </button>
+
+    {/* Modal */}
+    {open&&(
+      <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0 0 0 0"}} onClick={()=>setOpen(false)}>
+        <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,maxHeight:"85vh",background:"linear-gradient(165deg,#0a1628,#0f1e38)",borderRadius:"16px 16px 0 0",border:"1px solid rgba(201,168,76,0.25)",borderBottom:"none",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          {/* Header */}
+          <div style={{padding:"16px 18px 12px",borderBottom:"1px solid #1e2f50",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+            <div>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"var(--accent)"}}>🏆 {lang==="es"?"MÁS PROBABLE GANADOR":"MOST LIKELY TO WIN"}</div>
+              <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",marginTop:2}}>
+                Polymarket · {lang==="es"?"probabilidad en vivo":"live probability"}
+                {lastFetched&&<span> · {lang==="es"?"actualizado":"updated"} {fmtTime(lastFetched)}</span>}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <button onClick={e=>{e.stopPropagation();fetchOdds();}} disabled={loading} style={{padding:"5px 10px",borderRadius:7,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1,cursor:loading?"default":"pointer",opacity:loading?0.6:1}}>
+                {loading?"...":"↻"}
+              </button>
+              <button onClick={()=>setOpen(false)} style={{width:28,height:28,borderRadius:7,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+            </div>
+          </div>
+          {/* Content */}
+          <div style={{overflowY:"auto",padding:"12px 18px 20px",flex:1}}>
+            {err&&<div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#d97757",marginBottom:8}}>{err}</div>}
+            {loading&&!odds&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",padding:"20px 0"}}>Loading...</div>}
+            {odds&&(
+              <div style={{display:"flex",flexDirection:"column",gap:7}}>
+                {odds.map((team,i)=>{
+                  const internalName=POLY_TO_TEAM[team.name]||team.name.toUpperCase();
+                  const tm=TBN[internalName];
+                  const o=ownership[internalName];
+                  const pcolor=o?getPlayerColor(o.playerIdx,PC[o.playerIdx]):"#8899b4";
+                  const barColor=o?pcolor:"rgba(201,168,76,0.5)";
+                  const barW=Math.round(team.pct/odds[0].pct*100);
+                  return(
+                    <div key={team.name} style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#5a6a8a",width:16,textAlign:"right",flexShrink:0}}>{i+1}</span>
+                      <span style={{fontSize:14,flexShrink:0}}>{tm?.flag||"🏳️"}</span>
+                      <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:pcolor,width:95,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tm?countryName(internalName,lang):team.name}</span>
+                      {o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16} playerName={playerNames[o.playerIdx]||""}/>}
+                      <div style={{flex:1,height:6,borderRadius:3,background:"rgba(26,39,68,0.8)",overflow:"hidden"}}>
+                        <div style={{height:"100%",width:barW+"%",borderRadius:3,background:barColor,transition:"width 0.4s"}}/>
+                      </div>
+                      <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,width:32,textAlign:"right",flexShrink:0}}>{team.pct}%</span>
+                    </div>
+                  );
+                })}
+                <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#c8c0b0",marginTop:6}}>{lang==="es"?"Todos los demás <1%":"All others <1%"}</div>
+              </div>
+            )}
           </div>
         </div>
-        <button onClick={fetchOdds} disabled={loading} style={{padding:"6px 12px",borderRadius:8,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,cursor:loading?"default":"pointer",opacity:loading?0.6:1}}>
-          {loading?"...":(lang==="es"?"↻ ACTUALIZAR":"↻ REFRESH")}
-        </button>
       </div>
-      {err&&<div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#d97757",marginBottom:8}}>{err}</div>}
-      {!odds&&!loading&&(
-        <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",textAlign:"center",padding:"10px 0"}}>{lang==="es"?"Toca actualizar para ver los favoritos":"Tap refresh to load latest odds"}</div>
-      )}
-      {odds&&(
-        <div style={{display:"flex",flexDirection:"column",gap:5}}>
-          {odds.map((team,i)=>{
-            const internalName=POLY_TO_TEAM[team.name]||team.name.toUpperCase();
-            const tm=TBN[internalName];
-            const o=ownership[internalName];
-            const pcolor=o?PC[o.playerIdx]:"#e0dcd4";
-            const barW=Math.round(team.pct/odds[0].pct*100);
-            return(
-              <div key={team.name} style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#5a6a8a",width:14,textAlign:"right",flexShrink:0}}>{i+1}</span>
-                <span style={{fontSize:13,flexShrink:0}}>{tm?.flag||"🏳️"}</span>
-                <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:pcolor,width:90,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tm?countryName(internalName,lang):team.name}</span>
-                {o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16} playerName={playerNames[o.playerIdx]||""}/>}
-                <div style={{flex:1,height:6,borderRadius:3,background:"rgba(26,39,68,0.6)",overflow:"hidden"}}>
-                  <div style={{height:"100%",width:barW+"%",borderRadius:3,background:o?pcolor:"rgba(201,168,76,0.5)",transition:"width 0.3s"}}/>
-                </div>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,width:30,textAlign:"right",flexShrink:0,letterSpacing:0.5}}>{team.pct}%</span>
-              </div>
-            );
-          })}
-          <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",marginTop:4}}>{lang==="es"?"Todos los demás <1%":"All others <1%"}</div>
-        </div>
-      )}
-    </div>
-  );
+    )}
+  </>);
 }
 
 function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false,playerRankings=[],groupOrderOverride={}}) {

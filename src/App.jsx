@@ -390,29 +390,29 @@ const fmtDate = (dateStr, lang="en") => {
 // ── Pre-match odds [home%, draw%, away%] — all sum to exactly 100 ──
 const MATCH_ODDS = {
   // Group A
-  G01:[68,21,11], G02:[38,31,31], G25:[55,25,20], G28:[49,28,23], G53:[19,24,57], G54:[17,23,60],
+  G01:[68,21,11], G02:[38,31,31], G25:[55,25,20], G28:[49,28,23], G53:[26,24,50], G54:[16,24,60],
   // Group B
-  G03:[54,27,19], G05:[6,12,82],  G26:[62,23,15], G27:[77,16,7],  G49:[45,28,27], G50:[59,25,16],
+  G03:[54,27,19], G05:[6,12,82],  G26:[62,23,15], G27:[77,16,7],  G49:[38,31,31], G50:[66,19,15],
   // Group C
-  G06:[59,25,16], G07:[16,22,62], G30:[17,26,57], G31:[88,8,4],   G51:[14,19,67], G52:[72,18,10],
+  G06:[59,25,16], G07:[16,22,62], G30:[17,26,57], G31:[88,8,4],   G51:[12,19,69], G52:[81,13,6],
   // Group D
-  G04:[47,30,23], G08:[17,26,57], G29:[62,21,17], G32:[48,28,24], G59:[36,27,37], G60:[44,29,27],
+  G04:[47,30,23], G08:[17,26,57], G29:[62,21,17], G32:[48,28,24], G59:[28,23,49], G60:[34,42,24],
   // Group E
-  G09:[93,5,2],   G11:[29,33,38], G34:[64,20,16], G35:[88,8,4],   G55:[4,8,88],   G56:[20,26,54],
+  G09:[93,5,2],   G11:[29,33,38], G34:[64,20,16], G35:[88,8,4],   G55:[6,12,82],   G56:[27,24,49],
   // Group F
-  G10:[49,27,24], G12:[51,28,21], G33:[58,23,19], G36:[13,23,64], G57:[44,28,28], G58:[10,19,71],
+  G10:[49,27,24], G12:[51,28,21], G33:[58,23,19], G36:[13,23,64], G57:[49,27,24], G58:[4,12,84],
   // Group G
-  G14:[66,21,13], G16:[55,27,18], G38:[70,19,11], G40:[15,26,59], G65:[43,31,26], G66:[8,15,77],
+  G14:[66,21,13], G16:[55,27,18], G38:[70,19,11], G40:[15,26,59], G65:[40,34,26], G66:[7,13,80],
   // Group H
-  G13:[90,7,3],   G15:[11,21,68], G37:[89,7,4],   G39:[63,23,14], G63:[34,29,37], G64:[16,22,62],
+  G13:[90,7,3],   G15:[11,21,68], G37:[89,7,4],   G39:[63,23,14], G63:[40,27,33], G64:[14,23,63],
   // Group I
-  G17:[67,21,12], G18:[5,12,83],  G42:[86,10,4],  G43:[45,28,27], G61:[22,25,53], G62:[67,21,12],
+  G17:[67,21,12], G18:[5,12,83],  G42:[86,10,4],  G43:[45,28,27], G61:[23,25,52], G62:[73,18,9],
   // Group J
-  G19:[71,20,9],  G20:[73,17,10], G41:[58,25,17], G44:[16,23,61], G71:[8,16,76],  G72:[27,29,44],
+  G19:[71,20,9],  G20:[73,17,10], G41:[58,25,17], G44:[16,23,61], G71:[9,13,78],  G72:[31,34,35],
   // Group K
-  G21:[77,16,7],  G24:[9,19,72],  G45:[80,14,6],  G48:[67,20,13], G69:[27,29,44], G70:[41,28,31],
+  G21:[77,16,7],  G24:[9,19,72],  G45:[80,14,6],  G48:[63,22,15], G69:[26,27,47], G70:[45,27,28],
   // Group L
-  G22:[57,25,18], G23:[43,29,28], G46:[72,19,9],  G47:[16,23,61], G67:[10,16,74], G68:[57,25,18],
+  G22:[57,25,18], G23:[43,29,28], G46:[79,14,7],  G47:[14,23,63], G67:[10,13,77], G68:[59,24,17],
 };
 
 const fmtKickoff = (dateStr, timeUTC) => {
@@ -477,9 +477,11 @@ function groupStandings(grp, res, override) {
     const[a,b]=m.t; s[a].P++;s[b].P++;s[a].GF+=r.home;s[a].GA+=r.away;s[a].GD+=r.home-r.away;s[b].GF+=r.away;s[b].GA+=r.home;s[b].GD+=r.away-r.home;
     if(out==="A"){s[a].W++;s[a].Pts+=3;s[b].L++;}else if(out==="B"){s[b].W++;s[b].Pts+=3;s[a].L++;}else{s[a].D++;s[a].Pts++;s[b].D++;s[b].Pts++;}
   });
-  // Host manual override (e.g. yellow cards / FIFA ranking tiebreaker the app can't calculate) takes priority
-  if(Array.isArray(override)&&override.length===GROUPS[grp].length&&override.every(t=>GROUPS[grp].includes(t))){
-    return override.map(t=>({team:t,...s[t]}));
+  // Host manual override (e.g. yellow cards / FIFA ranking tiebreaker the app can't calculate) takes priority,
+  // but only while the snapshot of completed matches it was based on hasn't changed — a new result auto-clears it
+  const completedCount=grpMatches.filter(m=>res[m.id]!=null).length;
+  if(override&&Array.isArray(override.order)&&override.order.length===GROUPS[grp].length&&override.order.every(t=>GROUPS[grp].includes(t))&&override.matchesPlayedAtSet===completedCount){
+    return override.order.map(t=>({team:t,...s[t]}));
   }
   // H2H mini-table among tied teams (FIFA tiebreaker: H2H pts → H2H GD → H2H GF, before overall GD/GF)
   const h2h=(a,b)=>{
@@ -1331,11 +1333,12 @@ function GroupStandingsAccordion({g,res,ownership,initials,isHost,groupOverride,
   const lang=useContext(LangContext);
   const [open,setOpen]=useState(false);
   const [reordering,setReordering]=useState(false);
+  const completedCount=useMemo(()=>GM.filter(m=>m.g===g).filter(m=>res[m.id]!=null).length,[g,res]);
+  const isOverridden=!!(groupOverride&&Array.isArray(groupOverride.order)&&groupOverride.order.length===4&&groupOverride.matchesPlayedAtSet===completedCount);
   const s=useMemo(()=>groupStandings(g,res,groupOverride),[g,res,groupOverride]);
   const autoOrder=useMemo(()=>groupStandings(g,res).map(r=>r.team),[g,res]);
-  const isOverridden=Array.isArray(groupOverride)&&groupOverride.length===4;
   const [draftOrder,setDraftOrder]=useState(null);
-  const startReorder=()=>{setDraftOrder(isOverridden?[...groupOverride]:[...autoOrder]);setReordering(true);};
+  const startReorder=()=>{setDraftOrder(isOverridden?[...groupOverride.order]:[...autoOrder]);setReordering(true);};
   const moveTeam=(idx,dir)=>{
     setDraftOrder(prev=>{
       const arr=[...prev];const swapIdx=idx+dir;
@@ -1344,6 +1347,12 @@ function GroupStandingsAccordion({g,res,ownership,initials,isHost,groupOverride,
       return arr;
     });
   };
+  // Clean up stale override from saved state once a new match makes it invalid (host only)
+  useEffect(()=>{
+    if(isHost&&groupOverride&&Array.isArray(groupOverride.order)&&groupOverride.matchesPlayedAtSet!==completedCount&&setGroupOverride){
+      setGroupOverride(g,null);
+    }
+  },[completedCount,isHost]);
   return(
     <div style={{background:"rgba(26,39,68,0.2)",borderRadius:10,border:"1px solid #1e2f50",marginBottom:6,overflow:"hidden"}}>
       <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",padding:"11px 14px",border:"none",background:"transparent",display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left"}}>
@@ -1375,7 +1384,7 @@ function GroupStandingsAccordion({g,res,ownership,initials,isHost,groupOverride,
                 </div>
               );})}
               <div style={{display:"flex",gap:6,marginTop:10}}>
-                <button onClick={()=>{setGroupOverride(g,draftOrder);setReordering(false);}} style={{flex:1,padding:"7px 0",borderRadius:6,border:"none",background:"var(--accent)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:1.5,cursor:"pointer"}}>SAVE</button>
+                <button onClick={()=>{setGroupOverride(g,{order:draftOrder,matchesPlayedAtSet:completedCount});setReordering(false);}} style={{flex:1,padding:"7px 0",borderRadius:6,border:"none",background:"var(--accent)",color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:1.5,cursor:"pointer"}}>SAVE</button>
                 <button onClick={()=>setReordering(false)} style={{padding:"7px 12px",borderRadius:6,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontSize:11,cursor:"pointer"}}>{lang==="es"?"Cancelar":"Cancel"}</button>
               </div>
             </div>

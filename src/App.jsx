@@ -1979,6 +1979,98 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
   );
 }
 
+function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
+  const [odds,setOdds]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const [lastFetched,setLastFetched]=useState(null);
+  const [err,setErr]=useState(null);
+
+  // Map Polymarket team names to our internal team names
+  const POLY_TO_TEAM={
+    'France':'FRANCE','Spain':'SPAIN','Argentina':'ARGENTINA','England':'ENGLAND',
+    'Portugal':'PORTUGAL','Germany':'GERMANY','Brazil':'BRAZIL','Netherlands':'NETHERLANDS',
+    'USA':'USA','Norway':'NORWAY','Japan':'JAPAN','Morocco':'MOROCCO',
+    'Colombia':'COLOMBIA','Mexico':'MEXICO','Belgium':'BELGIUM','Switzerland':'SWITZERLAND',
+    'Senegal':'SENEGAL','Croatia':'CROATIA','Uruguay':'URUGUAY','Ecuador':'ECUADOR',
+    'Austria':'AUSTRIA','Canada':'CANADA','Australia':'AUSTRALIA','South Korea':'SOUTH KOREA',
+    'Sweden':'SWEDEN','Scotland':'SCOTLAND','Ivory Coast':'IVORY COAST',
+    "Côte d'Ivoire":'IVORY COAST',"Cote d'Ivoire":'IVORY COAST',
+    'DR Congo':'DR CONGO','Cape Verde':'CAPE VERDE','Saudi Arabia':'SAUDI ARABIA',
+    'New Zealand':'NEW ZEALAND','Paraguay':'PARAGUAY','Iraq':'IRAQ',
+    'Algeria':'ALGERIA','Tunisia':'TUNISIA','Iran':'IRAN','Panama':'PANAMA',
+    'Ghana':'GHANA','Qatar':'QATAR','Bosnia-Herzegovina':'BOSNIA AND HERZEGOVINA',
+    'Bosnia and Herzegovina':'BOSNIA AND HERZEGOVINA','Czechia':'CZECHIA',
+    'Egypt':'EGYPT','Uzbekistan':'UZBEKISTAN','Turkey':'TÜRKIYE','Turkiye':'TÜRKIYE',
+    'Jordan':'JORDAN','Haiti':'HAITI','Curacao':'CURAÇAO','Curaçao':'CURAÇAO',
+    'South Africa':'SOUTH AFRICA',
+  };
+
+  const fetchOdds=async()=>{
+    setLoading(true);setErr(null);
+    try {
+      const res=await fetch('https://gamma-api.polymarket.com/events?slug=world-cup-winner');
+      const data=await res.json();
+      const markets=data[0]?.markets||[];
+      const teams=markets.map(m=>{
+        let price=0;
+        try{const prices=JSON.parse(m.outcomePrices||'[]');price=parseFloat(prices[0])||0;}catch(e){}
+        const name=(m.groupItemTitle||m.question||'').replace(/Will (.+) win.*/i,'$1').trim();
+        return{name,pct:Math.round(price*100)};
+      }).filter(t=>t.pct>=1).sort((a,b)=>b.pct-a.pct);
+      setOdds(teams);
+      setLastFetched(new Date());
+    }catch(e){setErr('Could not load odds. Try again.');}
+    setLoading(false);
+  };
+
+  const fmtTime=d=>d?d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):null;
+
+  return(
+    <div style={{background:"linear-gradient(135deg,rgba(201,168,76,0.06),rgba(26,39,68,0.4))",border:"1px solid rgba(201,168,76,0.2)",borderRadius:12,padding:"12px 14px",marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,color:"var(--accent)"}}>{lang==="es"?"🏆 MÁS PROBABLE GANADOR":"🏆 MOST LIKELY TO WIN"}</div>
+          <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",marginTop:1}}>
+            {lang==="es"?"Polymarket · probabilidad en tiempo real":"Polymarket · live probability"}
+            {lastFetched&&<span> · {lang==="es"?"actualizado":"updated"} {fmtTime(lastFetched)}</span>}
+          </div>
+        </div>
+        <button onClick={fetchOdds} disabled={loading} style={{padding:"6px 12px",borderRadius:8,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.08)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,cursor:loading?"default":"pointer",opacity:loading?0.6:1}}>
+          {loading?"...":(lang==="es"?"↻ ACTUALIZAR":"↻ REFRESH")}
+        </button>
+      </div>
+      {err&&<div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#d97757",marginBottom:8}}>{err}</div>}
+      {!odds&&!loading&&(
+        <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",textAlign:"center",padding:"10px 0"}}>{lang==="es"?"Toca actualizar para ver los favoritos":"Tap refresh to load latest odds"}</div>
+      )}
+      {odds&&(
+        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+          {odds.map((team,i)=>{
+            const internalName=POLY_TO_TEAM[team.name]||team.name.toUpperCase();
+            const tm=TBN[internalName];
+            const o=ownership[internalName];
+            const pcolor=o?PC[o.playerIdx]:"#e0dcd4";
+            const barW=Math.round(team.pct/odds[0].pct*100);
+            return(
+              <div key={team.name} style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#5a6a8a",width:14,textAlign:"right",flexShrink:0}}>{i+1}</span>
+                <span style={{fontSize:13,flexShrink:0}}>{tm?.flag||"🏳️"}</span>
+                <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:pcolor,width:90,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tm?countryName(internalName,lang):team.name}</span>
+                {o&&<OwnerChip playerIdx={o.playerIdx} initials={initials} size={16} playerName={playerNames[o.playerIdx]||""}/>}
+                <div style={{flex:1,height:6,borderRadius:3,background:"rgba(26,39,68,0.6)",overflow:"hidden"}}>
+                  <div style={{height:"100%",width:barW+"%",borderRadius:3,background:o?pcolor:"rgba(201,168,76,0.5)",transition:"width 0.3s"}}/>
+                </div>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,width:30,textAlign:"right",flexShrink:0,letterSpacing:0.5}}>{team.pct}%</span>
+              </div>
+            );
+          })}
+          <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",marginTop:4}}>{lang==="es"?"Todos los demás <1%":"All others <1%"}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false,playerRankings=[],groupOrderOverride={}}) {
   const lang=useContext(LangContext);
   const [activeRound,setActiveRound]=useState("r32");
@@ -2003,6 +2095,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           <div style={{display:"flex",flexWrap:"wrap",gap:5}}>{top8.map((t,i)=>{const tm=TBN[t.team];const o=ownership[t.team];return(<div key={t.team} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 9px",borderRadius:7,background:o?`${PC[o.playerIdx]}15`:"rgba(26,39,68,0.4)",border:`1px solid ${o?PC[o.playerIdx]+"44":"#2a3a5c"}`}}><span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#5a6a8a",width:10,textAlign:"center"}}>{i+1}</span><span style={{fontSize:13}}>{tm?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:o?PC[o.playerIdx]:"#e0dcd4"}}>{shortName(t.team)}</span></div>);})}</div>
         </div>
       )}
+      <TournamentWinnerWidget ownership={ownership} initials={koInitials} lang={lang} playerNames={config.playerNames||[]}/>
       <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto"}}>
         {ROUND_ORDER.map(r=>{const active=activeRound===r;const cnt=roundMatches[r]?.length||0;const done=roundMatches[r]?.filter(m=>koResults[m.id]).length||0;return(<button key={r} onClick={()=>setActiveRound(r)} style={{padding:"7px 12px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1.5,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}}>{KO_LABELS[r]}<span style={{fontFamily:"'DM Sans'",fontSize:9,color:active?"#c9a84c88":"#3d5070",marginLeft:5}}>{done}/{cnt}</span></button>);})}
       </div>

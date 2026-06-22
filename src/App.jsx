@@ -1620,18 +1620,19 @@ function ScheduleView({matchesByDate,today,todaySGT,matchResults,ownership,onSet
   const scrollTargetRef=useRef(null);
 
   // Last fully completed day = last day where ALL matches have scores
-  // Collapse threshold: the earliest day that has at least one score entered.
-  // Everything before that day collapses, since we're clearly into a new matchday.
-  const firstActiveDay=useMemo(()=>{
+  // Collapse threshold: the latest day that has at least one score entered.
+  // Everything before that day collapses — as soon as a new matchday starts, previous days collapse.
+  const lastActiveDay=useMemo(()=>{
+    let last=null;
     for(const [date,matches] of matchesByDate){
       const anyScored=matches.some(m=>matchResults[m.id]!=null);
-      if(anyScored)return date;
+      if(anyScored)last=date;
     }
-    return null;
+    return last;
   },[matchesByDate,matchResults]);
 
-  const pastDates=firstActiveDay?filteredByDate.filter(([date])=>date<firstActiveDay):[];
-  const presentFutureDates=firstActiveDay?filteredByDate.filter(([date])=>date>=firstActiveDay):filteredByDate;
+  const pastDates=lastActiveDay?filteredByDate.filter(([date])=>date<lastActiveDay):[];
+  const presentFutureDates=lastActiveDay?filteredByDate.filter(([date])=>date>=lastActiveDay):filteredByDate;
 
   // Auto-scroll to today on mount
   useEffect(()=>{

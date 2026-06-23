@@ -571,7 +571,30 @@ function playerKOPts(pi, picks, bk, kr, kp) {
 
 function teamGSPts(team,mr){let pts=0;GM.filter(m=>m.t.includes(team)).forEach(m=>{const out=getMatchOutcome(mr[m.id]);if(!out)return;const h=m.t[0]===team;if(h&&out==="A")pts+=3;else if(!h&&out==="B")pts+=3;else if(out==="D")pts+=1;});return pts;}
 function teamKOPts(team,bk,kr,kp){let pts=0;KM.forEach(m=>{const w=koWinner(kr[m.id]);if(!w)return;const b=bk[m.id];if(!b)return;const winTeam=w==="A"?b.a:b.b;if(winTeam===team)pts+=(kp[m.round]||0);});return pts;}
-function isEliminated(team,bk,kr){let inB=false;for(const m of KM){const b=bk?.[m.id];if(!b)continue;if(b.a===team||b.b===team)inB=true;const w=koWinner(kr[m.id]);if(!w)continue;const l=w==="A"?b.b:b.a;if(l===team)return true;}const kc=Object.values(kr||{}).filter(Boolean).length;if(kc>0){const f=KM.filter(m=>bk?.[m.id]?.a||bk?.[m.id]?.b).length;if(f>=8&&!inB)return true;}return false;}
+function isEliminated(team,bk,kr,mr,groupOverrides){
+  // Eliminated in group stage: finished 4th in a completed group (and not in any R32 slot via override)
+  if(mr){
+    const grp=Object.entries(GROUPS).find(([,ts])=>ts.includes(team))?.[0];
+    if(grp){
+      const grpMatches=GM.filter(m=>m.g===grp);
+      const allPlayed=grpMatches.every(m=>mr[m.id]!=null);
+      if(allPlayed){
+        const s=groupStandings(grp,mr,groupOverrides?.[grp]);
+        const pos=s.findIndex(r=>r.team===team);
+        // 4th place (pos===3) and not manually placed in bracket via override
+        if(pos===3&&!isInR32Bracket(team,bk||{}))return true;
+      }
+    }
+  }
+  // Eliminated in KO stage: lost a match
+  let inB=false;
+  for(const m of KM){const b=bk?.[m.id];if(!b)continue;if(b.a===team||b.b===team)inB=true;const w=koWinner(kr[m.id]);if(!w)continue;const l=w==="A"?b.b:b.a;if(l===team)return true;}
+  // Eliminated if not in bracket once all 32 R32 slots are fully filled (both sides of all 16 R32 matches)
+  const r32Matches=KM.filter(m=>m.round==="r32");
+  const allR32Filled=r32Matches.length>0&&r32Matches.every(m=>bk?.[m.id]?.a&&bk?.[m.id]?.b);
+  if(allR32Filled&&!inB)return true;
+  return false;
+}
 
 function generateAutoAssignment(draftOrder, teams) {
   const N=draftOrder.length; const picks=[]; const tr=Math.ceil(teams.length/N);
@@ -1329,6 +1352,186 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
   );
 }
 
+function ShareStandingsModal({onClose,matchResults,ownership,initials,config,lang,groupOrderOverride={}}) {
+  const [selected,setSelected]=useState([]);
+  const [sharing,setSharing]=useState(false);
+  const groups=Object.keys(GROUPS);
+
+  const toggle=g=>setSelected(prev=>prev.includes(g)?prev.filter(x=>x!==g):[...prev,g].slice(0,4));
+
+  const generate=async()=>{
+    if(!selected.length)return;
+    setSharing(true);
+    try{
+      const W=420,PAD=16,HEADER=56,ROW=32,TABLE_HEADER=22,GROUP_GAP=16;
+      const groupH=TABLE_HEADER+ROW*4+GROUP_GAP;
+      const H=HEADER+selected.length*groupH+PAD;
+      const canvas=document.createElement("canvas");
+      const DPR=2;
+      canvas.width=W*DPR;canvas.height=H*DPR;
+      const ctx=canvas.getContext("2d");
+      ctx.scale(DPR,DPR);
+
+      // Background
+      const bg=ctx.createLinearGradient(0,0,0,H);
+      bg.addColorStop(0,"#0a1628");bg.addColorStop(1,"#0f1e38");
+      ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+
+      // Load fonts
+      await document.fonts.ready;
+
+      // Header
+      ctx.fillStyle="rgba(201,168,76,0.08)";ctx.fillRect(0,0,W,HEADER);
+      ctx.fillStyle="rgba(201,168,76,0.3)";ctx.fillRect(0,HEADER-1,W,1);
+      ctx.textAlign="left";
+      ctx.font="700 20px 'Bebas Neue'";ctx.fillStyle="#c9a84c";ctx.letterSpacing="2px";
+      ctx.fillText("⚽ MUNDIALITO 2026",PAD,HEADER-16);
+      ctx.font="500 11px 'DM Sans'";ctx.fillStyle="#5a6a8a";ctx.letterSpacing="0px";
+      ctx.fillText("GROUP STANDINGS",PAD,HEADER-4);
+
+      // Each group
+      let y=HEADER+PAD/2;
+      for(const g of selected){
+        const s=groupStandings(g,matchResults,groupOrderOverride[g]);
+        const allPlayed=GM.filter(m=>m.g===g).every(m=>matchResults[m.id]!=null);
+
+        // Group letter header
+        ctx.font="700 14px 'Bebas Neue'";ctx.fillStyle="#c9a84c";ctx.letterSpacing="3px";
+        ctx.textAlign="left";
+        ctx.fillText(`GROUP ${g}`,PAD,y+14);
+
+        // Column headers
+        const cols=[
+          {label:"",x:PAD+22,w:120,align:"left"},
+          {label:"P",x:W-PAD-116},
+          {label:"W",x:W-PAD-90},
+          {label:"D",x:W-PAD-66},
+          {label:"L",x:W-PAD-42},
+          {label:"GD",x:W-PAD-22},
+          {label:"Pts",x:W-PAD},
+        ];
+        ctx.font="600 9px 'DM Sans'";ctx.fillStyle="#5a6a8a";ctx.letterSpacing="0.5px";
+        cols.slice(1).forEach(c=>{ctx.textAlign="center";ctx.fillText(c.label,c.x,y+14);});
+        y+=TABLE_HEADER;
+
+        // Row separator
+        ctx.fillStyle="rgba(138,153,180,0.12)";ctx.fillRect(PAD,y-2,W-PAD*2,1);
+
+        // Team rows
+        s.forEach((row,i)=>{
+          const tm=TBN[row.team];
+          const o=ownership[row.team];
+          const pcolor=o?getPlayerColor(o.playerIdx,PC[o.playerIdx]):"#e0dcd4";
+          const isTop2=i<2;
+          const is4th=i===3&&allPlayed;
+
+          // Row background
+          if(isTop2){
+            ctx.fillStyle="rgba(201,168,76,0.08)";
+            ctx.fillRect(PAD,y,W-PAD*2,ROW);
+          }
+
+          const rowMid=y+ROW/2+4;
+
+          // Position number
+          ctx.font=`700 10px 'Bebas Neue'`;
+          ctx.textAlign="center";
+          ctx.fillStyle=isTop2?"#c9a84c":is4th?"#3d5070":"#5a6a8a";
+          ctx.fillText(String(i+1),PAD+8,rowMid);
+
+          // Flag
+          ctx.font="15px serif";
+          ctx.textAlign="left";
+          ctx.fillText(tm?.flag||"",PAD+18,rowMid+1);
+
+          // Team name
+          ctx.font=`${is4th?400:500} 11px 'DM Sans'`;
+          ctx.fillStyle=is4th?"#3d5070":isTop2?"#c9a84c":pcolor;
+          ctx.textAlign="left";
+          let name=code3(row.team);
+          if(is4th){
+            // Strikethrough
+            const tw=ctx.measureText(name).width;
+            ctx.fillText(name,PAD+36,rowMid);
+            ctx.fillStyle="#3d5070";ctx.fillRect(PAD+36,rowMid-4,tw,1);
+          } else {
+            ctx.fillText(name,PAD+36,rowMid);
+          }
+
+          // Owner chip
+          if(o&&!is4th){
+            const initStr=(initials[o.playerIdx]||"?");
+            ctx.font="700 8px 'Bebas Neue'";
+            const chipW=18,chipH=14,chipX=PAD+82,chipY=y+ROW/2-7;
+            ctx.fillStyle=pcolor;
+            ctx.beginPath();ctx.roundRect(chipX,chipY,chipW,chipH,3);ctx.fill();
+            ctx.fillStyle="#0a1628";ctx.textAlign="center";
+            ctx.fillText(initStr,chipX+chipW/2,chipY+10);
+          }
+
+          // Stats
+          const stats=[row.P,row.W,row.D,row.L,row.GD>0?"+"+row.GD:String(row.GD),row.Pts];
+          const statColors=[null,null,null,null,row.GD>0?"#61a978":row.GD<0?"#d97757":null,isTop2?"#c9a84c":"#e0dcd4"];
+          cols.slice(1).forEach((c,ci)=>{
+            ctx.font=ci===5?`700 12px 'Bebas Neue'`:`400 11px 'DM Sans'`;
+            ctx.fillStyle=is4th?"#3d5070":(statColors[ci]||"#8899b4");
+            ctx.textAlign="center";
+            ctx.fillText(String(stats[ci]),c.x,rowMid);
+          });
+
+          // Row divider
+          if(i<3){ctx.fillStyle="rgba(138,153,180,0.08)";ctx.fillRect(PAD,y+ROW,W-PAD*2,1);}
+          y+=ROW;
+        });
+
+        // Gold border around group card
+        ctx.strokeStyle="rgba(201,168,76,0.2)";ctx.lineWidth=1;
+        ctx.strokeRect(PAD,HEADER+PAD/2+(selected.indexOf(g))*(groupH)-(TABLE_HEADER),W-PAD*2,TABLE_HEADER+ROW*4+4);
+
+        y+=GROUP_GAP;
+      }
+
+      // Footer
+      ctx.font="500 9px 'DM Sans'";ctx.fillStyle="#3d5070";ctx.textAlign="center";
+      ctx.fillText("elmundialito.github.io/2026",W/2,H-6);
+
+      canvas.toBlob(async blob=>{
+        try{
+          await navigator.share({files:[new File([blob],"standings.png",{type:"image/png"})]});
+        }catch{
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement("a");a.href=url;a.download="standings.png";a.click();
+          URL.revokeObjectURL(url);
+        }
+        setSharing(false);
+      },"image/png");
+    }catch(e){console.error(e);setSharing(false);}
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,background:"linear-gradient(165deg,#0a1628,#0f1e38)",borderRadius:"16px 16px 0 0",border:"1px solid rgba(201,168,76,0.25)",borderBottom:"none",padding:"20px 18px 32px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"var(--accent)"}}>📊 {lang==="es"?"COMPARTIR GRUPOS":"SHARE STANDINGS"}</div>
+          <button onClick={onClose} style={{width:28,height:28,borderRadius:7,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontSize:16,cursor:"pointer"}}>×</button>
+        </div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",marginBottom:12}}>{lang==="es"?"Selecciona hasta 4 grupos":"Select up to 4 groups"} ({selected.length}/4)</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8,marginBottom:20}}>
+          {groups.map(g=>{
+            const sel=selected.includes(g);
+            return(
+              <button key={g} onClick={()=>toggle(g)} style={{padding:"10px 0",borderRadius:8,border:sel?"2px solid var(--accent)":"2px solid #2a3a5c",background:sel?"rgba(201,168,76,0.12)":"rgba(26,39,68,0.4)",color:sel?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:1,cursor:selected.length>=4&&!sel?"default":"pointer",opacity:selected.length>=4&&!sel?0.4:1}}>{g}</button>
+            );
+          })}
+        </div>
+        <button onClick={generate} disabled={!selected.length||sharing} style={{width:"100%",padding:"13px 0",borderRadius:10,border:"none",background:selected.length?"var(--accent)":"#2a3a5c",color:selected.length?"#0a1628":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,cursor:selected.length?"pointer":"default"}}>
+          {sharing?"...":(lang==="es"?"COMPARTIR":"SHARE")} {selected.length>0?`(${selected.join(", ")})`:""}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function GroupStandingsAccordion({g,res,ownership,initials,isHost,groupOverride,setGroupOverride}) {
   const lang=useContext(LangContext);
   const [open,setOpen]=useState(false);
@@ -1706,6 +1909,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
   const [openChatId,setOpenChatId]=useState(null);
   const [openPredictId,setOpenPredictId]=useState(null);
   const [showShareDay,setShowShareDay]=useState(false);
+  const [showShareStandings,setShowShareStandings]=useState(false);
   const poolCode=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
 
   // Load profile pics as soon as this screen mounts
@@ -1804,7 +2008,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
       </div>
       <div style={{display:"flex",gap:6,marginBottom:16,alignItems:"center"}}>
         {[{id:"schedule",icon:"📅",labelKey:"matchSchedule"},{id:"standings",icon:"📊",labelKey:"groupStandings"}].map(v=>{const active=v.id===view;return <button key={v.id} onClick={()=>setView(v.id)} style={{padding:"9px 16px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>{v.icon} {t(lang,v.labelKey)}</button>;})}
-        <button onClick={()=>setShowShareDay(true)} style={{marginLeft:"auto",padding:"9px 12px",borderRadius:8,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer",flexShrink:0}}>📤</button>
+        <button onClick={()=>view==="standings"?setShowShareStandings(true):setShowShareDay(true)} style={{marginLeft:"auto",padding:"9px 12px",borderRadius:8,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer",flexShrink:0}}>📤</button>
       </div>
       {view==="schedule"&&<ScheduleView matchesByDate={matchesByDate} today={today} todaySGT={todaySGT} matchResults={matchResults} ownership={ownership} onSet={onSet} readOnly={readOnly} initials={initials} myTeams={myTeams} setOpenChatId={setOpenChatId} setOpenPredictId={setOpenPredictId} matchChat={matchChat} predictions={predictions} myPlayerIdx={myPlayerIdx} config={config} lang={lang} showPast={showPast} setShowPast={setShowPast} collapsedDays={collapsedDays} setCollapsedDays={setCollapsedDays} myTeamsOnly={myTeamsOnly}/>}
       {view==="schedule"&&myTeams.size>0&&(
@@ -1833,6 +2037,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
           />
         );
       })()}
+      {showShareStandings&&<ShareStandingsModal onClose={()=>setShowShareStandings(false)} matchResults={matchResults} ownership={ownership} initials={initials} config={config} lang={lang} groupOrderOverride={groupOrderOverride}/>}
       {openChatId&&(()=>{const m=GM.find(x=>x.id===openChatId);return m?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={m} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
       {openPredictId&&(()=>{const m=GM.find(x=>x.id===openPredictId);return m?<PredictModal open={true} onClose={()=>setOpenPredictId(null)} match={m} result={matchResults[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchPredictions={predictions[openPredictId]||{}}/>:null;})()}
     </div>
@@ -2254,7 +2459,7 @@ function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,in
   );
 }
 
-function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser,onEditProfile,onSuggestions,picRefresh=0,allPredictions={},draftOrder=[]}) {
+function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser,onEditProfile,onSuggestions,picRefresh=0,allPredictions={},draftOrder=[],groupOrderOverride={}}) {
   const lang=useContext(LangContext);
   const [expandedIdx,setExpandedIdx]=useState(null);
   const today=new Date().toLocaleDateString("en-CA");
@@ -2275,7 +2480,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           if(isHome){tgf+=r.home;tgd+=(r.home-r.away);}
           else{tgf+=r.away;tgd+=(r.away-r.home);}
         });
-        return{team:t,gsPts:tgs,koPts:tko,pts:tgs+tko,gd:tgd,gf:tgf,eliminated:isEliminated(t,bracket,koResults)};
+        return{team:t,gsPts:tgs,koPts:tko,pts:tgs+tko,gd:tgd,gf:tgf,eliminated:isEliminated(t,bracket,koResults,matchResults,groupOrderOverride)};
       }).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf||a.team.localeCompare(b.team));
       let gd=0,gf=0;
       myTeams.forEach(team=>{
@@ -4157,7 +4362,7 @@ export default function Mundialito() {
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
     if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx} onPicsLoaded={()=>setPicRefresh(n=>n+1)} onPredictionsUpdate={p=>setAllPredictions(p)} bracket={resolvedBracket} koResults={st.koResults} playerRankings={playerRankings} groupOrderOverride={st.groupOrderOverride||{}} setGroupOrderOverride={(grp,order)=>setSt(p=>{const next={...(p.groupOrderOverride||{})};if(order)next[grp]=order;else delete next[grp];return{...p,groupOrderOverride:next};})}/>;
     if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly} isPreview={isHost&&!anyGroupDone} playerRankings={playerRankings} groupOrderOverride={st.groupOrderOverride||{}}/>;
-    if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} onSuggestions={()=>setShowSuggestions(true)} picRefresh={picRefresh} allPredictions={allPredictions} draftOrder={st.draftOrder||[]}/>;
+    if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} onSuggestions={()=>setShowSuggestions(true)} picRefresh={picRefresh} allPredictions={allPredictions} draftOrder={st.draftOrder||[]} groupOrderOverride={st.groupOrderOverride||{}}/>;
     return null;
   };
 

@@ -1363,9 +1363,9 @@ function ShareStandingsModal({onClose,matchResults,ownership,initials,config,lan
     if(!selected.length)return;
     setSharing(true);
     try{
-      const W=420,PAD=16,HEADER=56,ROW=32,TABLE_HEADER=22,GROUP_GAP=16;
+      const W=420,PAD=16,HEADER=56,ROW=34,TABLE_HEADER=26,GROUP_GAP=12;
       const groupH=TABLE_HEADER+ROW*4+GROUP_GAP;
-      const H=HEADER+selected.length*groupH+PAD;
+      const H=HEADER+10+selected.length*groupH+16;
       const canvas=document.createElement("canvas");
       const DPR=2;
       canvas.width=W*DPR;canvas.height=H*DPR;
@@ -1382,118 +1382,125 @@ function ShareStandingsModal({onClose,matchResults,ownership,initials,config,lan
 
       // Header
       ctx.fillStyle="rgba(201,168,76,0.08)";ctx.fillRect(0,0,W,HEADER);
-      ctx.fillStyle="rgba(201,168,76,0.3)";ctx.fillRect(0,HEADER-1,W,1);
-      ctx.textAlign="left";
-      ctx.font="700 20px 'Bebas Neue'";ctx.fillStyle="#c9a84c";ctx.letterSpacing="2px";
-      ctx.fillText("⚽ MUNDIALITO 2026",PAD,HEADER-16);
-      ctx.font="500 11px 'DM Sans'";ctx.fillStyle="#5a6a8a";ctx.letterSpacing="0px";
-      ctx.fillText("GROUP STANDINGS",PAD,HEADER-4);
+      ctx.fillStyle="rgba(201,168,76,0.25)";ctx.fillRect(0,HEADER-1,W,1);
+      ctx.textAlign="left";ctx.letterSpacing="2px";
+      ctx.font="bold 20px 'Bebas Neue'";ctx.fillStyle="#c9a84c";
+      ctx.fillText("⚽ MUNDIALITO 2026",PAD,36);
+      ctx.font="500 10px 'DM Sans'";ctx.fillStyle="#5a6a8a";ctx.letterSpacing="1px";
+      ctx.fillText("GROUP STANDINGS",PAD,HEADER-8);
 
-      // Each group
-      let y=HEADER+PAD/2;
+      // Layout constants
+      const COL_P=W-PAD-130, COL_W=W-PAD-104, COL_D=W-PAD-78,
+            COL_L=W-PAD-52, COL_GD=W-PAD-26, COL_PTS=W-PAD;
+      const CARD_PAD=10;
+
+      let y=HEADER+10;
       for(const g of selected){
         const s=groupStandings(g,matchResults,groupOrderOverride[g]);
         const allPlayed=GM.filter(m=>m.g===g).every(m=>matchResults[m.id]!=null);
+        const CARD_TOP=y;
+        const CARD_H=TABLE_HEADER+ROW*4;
 
-        // Group letter header
-        ctx.font="700 14px 'Bebas Neue'";ctx.fillStyle="#c9a84c";ctx.letterSpacing="3px";
-        ctx.textAlign="left";
-        ctx.fillText(`GROUP ${g}`,PAD,y+14);
+        // Card background
+        ctx.fillStyle="rgba(26,39,68,0.35)";
+        ctx.beginPath();ctx.roundRect(PAD-4,CARD_TOP,W-PAD*2+8,CARD_H,6);ctx.fill();
+        ctx.strokeStyle="rgba(201,168,76,0.18)";ctx.lineWidth=1;
+        ctx.beginPath();ctx.roundRect(PAD-4,CARD_TOP,W-PAD*2+8,CARD_H,6);ctx.stroke();
+
+        // Group letter + col headers on same line
+        ctx.textAlign="left";ctx.letterSpacing="2px";
+        ctx.font="bold 13px 'Bebas Neue'";ctx.fillStyle="#c9a84c";
+        ctx.fillText(`GROUP ${g}`,PAD+CARD_PAD,CARD_TOP+TABLE_HEADER-6);
 
         // Column headers
-        const cols=[
-          {label:"",x:PAD+22,w:120,align:"left"},
-          {label:"P",x:W-PAD-116},
-          {label:"W",x:W-PAD-90},
-          {label:"D",x:W-PAD-66},
-          {label:"L",x:W-PAD-42},
-          {label:"GD",x:W-PAD-22},
-          {label:"Pts",x:W-PAD},
-        ];
-        ctx.font="600 9px 'DM Sans'";ctx.fillStyle="#5a6a8a";ctx.letterSpacing="0.5px";
-        cols.slice(1).forEach(c=>{ctx.textAlign="center";ctx.fillText(c.label,c.x,y+14);});
-        y+=TABLE_HEADER;
+        ctx.font="bold 9px 'DM Sans'";ctx.fillStyle="#5a6a8a";ctx.letterSpacing="0px";
+        [[COL_P,"P"],[COL_W,"W"],[COL_D,"D"],[COL_L,"L"],[COL_GD,"GD"],[COL_PTS,"Pts"]].forEach(([x,label])=>{
+          ctx.textAlign="center";ctx.fillText(label,x,CARD_TOP+TABLE_HEADER-6);
+        });
 
-        // Row separator
-        ctx.fillStyle="rgba(138,153,180,0.12)";ctx.fillRect(PAD,y-2,W-PAD*2,1);
+        // Divider under header
+        ctx.fillStyle="rgba(138,153,180,0.15)";
+        ctx.fillRect(PAD,CARD_TOP+TABLE_HEADER,W-PAD*2,1);
 
-        // Team rows
+        y=CARD_TOP+TABLE_HEADER;
+
         s.forEach((row,i)=>{
           const tm=TBN[row.team];
           const o=ownership[row.team];
           const pcolor=o?getPlayerColor(o.playerIdx,PC[o.playerIdx]):"#e0dcd4";
           const isTop2=i<2;
           const is4th=i===3&&allPlayed;
+          const rowY=y;
 
-          // Row background
+          // Row tint
           if(isTop2){
-            ctx.fillStyle="rgba(201,168,76,0.08)";
-            ctx.fillRect(PAD,y,W-PAD*2,ROW);
+            ctx.fillStyle="rgba(201,168,76,0.07)";
+            ctx.fillRect(PAD,rowY,W-PAD*2,ROW);
+          } else if(is4th){
+            ctx.fillStyle="rgba(26,39,68,0.5)";
+            ctx.fillRect(PAD,rowY,W-PAD*2,ROW);
           }
 
-          const rowMid=y+ROW/2+4;
+          const mid=rowY+ROW/2+4; // text baseline
 
-          // Position number
-          ctx.font=`700 10px 'Bebas Neue'`;
-          ctx.textAlign="center";
+          // Position
+          ctx.font="bold 10px 'Bebas Neue'";ctx.textAlign="center";ctx.letterSpacing="0px";
           ctx.fillStyle=isTop2?"#c9a84c":is4th?"#3d5070":"#5a6a8a";
-          ctx.fillText(String(i+1),PAD+8,rowMid);
+          ctx.fillText(String(i+1),PAD+10,mid);
 
-          // Flag
-          ctx.font="15px serif";
-          ctx.textAlign="left";
-          ctx.fillText(tm?.flag||"",PAD+18,rowMid+1);
+          // Flag (leave 8px gap after position number)
+          ctx.font="14px serif";ctx.textAlign="left";
+          const flagX=PAD+22;
+          ctx.fillText(tm?.flag||"🏳️",flagX,mid+1);
 
-          // Team name
-          ctx.font=`${is4th?400:500} 11px 'DM Sans'`;
+          // Team code (8px gap after flag which is ~16px wide)
+          const nameX=flagX+20;
+          ctx.font=`${is4th?"normal":"600"} 11px 'DM Sans'`;
           ctx.fillStyle=is4th?"#3d5070":isTop2?"#c9a84c":pcolor;
-          ctx.textAlign="left";
-          let name=code3(row.team);
-          if(is4th){
-            // Strikethrough
-            const tw=ctx.measureText(name).width;
-            ctx.fillText(name,PAD+36,rowMid);
-            ctx.fillStyle="#3d5070";ctx.fillRect(PAD+36,rowMid-4,tw,1);
-          } else {
-            ctx.fillText(name,PAD+36,rowMid);
-          }
+          ctx.textAlign="left";ctx.letterSpacing="0px";
+          const name=code3(row.team);
+          ctx.fillText(name,nameX,mid);
 
-          // Owner chip
-          if(o&&!is4th){
-            const initStr=(initials[o.playerIdx]||"?");
-            ctx.font="700 8px 'Bebas Neue'";
-            const chipW=18,chipH=14,chipX=PAD+82,chipY=y+ROW/2-7;
-            ctx.fillStyle=pcolor;
+          // Owner chip (gap after name, name is ~30px wide)
+          if(o){
+            const chipX=nameX+34, chipY=rowY+ROW/2-7, chipW=18, chipH=14;
+            ctx.fillStyle=is4th?"#2a3a5c":pcolor;
             ctx.beginPath();ctx.roundRect(chipX,chipY,chipW,chipH,3);ctx.fill();
-            ctx.fillStyle="#0a1628";ctx.textAlign="center";
-            ctx.fillText(initStr,chipX+chipW/2,chipY+10);
+            ctx.font="bold 8px 'Bebas Neue'";ctx.fillStyle=is4th?"#4a5a7a":"#0a1628";
+            ctx.textAlign="center";
+            ctx.fillText(initials[o.playerIdx]||"?",chipX+chipW/2,chipY+10);
           }
 
           // Stats
-          const stats=[row.P,row.W,row.D,row.L,row.GD>0?"+"+row.GD:String(row.GD),row.Pts];
-          const statColors=[null,null,null,null,row.GD>0?"#61a978":row.GD<0?"#d97757":null,isTop2?"#c9a84c":"#e0dcd4"];
-          cols.slice(1).forEach((c,ci)=>{
-            ctx.font=ci===5?`700 12px 'Bebas Neue'`:`400 11px 'DM Sans'`;
-            ctx.fillStyle=is4th?"#3d5070":(statColors[ci]||"#8899b4");
-            ctx.textAlign="center";
-            ctx.fillText(String(stats[ci]),c.x,rowMid);
+          const gdVal=row.GD>0?"+"+row.GD:String(row.GD);
+          const statTextColor=is4th?"#3d5070":"#8899b4";
+          [[COL_P,String(row.P)],[COL_W,String(row.W)],[COL_D,String(row.D)],[COL_L,String(row.L)]].forEach(([x,v])=>{
+            ctx.font="400 11px 'DM Sans'";ctx.fillStyle=statTextColor;ctx.textAlign="center";ctx.letterSpacing="0px";
+            ctx.fillText(v,x,mid);
           });
+          // GD
+          ctx.font="600 11px 'DM Sans'";
+          ctx.fillStyle=is4th?"#3d5070":row.GD>0?"#61a978":row.GD<0?"#d97757":"#8899b4";
+          ctx.textAlign="center";ctx.fillText(gdVal,COL_GD,mid);
+          // Pts
+          ctx.font="bold 13px 'Bebas Neue'";
+          ctx.fillStyle=is4th?"#3d5070":isTop2?"#c9a84c":"#e0dcd4";
+          ctx.textAlign="center";ctx.fillText(String(row.Pts),COL_PTS,mid);
 
-          // Row divider
-          if(i<3){ctx.fillStyle="rgba(138,153,180,0.08)";ctx.fillRect(PAD,y+ROW,W-PAD*2,1);}
+          // Row divider (not after last row)
+          if(i<3){
+            ctx.fillStyle="rgba(138,153,180,0.08)";
+            ctx.fillRect(PAD,rowY+ROW,W-PAD*2,1);
+          }
           y+=ROW;
         });
 
-        // Gold border around group card
-        ctx.strokeStyle="rgba(201,168,76,0.2)";ctx.lineWidth=1;
-        ctx.strokeRect(PAD,HEADER+PAD/2+(selected.indexOf(g))*(groupH)-(TABLE_HEADER),W-PAD*2,TABLE_HEADER+ROW*4+4);
-
-        y+=GROUP_GAP;
+        y+=GROUP_GAP; // gap between groups
       }
 
       // Footer
-      ctx.font="500 9px 'DM Sans'";ctx.fillStyle="#3d5070";ctx.textAlign="center";
-      ctx.fillText("elmundialito.github.io/2026",W/2,H-6);
+      ctx.font="400 9px 'DM Sans'";ctx.fillStyle="#3d5070";ctx.textAlign="center";ctx.letterSpacing="0px";
+      ctx.fillText("elmundialito.github.io/2026",W/2,H-8);
 
       canvas.toBlob(async blob=>{
         try{

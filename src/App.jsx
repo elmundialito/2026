@@ -1470,12 +1470,12 @@ function ShareStandingsModal({onClose,matchResults,ownership,initials,config,lan
 
           // Owner chip — fixed column position
           if(o){
-            const chipY=rowY+ROW/2-7, chipW=18, chipH=14;
-            ctx.fillStyle=is4th?"#1e2a3a":pcolor;
+            const chipY=rowY+ROW/2-8, chipW=22, chipH=16;
+            ctx.fillStyle=pcolor;
             ctx.beginPath();ctx.roundRect(CHIP_X,chipY,chipW,chipH,3);ctx.fill();
-            ctx.font="bold 8px 'Bebas Neue'";ctx.fillStyle=is4th?"#3d5070":"#0a1628";
+            ctx.font="bold 9px 'Bebas Neue'";ctx.fillStyle="#0a1628";
             ctx.textAlign="center";
-            ctx.fillText(initials[o.playerIdx]||"?",CHIP_X+chipW/2,chipY+10);
+            ctx.fillText(initials[o.playerIdx]||"?",CHIP_X+chipW/2,chipY+11);
           }
 
           // Stats

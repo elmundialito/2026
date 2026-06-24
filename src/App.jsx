@@ -1431,19 +1431,19 @@ function ShareStandingsModal({onClose,matchResults,ownership,initials,config,lan
           const o=ownership[row.team];
           const pcolor=o?getPlayerColor(o.playerIdx,PC[o.playerIdx]):"#e0dcd4";
           const isTop2=i<2;
-          const is4th=i===3&&allPlayed;
           const rowY=y;
 
-          // Row tint — span full card width
+          // Row tint — always show gold for top 2, always show grey for 4th
           if(isTop2){
             ctx.fillStyle="rgba(201,168,76,0.10)";
             ctx.fillRect(CARD_L,rowY,CARD_W,ROW);
-          } else if(is4th){
+          } else if(i===3){
             ctx.fillStyle="rgba(8,14,30,0.7)";
             ctx.fillRect(CARD_L,rowY,CARD_W,ROW);
           }
 
-          const mid=rowY+ROW/2+4; // text baseline
+          const mid=rowY+ROW/2+4;
+          const is4th=i===3; // always show 4th treatment regardless of group completion
 
           // Position
           ctx.font="bold 10px 'Bebas Neue'";ctx.textAlign="center";ctx.letterSpacing="0px";
@@ -1455,27 +1455,27 @@ function ShareStandingsModal({onClose,matchResults,ownership,initials,config,lan
           const flagX=PAD+22;
           ctx.fillText(tm?.flag||"🏳️",flagX,mid+1);
 
-          // Full country name (Bosnia special case)
+          // Full country name
           const nameX=flagX+20;
+          const CHIP_X=nameX+110; // fixed chip column position
           ctx.font=`${is4th?"normal":"600"} 11px 'DM Sans'`;
           ctx.fillStyle=is4th?"#3d5070":isTop2?"#c9a84c":pcolor;
           ctx.textAlign="left";ctx.letterSpacing="0px";
-          let displayName=countryName(row.team,"en");
-          if(row.team==="BOSNIA AND HERZEGOVINA")displayName="Bosnia";
-          // Truncate if too long (max ~110px before stats start)
-          const maxNameW=COL_P-nameX-40;
+          let displayName=countryName(row.team,"en").toUpperCase();
+          if(row.team==="BOSNIA AND HERZEGOVINA")displayName="BOSNIA";
+          // Truncate if overflows into chip column
+          const maxNameW=CHIP_X-nameX-6;
           while(ctx.measureText(displayName).width>maxNameW&&displayName.length>3)displayName=displayName.slice(0,-1)+"…";
           ctx.fillText(displayName,nameX,mid);
 
-          // Owner chip
-          const nameW=ctx.measureText(displayName).width;
+          // Owner chip — fixed column position
           if(o){
-            const chipX=nameX+nameW+6, chipY=rowY+ROW/2-7, chipW=18, chipH=14;
+            const chipY=rowY+ROW/2-7, chipW=18, chipH=14;
             ctx.fillStyle=is4th?"#1e2a3a":pcolor;
-            ctx.beginPath();ctx.roundRect(chipX,chipY,chipW,chipH,3);ctx.fill();
+            ctx.beginPath();ctx.roundRect(CHIP_X,chipY,chipW,chipH,3);ctx.fill();
             ctx.font="bold 8px 'Bebas Neue'";ctx.fillStyle=is4th?"#3d5070":"#0a1628";
             ctx.textAlign="center";
-            ctx.fillText(initials[o.playerIdx]||"?",chipX+chipW/2,chipY+10);
+            ctx.fillText(initials[o.playerIdx]||"?",CHIP_X+chipW/2,chipY+10);
           }
 
           // Stats

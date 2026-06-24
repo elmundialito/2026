@@ -1390,8 +1390,10 @@ function ShareStandingsModal({onClose,matchResults,ownership,initials,config,lan
       ctx.fillText("GROUP STANDINGS",PAD,HEADER-8);
 
       // Layout constants
-      const COL_P=W-PAD-130, COL_W=W-PAD-104, COL_D=W-PAD-78,
-            COL_L=W-PAD-52, COL_GD=W-PAD-26, COL_PTS=W-PAD;
+      // Columns shifted left, Pts well inside right edge
+      const CARD_L=PAD-4, CARD_W=W-PAD*2+8; // card bounds
+      const COL_P=W-PAD-150, COL_W=W-PAD-122, COL_D=W-PAD-94,
+            COL_L=W-PAD-66, COL_GD=W-PAD-36, COL_PTS=W-PAD-8;
       const CARD_PAD=10;
 
       let y=HEADER+10;
@@ -1420,7 +1422,7 @@ function ShareStandingsModal({onClose,matchResults,ownership,initials,config,lan
 
         // Divider under header
         ctx.fillStyle="rgba(138,153,180,0.15)";
-        ctx.fillRect(PAD,CARD_TOP+TABLE_HEADER,W-PAD*2,1);
+        ctx.fillRect(CARD_L,CARD_TOP+TABLE_HEADER,CARD_W,1);
 
         y=CARD_TOP+TABLE_HEADER;
 
@@ -1432,13 +1434,13 @@ function ShareStandingsModal({onClose,matchResults,ownership,initials,config,lan
           const is4th=i===3&&allPlayed;
           const rowY=y;
 
-          // Row tint
+          // Row tint — span full card width
           if(isTop2){
-            ctx.fillStyle="rgba(201,168,76,0.07)";
-            ctx.fillRect(PAD,rowY,W-PAD*2,ROW);
+            ctx.fillStyle="rgba(201,168,76,0.10)";
+            ctx.fillRect(CARD_L,rowY,CARD_W,ROW);
           } else if(is4th){
-            ctx.fillStyle="rgba(26,39,68,0.5)";
-            ctx.fillRect(PAD,rowY,W-PAD*2,ROW);
+            ctx.fillStyle="rgba(8,14,30,0.7)";
+            ctx.fillRect(CARD_L,rowY,CARD_W,ROW);
           }
 
           const mid=rowY+ROW/2+4; // text baseline
@@ -1448,25 +1450,30 @@ function ShareStandingsModal({onClose,matchResults,ownership,initials,config,lan
           ctx.fillStyle=isTop2?"#c9a84c":is4th?"#3d5070":"#5a6a8a";
           ctx.fillText(String(i+1),PAD+10,mid);
 
-          // Flag (leave 8px gap after position number)
+          // Flag
           ctx.font="14px serif";ctx.textAlign="left";
           const flagX=PAD+22;
           ctx.fillText(tm?.flag||"🏳️",flagX,mid+1);
 
-          // Team code (8px gap after flag which is ~16px wide)
+          // Full country name (Bosnia special case)
           const nameX=flagX+20;
           ctx.font=`${is4th?"normal":"600"} 11px 'DM Sans'`;
           ctx.fillStyle=is4th?"#3d5070":isTop2?"#c9a84c":pcolor;
           ctx.textAlign="left";ctx.letterSpacing="0px";
-          const name=code3(row.team);
-          ctx.fillText(name,nameX,mid);
+          let displayName=countryName(row.team,"en");
+          if(row.team==="BOSNIA AND HERZEGOVINA")displayName="Bosnia";
+          // Truncate if too long (max ~110px before stats start)
+          const maxNameW=COL_P-nameX-40;
+          while(ctx.measureText(displayName).width>maxNameW&&displayName.length>3)displayName=displayName.slice(0,-1)+"…";
+          ctx.fillText(displayName,nameX,mid);
 
-          // Owner chip (gap after name, name is ~30px wide)
+          // Owner chip
+          const nameW=ctx.measureText(displayName).width;
           if(o){
-            const chipX=nameX+34, chipY=rowY+ROW/2-7, chipW=18, chipH=14;
-            ctx.fillStyle=is4th?"#2a3a5c":pcolor;
+            const chipX=nameX+nameW+6, chipY=rowY+ROW/2-7, chipW=18, chipH=14;
+            ctx.fillStyle=is4th?"#1e2a3a":pcolor;
             ctx.beginPath();ctx.roundRect(chipX,chipY,chipW,chipH,3);ctx.fill();
-            ctx.font="bold 8px 'Bebas Neue'";ctx.fillStyle=is4th?"#4a5a7a":"#0a1628";
+            ctx.font="bold 8px 'Bebas Neue'";ctx.fillStyle=is4th?"#3d5070":"#0a1628";
             ctx.textAlign="center";
             ctx.fillText(initials[o.playerIdx]||"?",chipX+chipW/2,chipY+10);
           }
@@ -1490,7 +1497,7 @@ function ShareStandingsModal({onClose,matchResults,ownership,initials,config,lan
           // Row divider (not after last row)
           if(i<3){
             ctx.fillStyle="rgba(138,153,180,0.08)";
-            ctx.fillRect(PAD,rowY+ROW,W-PAD*2,1);
+            ctx.fillRect(CARD_L,rowY+ROW,CARD_W,1);
           }
           y+=ROW;
         });

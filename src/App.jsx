@@ -555,6 +555,47 @@ function resolveKOBracket(mr, kr, kov, groupOverrides={}) {
   return bk;
 }
 
+// Returns the current stage label and status for a team
+function getTeamStage(team, bracket, koResults, matchResults) {
+  const ROUNDS=['r32','r16','qf','sf'];
+  const LABELS={r32:'R32',r16:'R16',qf:'QF',sf:'SF'};
+  for(const round of ROUNDS){
+    const matches=KM.filter(m=>m.round===round);
+    for(const m of matches){
+      const bk=bracket?.[m.id];
+      if(!bk)continue;
+      if(bk.a!==team&&bk.b!==team)continue;
+      const w=koWinner(koResults?.[m.id]);
+      if(!w)return{stage:LABELS[round],eliminated:false};
+      const won=(w==="A"&&bk.a===team)||(w==="B"&&bk.b===team);
+      if(!won)return{stage:LABELS[round],eliminated:true};
+    }
+  }
+  const third=KM.find(m=>m.round==="third");
+  const final=KM.find(m=>m.round==="final");
+  const thirdBk=bracket?.[third?.id];
+  const finalBk=bracket?.[final?.id];
+  if(thirdBk&&(thirdBk.a===team||thirdBk.b===team)){
+    const w=koWinner(koResults?.[third.id]);
+    if(!w)return{stage:"3RD",eliminated:false};
+    const won=(w==="A"&&thirdBk.a===team)||(w==="B"&&thirdBk.b===team);
+    return won?{stage:"🥉 3RD",eliminated:false,finished:true}:{stage:"4TH",eliminated:true,finished:true};
+  }
+  if(finalBk&&(finalBk.a===team||finalBk.b===team)){
+    const w=koWinner(koResults?.[final.id]);
+    if(!w)return{stage:"FINAL",eliminated:false};
+    const won=(w==="A"&&finalBk.a===team)||(w==="B"&&finalBk.b===team);
+    return won?{stage:"🥇 1ST",eliminated:false,finished:true}:{stage:"🥈 2ND",eliminated:false,finished:true};
+  }
+  // Not in KO bracket — check group stage elimination
+  const grp=Object.entries(GROUPS).find(([,ts])=>ts.includes(team))?.[0];
+  if(grp){
+    const allPlayed=GM.filter(m=>m.g===grp).every(m=>matchResults?.[m.id]!=null);
+    if(allPlayed&&!isInR32Bracket(team,bracket||{}))return{stage:"GROUP",eliminated:true};
+  }
+  return{stage:null,eliminated:false};
+}
+
 function playerGSPts(pi, picks, mr) {
   const mine=new Set(picks.filter(p=>p.playerIdx===pi).map(p=>p.team));
   let pts=0;
@@ -2135,7 +2176,7 @@ function KoScoreEntry({matchId,teamA,teamB,result,onSetResult,readOnly}) {
   );
 }
 
-function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownership,initials,readOnly,playerNames=[]}) {
+function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownership,initials,readOnly,playerNames=[],myTeams=new Set(),onOpenChat,chatCount=0,hasReactions=false,matchPredictions={},myPlayerIdx,poolCode}) {
   const lang=useContext(LangContext);
   const w=koWinner(result);
   const winA=w==="A";const winB=w==="B";const hasResult=!!w;
@@ -2144,14 +2185,36 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
   const oA=teamA?ownership[teamA]:null;const oB=teamB?ownership[teamB]:null;
   const [editOpen,setEditOpen]=useState(false);const [editA,setEditA]=useState("");const [editB,setEditB]=useState("");
   const winColor=winA?(oA?PC[oA.playerIdx]:"#61a978"):winB?(oB?PC[oB.playerIdx]:"#6b9bd1"):null;
-  const cardBg=hasResult&&winColor?`${winColor}08`:"rgba(10,22,40,0.4)";
-  const cardBorder=hasResult&&winColor?`1px solid ${winColor}44`:"1px solid #1e2f50";
+  const isMyMatch=teamA&&teamB&&(myTeams.has(teamA)||myTeams.has(teamB));
+  const myHasA=myTeams.has(teamA),myHasB=myTeams.has(teamB),myBoth=myHasA&&myHasB;
+  const myColor=isMyMatch?(myHasA?PC[oA?.playerIdx??0]:PC[oB?.playerIdx??0]):"transparent";
+  const cardBg=hasResult&&winColor?`${winColor}08`:isMyMatch?"rgba(201,168,76,0.04)":"rgba(10,22,40,0.4)";
+  const cardBorder=hasResult&&winColor?`1px solid ${winColor}44`:isMyMatch?`1px solid ${myColor}44`:"1px solid #1e2f50";
+  const bothConfirmed=!!(teamA&&teamB);
+  const predCount=Object.keys(matchPredictions).length;
   return(
     <div style={{background:cardBg,borderRadius:10,padding:"10px 12px",border:cardBorder,marginBottom:6,position:"relative"}}>
       <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative"}}>
         <span style={{background:"rgba(138,153,180,0.12)",padding:"1px 6px",borderRadius:4,fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:11,color:"#8899b4"}}>M{match.n}</span>
         {match.ko&&!hasResult&&<span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1,whiteSpace:"nowrap"}}>{fmtKickoff(match.d,match.ko)}</span>}
-        {!readOnly&&<button onClick={()=>{setEditA(teamA||"");setEditB(teamB||"");setEditOpen(o=>!o);}} style={{fontSize:9,color:"#5a6a8a",background:"transparent",border:"1px solid #2a3a5c",borderRadius:4,padding:"2px 6px",cursor:"pointer",flexShrink:0}}>✎ {lang==="es"?"Anular":"Override"}</button>}
+        <div style={{display:"flex",alignItems:"center",gap:5}}>
+          {/* 🔮 predictions — show when both teams confirmed */}
+          {bothConfirmed&&<KoOddsPopup matchId={match.id} teamA={teamA} teamB={teamB} lang={lang} hasResult={hasResult} myPlayerIdx={myPlayerIdx} playerNames={playerNames} initials={initials} matchPredictions={matchPredictions} poolCode={poolCode}/>}
+          {/* 🎬 highlights — 2.5hrs after kickoff */}
+          {bothConfirmed&&match.ko&&(()=>{
+            const kickoffUTC=new Date(match.d+"T"+match.ko+":00Z");
+            if(Date.now()<kickoffUTC.getTime()+2.5*60*60*1000)return null;
+            const query=encodeURIComponent(`${teamA} vs ${teamB} 2026 World Cup highlights`);
+            return(
+              <a href={`https://www.youtube.com/results?search_query=${query}`} target="_blank" rel="noopener noreferrer"
+                style={{display:"flex",alignItems:"center",padding:"2px 7px",borderRadius:10,border:"1px solid rgba(255,80,80,0.3)",background:"rgba(255,80,80,0.08)",color:"#ff6b6b",fontSize:12,textDecoration:"none"}}>🎬</a>
+            );
+          })()}
+          {/* 💬 chat — show when both teams confirmed */}
+          {bothConfirmed&&onOpenChat&&<button onClick={onOpenChat} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${(chatCount>0||hasReactions)?"rgba(201,168,76,0.3)":"#2a3a5c"}`,background:(chatCount>0||hasReactions)?"rgba(201,168,76,0.08)":"transparent",color:(chatCount>0||hasReactions)?"var(--accent)":"#5a6a8a",cursor:"pointer",fontSize:12}}>💬{chatCount>0&&<span style={{fontFamily:"'DM Sans'",fontSize:10,fontWeight:600}}>{chatCount}</span>}</button>}
+          {/* ✎ override — host only */}
+          {!readOnly&&<button onClick={()=>{setEditA(teamA||"");setEditB(teamB||"");setEditOpen(o=>!o);}} style={{fontSize:9,color:"#5a6a8a",background:"transparent",border:"1px solid #2a3a5c",borderRadius:4,padding:"2px 6px",cursor:"pointer",flexShrink:0}}>✎ {lang==="es"?"Anular":"Override"}</button>}
+        </div>
       </div>
       {editOpen&&!readOnly&&(
         <div style={{background:"rgba(26,39,68,0.6)",borderRadius:8,padding:"10px",marginBottom:8,border:"1px solid #2a3a5c"}}>
@@ -2171,6 +2234,8 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
           </div>
         </div>
       )}
+      {/* YOUR TEAM badge */}
+      {isMyMatch&&<div style={{display:"flex",justifyContent:"center",marginBottom:4}}><span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"var(--accent)",letterSpacing:1,background:"rgba(201,168,76,0.15)",padding:"1px 6px",borderRadius:4,whiteSpace:"nowrap"}}>{myBoth?`⭐ ${t(lang,"yourTeams")} ⭐`:myHasA?`⭐ ${t(lang,"yourTeam")}`:(`${t(lang,"yourTeam")} ⭐`)}</span></div>}
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         <KoTeamDisplay team={teamA} slot={match.sA} owner={oA} initials={initials} isWinner={winA} hasResult={hasResult} isHome={true} playerNames={playerNames}/>
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,minWidth:88}}>
@@ -2315,9 +2380,70 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
   </>);
 }
 
-function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false,playerRankings=[],groupOrderOverride={}}) {
+// KO predictions popup — fetches live from Polymarket for the specific matchup
+function KoOddsPopup({matchId,teamA,teamB,lang,hasResult,myPlayerIdx,playerNames=[],initials,matchPredictions={},poolCode,onOpenPredict}) {
+  const [open,setOpen]=useState(false);
+  const bothConfirmed=!!(teamA&&teamB);
+  const predCount=Object.keys(matchPredictions).length;
+  const myPred=myPlayerIdx!=null?matchPredictions[myPlayerIdx]:null;
+  return(
+    <div style={{display:"inline-flex",flexDirection:"column",alignItems:"flex-end",position:"relative"}}>
+      <button onClick={()=>{if(bothConfirmed){setOpen(o=>!o);}}} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${myPred!=null?"rgba(107,155,209,0.4)":"rgba(107,155,209,0.2)"}`,background:myPred!=null?"rgba(107,155,209,0.15)":"rgba(107,155,209,0.06)",color:bothConfirmed?"#6b9bd1":"#3d5070",cursor:bothConfirmed?"pointer":"default",fontSize:12}}>
+        🔮{predCount>0&&<span style={{fontSize:10,fontWeight:600}}>{predCount}</span>}
+      </button>
+      {open&&bothConfirmed&&(
+        <>
+          <div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setOpen(false)}/>
+          <div onClick={e=>e.stopPropagation()} style={{position:"absolute",zIndex:300,top:28,right:0,background:"#0a1628",border:"1px solid rgba(107,155,209,0.25)",borderRadius:10,padding:"12px 14px",minWidth:200,boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1.5,color:"#5a6a8a",marginBottom:8}}>PREDICTIONS</div>
+            <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4",marginBottom:10}}>{lang==="es"?"Las probabilidades de Polymarket se abrirán pronto para este partido":"Polymarket odds will open soon for this match"}</div>
+            {predCount>0&&(
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>
+                {Object.entries(matchPredictions).map(([pidx,pred])=>{
+                  const pi=parseInt(pidx);
+                  const pcolor=getPlayerColor(pi,PC[pi]);
+                  return(<div key={pidx} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:6,background:`${pcolor}15`,border:`1px solid ${pcolor}33`}}>
+                    <div style={{width:14,height:14,borderRadius:3,background:pcolor,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[pi]||"?"}</div>
+                    <span style={{fontFamily:"'DM Sans'",fontSize:9,color:pcolor}}>{pred==="home"?(TBN[teamA]?.flag||teamA):pred==="away"?(TBN[teamB]?.flag||teamB):"🤝"}</span>
+                  </div>);
+                })}
+              </div>
+            )}
+            {myPlayerIdx!=null&&(
+              <div style={{display:"flex",gap:5}}>
+                {[["home",TBN[teamA]?.flag||teamA],["draw","🤝"],["away",TBN[teamB]?.flag||teamB]].map(([side,label])=>(
+                  <button key={side} onClick={async()=>{await savePrediction(poolCode,matchId,myPlayerIdx,myPred===side?null:side);setOpen(false);}} style={{flex:1,padding:"6px 0",borderRadius:6,border:`1.5px solid ${myPred===side?"rgba(107,155,209,0.6)":"#2a3a5c"}`,background:myPred===side?"rgba(107,155,209,0.15)":"transparent",color:myPred===side?"#6b9bd1":"#5a6a8a",fontSize:13,cursor:"pointer"}}>{label}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false,playerRankings=[],groupOrderOverride={},poolCode,myPlayerIdx}) {
   const lang=useContext(LangContext);
   const [activeRound,setActiveRound]=useState("r32");
+  const [matchChat,setMatchChat]=useState({});
+  const [predictions,setPredictions]=useState({});
+  const [openChatId,setOpenChatId]=useState(null);
+  const [myTeamsOnly,setMyTeamsOnly]=useState(false);
+
+  const myTeams=useMemo(()=>myPlayerIdx!=null?new Set((picks||[]).filter(p=>p.playerIdx===myPlayerIdx).map(p=>p.team)):new Set(),[picks,myPlayerIdx]);
+
+  // Subscribe to chat + predictions from Firebase
+  useEffect(()=>{
+    if(!poolCode)return;
+    const unsub=onSnapshot(doc(db,"pools",poolCode),(snap)=>{
+      if(snap.exists()){
+        setMatchChat(snap.data().matchChat||{});
+        setPredictions(snap.data().predictions||{});
+      }
+    });
+    return()=>unsub();
+  },[poolCode]);
   const roundMatches=useMemo(()=>{const m={};ROUND_ORDER.forEach(r=>m[r]=[]);KM.forEach(k=>m[k.round]&&m[k.round].push(k));return m;},[]);
   const ownership=useMemo(()=>{const o={};(picks||[]).forEach(p=>{o[p.team]={playerIdx:p.playerIdx};});return o;},[picks]);
   const playerTotals=useMemo(()=>Array.from({length:config.playerCount},(_,i)=>({gs:playerGSPts(i,picks||[],matchResults),ko:playerKOPts(i,picks||[],bracket,koResults,config.koPoints)})),[config,picks,matchResults,bracket,koResults]);
@@ -2370,7 +2496,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
                 <div style={{flex:1,height:isToday?2:1,background:isToday?"rgba(201,168,76,0.4)":"rgba(138,153,180,0.2)"}}/>
                 <span style={{fontFamily:"'DM Sans'",fontSize:10,color:isToday?"var(--accent)":"#5a6a8a",fontWeight:isToday?600:400}}>{scored}/{matches.length}</span>
               </div>
-              {matches.map(m=>{const bk=bracket[m.id];return(<KoMatchCard key={m.id} match={m} teamA={bk?.a||null} teamB={bk?.b||null} result={koResults[m.id]} onSetOverride={(mid,side,val)=>setKoOverride(mid,side,val)} onSetResult={(mid,val)=>setKoResults(r=>({...r,[mid]:val}))} ownership={ownership} initials={koInitials} readOnly={readOnly} playerNames={config.playerNames||[]}/>);})}
+              {matches.map(m=>{const bk=bracket[m.id];const mTeamA=bk?.a||null;const mTeamB=bk?.b||null;const bothConfirmed=!!(mTeamA&&mTeamB);const isMyKoMatch=myTeams.has(mTeamA)||myTeams.has(mTeamB);if(myTeamsOnly&&!isMyKoMatch)return null;return(<KoMatchCard key={m.id} match={m} teamA={mTeamA} teamB={mTeamB} result={koResults[m.id]} onSetOverride={(mid,side,val)=>setKoOverride(mid,side,val)} onSetResult={(mid,val)=>setKoResults(r=>({...r,[mid]:val}))} ownership={ownership} initials={koInitials} readOnly={readOnly} playerNames={config.playerNames||[]} myTeams={myTeams} onOpenChat={bothConfirmed?()=>setOpenChatId(m.id):null} chatCount={(matchChat[m.id]?.messages||[]).length||0} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)} matchPredictions={predictions[m.id]||{}} myPlayerIdx={myPlayerIdx} poolCode={poolCode}/>);})}
             </div>
           );
         });
@@ -2393,11 +2519,16 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
         })}
         </div>
       </div>
+      {/* MY TEAMS floating filter — only for r32 and r16 */}
+      {(activeRound==="r32"||activeRound==="r16")&&myTeams.size>0&&(
+        <button onClick={()=>setMyTeamsOnly(o=>!o)} style={{position:"fixed",bottom:28,left:16,zIndex:100,padding:"8px 14px",borderRadius:20,background:myTeamsOnly?"rgba(201,168,76,0.95)":"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.5)",color:myTeamsOnly?"#0a1628":"var(--accent)",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 16px rgba(0,0,0,0.5)"}}>
+          ⭐ {myTeamsOnly?(lang==="es"?"TODOS":"ALL GAMES"):(lang==="es"?"MIS EQUIPOS":"MY TEAMS")}
+        </button>
+      )}
+      {openChatId&&(()=>{const m=KM.find(x=>x.id===openChatId);const bk=bracket[openChatId];return m&&bk?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={{...m,t:[bk.a||"TBD",bk.b||"TBD"]}} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={koInitials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
     </div>
   );
-}
-
-function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,initials,lang,playerDataWithRanks=[]}) {
+}({allPredictions,matchResults,playerNames,playerCount,initials,lang,playerDataWithRanks=[]}) {
   const [open,setOpen]=useState(false);
   const picVersion=useContext(PicContext);
 
@@ -2661,7 +2792,26 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                 <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(26,39,68,0.6)"}}>
                   <div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:`${color}99`,marginBottom:8}}>{t(lang,"teamBreakdownLabel")}</div>
                   <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                    {p.teamBreakdown.map(({team,gsPts,koPts,eliminated})=>{const tm=TBN[team];const tp=gsPts+koPts;const displayName=countryName(team,lang);const pastR32=koPts>0||eliminated;return(<div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:"rgba(10,22,40,0.3)",opacity:eliminated?0.45:1}}><span style={{fontSize:15,flexShrink:0}}>{tm?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,flex:1,color:eliminated?"#5a6a8a":"#e0dcd4",textDecoration:eliminated?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>{pastR32&&!eliminated&&<span style={{fontFamily:"'Bebas Neue'",fontSize:9,color:"#61a978",background:"rgba(97,169,120,0.15)",border:"1px solid rgba(97,169,120,0.3)",padding:"1px 5px",borderRadius:4,flexShrink:0,letterSpacing:1}}>R32</span>}{eliminated&&<span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",background:"rgba(26,39,68,0.5)",padding:"1px 5px",borderRadius:4,flexShrink:0}}>{t(lang,"out")}</span>}<div style={{textAlign:"right",flexShrink:0}}><div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:tp>0?color:"#5a6a8a",letterSpacing:1,lineHeight:1}}>{tp}<span style={{fontSize:8,opacity:0.7}}>pts</span></div>{koPts>0&&<div style={{fontFamily:"'DM Sans'",fontSize:9,color:`${color}88`}}>GS {gsPts} + KO {koPts}</div>}</div></div>);})}
+                    {p.teamBreakdown.map(({team,gsPts,koPts})=>{
+                      const tm=TBN[team];const tp=gsPts+koPts;const displayName=countryName(team,lang);
+                      const{stage,eliminated,finished}=getTeamStage(team,bracket,koResults,matchResults);
+                      const isAlive=!eliminated;
+                      const isMedal=stage&&(stage.includes("🥇")||stage.includes("🥈")||stage.includes("🥉"));
+                      const stageBg=eliminated?"rgba(26,39,68,0.5)":isMedal?"rgba(201,168,76,0.15)":"rgba(97,169,120,0.15)";
+                      const stageColor=eliminated?"#3d5070":isMedal?"#c9a84c":"#61a978";
+                      const stageBorder=eliminated?"rgba(26,39,68,0.8)":isMedal?"rgba(201,168,76,0.3)":"rgba(97,169,120,0.3)";
+                      return(
+                        <div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:"rgba(10,22,40,0.3)",opacity:eliminated&&!finished?0.5:1}}>
+                          <span style={{fontSize:15,flexShrink:0}}>{tm?.flag}</span>
+                          <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,flex:1,color:eliminated?"#5a6a8a":"#e0dcd4",textDecoration:eliminated?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>
+                          {stage&&<span style={{fontFamily:"'Bebas Neue'",fontSize:9,color:stageColor,background:stageBg,border:`1px solid ${stageBorder}`,padding:"1px 5px",borderRadius:4,flexShrink:0,letterSpacing:1,whiteSpace:"nowrap"}}>{stage}</span>}
+                          <div style={{textAlign:"right",flexShrink:0}}>
+                            <div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:tp>0?color:"#5a6a8a",letterSpacing:1,lineHeight:1}}>{tp}<span style={{fontSize:8,opacity:0.7}}>pts</span></div>
+                            {koPts>0&&<div style={{fontFamily:"'DM Sans'",fontSize:9,color:`${color}88`}}>GS {gsPts} + KO {koPts}</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                   {p.r32>0&&<div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginTop:8,fontStyle:"italic"}}>{lang==="es"?`${p.r32} equipo${p.r32>1?"s":""} pasó a octavos`:`${p.r32} team${p.r32>1?"s":""} reached Round of 16`}</div>}
                 </div>
@@ -4375,7 +4525,7 @@ export default function Mundialito() {
       return <SetupScreen config={st.config} setConfig={c=>setSt(p=>({...p,config:typeof c==="function"?c(p.config):c}))} onLock={()=>{setSt(p=>({...p,setupLocked:true}));setActiveTab("draft");}} readOnly={readOnly}/>;}
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
     if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx} onPicsLoaded={()=>setPicRefresh(n=>n+1)} onPredictionsUpdate={p=>setAllPredictions(p)} bracket={resolvedBracket} koResults={st.koResults} playerRankings={playerRankings} groupOrderOverride={st.groupOrderOverride||{}} setGroupOrderOverride={(grp,order)=>setSt(p=>{const next={...(p.groupOrderOverride||{})};if(order)next[grp]=order;else delete next[grp];return{...p,groupOrderOverride:next};})}/>;
-    if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly} isPreview={isHost&&!anyGroupDone} playerRankings={playerRankings} groupOrderOverride={st.groupOrderOverride||{}}/>;
+    if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly} isPreview={isHost&&!anyGroupDone} playerRankings={playerRankings} groupOrderOverride={st.groupOrderOverride||{}} poolCode={poolCode} myPlayerIdx={myPlayerIdx}/>;
     if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} onSuggestions={()=>setShowSuggestions(true)} picRefresh={picRefresh} allPredictions={allPredictions} draftOrder={st.draftOrder||[]} groupOrderOverride={st.groupOrderOverride||{}}/>;
     return null;
   };

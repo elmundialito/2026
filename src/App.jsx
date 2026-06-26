@@ -2101,7 +2101,7 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
 
 function KoTeamDisplay({team,slot,owner,initials,isWinner,hasResult,isHome,playerNames=[]}) {
   const lang=useContext(LangContext);
-  const t=team?TBN[team]:null;const color=owner!=null?PC[owner.playerIdx]:null;const faded=hasResult&&!isWinner;
+  const t=team?TBN[team]:null;const color=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):null;const faded=hasResult&&!isWinner;
   const fn=team?countryFixture(team,lang):"";
   const fs=fn.length>9?9:10;
   return(

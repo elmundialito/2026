@@ -2528,7 +2528,9 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
       {openChatId&&(()=>{const m=KM.find(x=>x.id===openChatId);const bk=bracket[openChatId];return m&&bk?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={{...m,t:[bk.a||"TBD",bk.b||"TBD"]}} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={koInitials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
     </div>
   );
-}({allPredictions,matchResults,playerNames,playerCount,initials,lang,playerDataWithRanks=[]}) {
+}
+
+function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,initials,lang,playerDataWithRanks=[]}) {
   const [open,setOpen]=useState(false);
   const picVersion=useContext(PicContext);
 

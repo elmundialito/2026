@@ -591,7 +591,22 @@ function getTeamStage(team, bracket, koResults, matchResults) {
   const grp=Object.entries(GROUPS).find(([,ts])=>ts.includes(team))?.[0];
   if(grp){
     const allPlayed=GM.filter(m=>m.g===grp).every(m=>matchResults?.[m.id]!=null);
-    if(allPlayed&&!isInR32Bracket(team,bracket||{}))return{stage:"GROUP",eliminated:true};
+    if(allPlayed){
+      const s=groupStandings(grp,matchResults);
+      const pos=s.findIndex(r=>r.team===team);
+      if(pos===3){
+        // 4th place — always eliminated
+        return{stage:"GROUP",eliminated:true};
+      }
+      if(pos===2){
+        // 3rd place — only eliminated once all R32 slots are filled and they're not in one
+        const r32Matches=KM.filter(m=>m.round==="r32");
+        const allR32Filled=r32Matches.every(m=>bracket?.[m.id]?.a&&bracket?.[m.id]?.b);
+        if(allR32Filled&&!isInR32Bracket(team,bracket||{})){
+          return{stage:"GROUP",eliminated:true};
+        }
+      }
+    }
   }
   return{stage:null,eliminated:false};
 }

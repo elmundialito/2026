@@ -2797,13 +2797,13 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                       const{stage,eliminated,finished}=getTeamStage(team,bracket,koResults,matchResults);
                       const isAlive=!eliminated;
                       const isMedal=stage&&(stage.includes("🥇")||stage.includes("🥈")||stage.includes("🥉"));
-                      const stageBg=eliminated?"rgba(26,39,68,0.5)":isMedal?"rgba(201,168,76,0.15)":"rgba(97,169,120,0.15)";
-                      const stageColor=eliminated?"#3d5070":isMedal?"#c9a84c":"#61a978";
-                      const stageBorder=eliminated?"rgba(26,39,68,0.8)":isMedal?"rgba(201,168,76,0.3)":"rgba(97,169,120,0.3)";
+                      const stageBg=eliminated?"rgba(26,39,68,0.5)":isMedal?"rgba(201,168,76,0.15)":"transparent";
+                      const stageColor=eliminated?"#5a6a8a":isMedal?"#c9a84c":"#61a978";
+                      const stageBorder=eliminated?"rgba(60,80,110,0.5)":isMedal?"rgba(201,168,76,0.3)":"rgba(97,169,120,0.3)";
                       return(
-                        <div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:"rgba(10,22,40,0.3)",opacity:eliminated&&!finished?0.5:1}}>
+                        <div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:"rgba(10,22,40,0.3)"}}>
                           <span style={{fontSize:15,flexShrink:0}}>{tm?.flag}</span>
-                          <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,flex:1,color:eliminated?"#5a6a8a":"#e0dcd4",textDecoration:eliminated?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>
+                          <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,flex:1,color:eliminated?"#6b7a90":"#e0dcd4",textDecoration:eliminated?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>
                           {stage&&<span style={{fontFamily:"'Bebas Neue'",fontSize:9,color:stageColor,background:stageBg,border:`1px solid ${stageBorder}`,padding:"1px 5px",borderRadius:4,flexShrink:0,letterSpacing:1,whiteSpace:"nowrap"}}>{stage}</span>}
                           <div style={{textAlign:"right",flexShrink:0}}>
                             <div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:tp>0?color:"#5a6a8a",letterSpacing:1,lineHeight:1}}>{tp}<span style={{fontSize:8,opacity:0.7}}>pts</span></div>

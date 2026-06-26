@@ -2214,7 +2214,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
         {match.ko&&!hasResult&&<span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1,whiteSpace:"nowrap"}}>{fmtKickoff(match.d,match.ko)}</span>}
         <div style={{display:"flex",alignItems:"center",gap:5}}>
           {/* 🔮 predictions — show when both teams confirmed */}
-          {bothConfirmed&&<KoOddsPopup matchId={match.id} teamA={teamA} teamB={teamB} lang={lang} hasResult={hasResult} myPlayerIdx={myPlayerIdx} playerNames={playerNames} initials={initials} matchPredictions={matchPredictions} poolCode={poolCode}/>}
+          {bothConfirmed&&<KoOddsPopup matchId={match.id} teamA={teamA} teamB={teamB} lang={lang} hasResult={hasResult} myPlayerIdx={myPlayerIdx} playerNames={playerNames} initials={initials} matchPredictions={matchPredictions} poolCode={poolCode} koOdds={null}/>}
           {/* 🎬 highlights — 2.5hrs after kickoff */}
           {bothConfirmed&&match.ko&&(()=>{
             const kickoffUTC=new Date(match.d+"T"+match.ko+":00Z");
@@ -2227,8 +2227,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
           })()}
           {/* 💬 chat — show when both teams confirmed */}
           {bothConfirmed&&onOpenChat&&<button onClick={onOpenChat} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${(chatCount>0||hasReactions)?"rgba(201,168,76,0.3)":"#2a3a5c"}`,background:(chatCount>0||hasReactions)?"rgba(201,168,76,0.08)":"transparent",color:(chatCount>0||hasReactions)?"var(--accent)":"#5a6a8a",cursor:"pointer",fontSize:12}}>💬{chatCount>0&&<span style={{fontFamily:"'DM Sans'",fontSize:10,fontWeight:600}}>{chatCount}</span>}</button>}
-          {/* ✎ override — host only */}
-          {!readOnly&&<button onClick={()=>{setEditA(teamA||"");setEditB(teamB||"");setEditOpen(o=>!o);}} style={{fontSize:9,color:"#5a6a8a",background:"transparent",border:"1px solid #2a3a5c",borderRadius:4,padding:"2px 6px",cursor:"pointer",flexShrink:0}}>✎ {lang==="es"?"Anular":"Override"}</button>}
+          {/* ✎ override — host only, moved to bottom of card */}
         </div>
       </div>
       {editOpen&&!readOnly&&(
@@ -2276,6 +2275,11 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
         </div>
         <KoTeamDisplay team={teamB} slot={match.sB} owner={oB} initials={initials} isWinner={winB} hasResult={hasResult} isHome={false} playerNames={playerNames}/>
       </div>
+      {!readOnly&&(
+        <div style={{marginTop:6,display:"flex",justifyContent:"flex-start"}}>
+          <button onClick={()=>{setEditA(teamA||"");setEditB(teamB||"");setEditOpen(o=>!o);}} style={{fontSize:9,color:"#5a6a8a",background:"transparent",border:"1px solid #2a3a5c",borderRadius:4,padding:"2px 8px",cursor:"pointer"}}>✎ {lang==="es"?"Anular":"Override"}</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -2396,22 +2400,22 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
 }
 
 // KO predictions popup — fetches live from Polymarket for the specific matchup
-function KoOddsPopup({matchId,teamA,teamB,lang,hasResult,myPlayerIdx,playerNames=[],initials,matchPredictions={},poolCode,onOpenPredict}) {
+function KoOddsPopup({matchId,teamA,teamB,lang,hasResult,myPlayerIdx,playerNames=[],initials,matchPredictions={},poolCode,koOdds=null}) {
   const [open,setOpen]=useState(false);
-  const bothConfirmed=!!(teamA&&teamB);
   const predCount=Object.keys(matchPredictions).length;
   const myPred=myPlayerIdx!=null?matchPredictions[myPlayerIdx]:null;
+  // Only show button if we have actual odds for this match
+  if(!koOdds)return null;
   return(
     <div style={{display:"inline-flex",flexDirection:"column",alignItems:"flex-end",position:"relative"}}>
-      <button onClick={()=>{if(bothConfirmed){setOpen(o=>!o);}}} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${myPred!=null?"rgba(107,155,209,0.4)":"rgba(107,155,209,0.2)"}`,background:myPred!=null?"rgba(107,155,209,0.15)":"rgba(107,155,209,0.06)",color:bothConfirmed?"#6b9bd1":"#3d5070",cursor:bothConfirmed?"pointer":"default",fontSize:12}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${myPred!=null?"rgba(107,155,209,0.4)":"rgba(107,155,209,0.2)"}`,background:myPred!=null?"rgba(107,155,209,0.15)":"rgba(107,155,209,0.06)",color:"#6b9bd1",cursor:"pointer",fontSize:12}}>
         🔮{predCount>0&&<span style={{fontSize:10,fontWeight:600}}>{predCount}</span>}
       </button>
-      {open&&bothConfirmed&&(
+      {open&&(
         <>
           <div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setOpen(false)}/>
           <div onClick={e=>e.stopPropagation()} style={{position:"absolute",zIndex:300,top:28,right:0,background:"#0a1628",border:"1px solid rgba(107,155,209,0.25)",borderRadius:10,padding:"12px 14px",minWidth:200,boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
             <div style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1.5,color:"#5a6a8a",marginBottom:8}}>PREDICTIONS</div>
-            <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#8899b4",marginBottom:10}}>{lang==="es"?"Las probabilidades de Polymarket se abrirán pronto para este partido":"Polymarket odds will open soon for this match"}</div>
             {predCount>0&&(
               <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>
                 {Object.entries(matchPredictions).map(([pidx,pred])=>{
@@ -2427,7 +2431,11 @@ function KoOddsPopup({matchId,teamA,teamB,lang,hasResult,myPlayerIdx,playerNames
             {myPlayerIdx!=null&&(
               <div style={{display:"flex",gap:5}}>
                 {[["home",TBN[teamA]?.flag||teamA],["draw","🤝"],["away",TBN[teamB]?.flag||teamB]].map(([side,label])=>(
-                  <button key={side} onClick={async()=>{await savePrediction(poolCode,matchId,myPlayerIdx,myPred===side?null:side);setOpen(false);}} style={{flex:1,padding:"6px 0",borderRadius:6,border:`1.5px solid ${myPred===side?"rgba(107,155,209,0.6)":"#2a3a5c"}`,background:myPred===side?"rgba(107,155,209,0.15)":"transparent",color:myPred===side?"#6b9bd1":"#5a6a8a",fontSize:13,cursor:"pointer"}}>{label}</button>
+                  <button key={side} onClick={async()=>{
+                    const newVal=myPred===side?null:side;
+                    await savePrediction(poolCode,matchId,myPlayerIdx,newVal);
+                    if(newVal!==null)setOpen(false); // only close when setting, not removing
+                  }} style={{flex:1,padding:"6px 0",borderRadius:6,border:`1.5px solid ${myPred===side?"rgba(107,155,209,0.6)":"#2a3a5c"}`,background:myPred===side?"rgba(107,155,209,0.15)":"transparent",color:myPred===side?"#6b9bd1":"#5a6a8a",fontSize:13,cursor:"pointer"}}>{label}</button>
                 ))}
               </div>
             )}
@@ -2643,7 +2651,16 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           else{tgf+=r.away;tgd+=(r.away-r.home);}
         });
         return{team:t,gsPts:tgs,koPts:tko,pts:tgs+tko,gd:tgd,gf:tgf,eliminated:isEliminated(t,bracket,koResults,matchResults,groupOrderOverride)};
-      }).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf||a.team.localeCompare(b.team));
+      }).sort((a,b)=>{
+        // Stage reached tiebreaker first (higher stage = higher priority)
+        const stageOrder=(team)=>{
+          const{stage,eliminated}=getTeamStage(team,bracket,koResults,matchResults);
+          if(!stage)return 0;
+          const map={"GROUP":0,"R32":eliminated?1:2,"R16":eliminated?3:4,"QF":eliminated?5:6,"SF":eliminated?7:8,"FINAL":9,"🥉 3RD":10,"4TH":9,"🥈 2ND":11,"🥇 1ST":12};
+          return map[stage]??0;
+        };
+        return stageOrder(b.team)-stageOrder(a.team)||b.pts-a.pts||b.gd-a.gd||b.gf-a.gf||a.team.localeCompare(b.team);
+      });
       let gd=0,gf=0;
       myTeams.forEach(team=>{
         GM.forEach(m=>{
@@ -2821,9 +2838,9 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                         <div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:"rgba(10,22,40,0.3)"}}>
                           <span style={{fontSize:15,flexShrink:0}}>{tm?.flag}</span>
                           <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,flex:1,color:eliminated?"#6b7a90":"#e0dcd4",textDecoration:eliminated?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>
-                          {stage&&<span style={{fontFamily:"'Bebas Neue'",fontSize:9,color:stageColor,background:stageBg,border:`1px solid ${stageBorder}`,padding:"1px 5px",borderRadius:4,flexShrink:0,letterSpacing:1,whiteSpace:"nowrap"}}>{stage}</span>}
+                          {stage&&<span style={{fontFamily:"'Bebas Neue'",fontSize:9,color:stageColor,background:stageBg,border:`1px solid ${stageBorder}`,padding:"1px 5px",borderRadius:4,flexShrink:0,letterSpacing:1,whiteSpace:"nowrap",textDecoration:eliminated?"line-through":"none"}}>{stage}</span>}
                           <div style={{textAlign:"right",flexShrink:0}}>
-                            <div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:tp>0?color:"#5a6a8a",letterSpacing:1,lineHeight:1}}>{tp}<span style={{fontSize:8,opacity:0.7}}>pts</span></div>
+                            <div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:color,letterSpacing:1,lineHeight:1}}>{tp}<span style={{fontSize:8,opacity:0.7}}>pts</span></div>
                             {koPts>0&&<div style={{fontFamily:"'DM Sans'",fontSize:9,color:`${color}88`}}>GS {gsPts} + KO {koPts}</div>}
                           </div>
                         </div>

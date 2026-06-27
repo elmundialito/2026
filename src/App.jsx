@@ -2548,63 +2548,142 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
   </>);
 }
 
-// KO predictions popup — shows bet365 to-qualify odds and lets players predict
+// KO prediction button — opens full-screen modal matching group stage design
 function KoOddsPopup({matchId,teamA,teamB,lang,hasResult,myPlayerIdx,playerNames=[],initials,matchPredictions={},poolCode,koOdds=null}) {
   const [open,setOpen]=useState(false);
   const predCount=Object.keys(matchPredictions).length;
   const myPred=myPlayerIdx!=null?matchPredictions[myPlayerIdx]:null;
   if(!koOdds)return null;
-  const [homeP,awayP]=koOdds;
-  const flagA=TBN[teamA]?.flag||"";
-  const flagB=TBN[teamB]?.flag||"";
   return(
-    <div style={{display:"inline-flex",flexDirection:"column",alignItems:"flex-end",position:"relative"}}>
-      <button onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${myPred!=null?"rgba(107,155,209,0.4)":"rgba(107,155,209,0.2)"}`,background:myPred!=null?"rgba(107,155,209,0.15)":"rgba(107,155,209,0.06)",color:"#6b9bd1",cursor:"pointer",fontSize:12}}>
+    <>
+      <button onClick={()=>setOpen(true)} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${myPred!=null?"rgba(107,155,209,0.4)":"rgba(107,155,209,0.2)"}`,background:myPred!=null?"rgba(107,155,209,0.15)":"rgba(107,155,209,0.06)",color:"#6b9bd1",cursor:"pointer",fontSize:12,fontFamily:"'DM Sans'",flexShrink:0}}>
         🔮{predCount>0&&<span style={{fontSize:10,fontWeight:600}}>{predCount}</span>}
       </button>
-      {open&&(
-        <>
-          <div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setOpen(false)}/>
-          <div onClick={e=>e.stopPropagation()} style={{position:"absolute",zIndex:300,top:28,right:0,background:"#0a1628",border:"1px solid rgba(107,155,209,0.25)",borderRadius:10,padding:"12px 14px",minWidth:210,boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
-            {/* Odds bar */}
-            <div style={{marginBottom:10}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#e0dcd4"}}>{flagA} {homeP}%</span>
-                <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#e0dcd4"}}>{awayP}% {flagB}</span>
-              </div>
-              <div style={{height:6,borderRadius:3,overflow:"hidden",background:"#1e2f50",display:"flex"}}>
-                <div style={{width:`${homeP}%`,background:"var(--accent)",transition:"width 0.3s"}}/>
-                <div style={{width:`${awayP}%`,background:"#3a5070"}}/>
-              </div>
+      {open&&<KoPredictModal matchId={matchId} teamA={teamA} teamB={teamB} koOdds={koOdds} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={playerNames} initials={initials} matchPredictions={matchPredictions} hasResult={hasResult} onClose={()=>setOpen(false)}/>}
+    </>
+  );
+}
+
+function KoPredictModal({matchId,teamA,teamB,koOdds,poolCode,myPlayerIdx,playerNames=[],initials,matchPredictions={},hasResult,onClose}) {
+  const lang=useContext(LangContext);
+  const picVersion=useContext(PicContext);
+  const ta=TBN[teamA],tb=TBN[teamB];
+  const [homeP,awayP]=koOdds;
+  const myPick=myPlayerIdx!=null?matchPredictions[String(myPlayerIdx)]:null;
+
+  // KO result winner: koResults use "A"/"B" winner key stored in matchPredictions context
+  // hasResult is passed in — use it to lock picks
+  const isLocked=hasResult;
+
+  // Map "A"/"B" winner to "home"/"away" for colouring — but koResults aren't passed here,
+  // so we just use hasResult to lock; winner highlighting handled by parent if needed
+  const winKey=null; // no post-match colouring for now — can be added when koResults wired in
+
+  const getColor=(key)=>{
+    if(winKey&&winKey===key)return "#61a978";
+    if(winKey)return "#3d5070";
+    return "#6b9bd1";
+  };
+
+  const doPick=async(outcome)=>{
+    if(isLocked||myPlayerIdx===null||!poolCode)return;
+    await savePrediction(poolCode,matchId,myPlayerIdx,outcome);
+  };
+
+  const outcomes=[
+    {key:"home",flag:ta?.flag||"🏳️",name:countryName(teamA,lang)||teamA,pct:homeP},
+    {key:"away",flag:tb?.flag||"🏳️",name:countryName(teamB,lang)||teamB,pct:awayP},
+  ];
+
+  const byOutcome={home:[],away:[]};
+  Object.entries(matchPredictions).forEach(([idx,outcome])=>{
+    if(byOutcome[outcome])byOutcome[outcome].push(parseInt(idx));
+  });
+
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxHeight:"80vh",background:"linear-gradient(165deg,#0a1628,#0f1e38)",borderRadius:"20px 20px 0 0",display:"flex",flexDirection:"column",overflow:"hidden",border:"1px solid #2a3a5c"}}>
+        {/* Header */}
+        <div style={{padding:"14px 16px 10px",borderBottom:"1px solid #1e2f50",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:22}}>{ta?.flag}</span>
+            <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:"#8899b4",letterSpacing:1}}>vs</span>
+            <span style={{fontSize:22}}>{tb?.flag}</span>
+            <span style={{fontFamily:"'DM Sans'",fontSize:13,fontWeight:600,color:"#e0dcd4",marginLeft:4}}>{countryName(teamA,lang)} · {countryName(teamB,lang)}</span>
+          </div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:"#5a6a8a",fontSize:20,cursor:"pointer",padding:"0 4px"}}>✕</button>
+        </div>
+
+        <div style={{overflowY:"auto",padding:"14px 16px 24px",display:"flex",flexDirection:"column",gap:14}}>
+          {/* Odds section */}
+          <div style={{background:"rgba(10,22,40,0.5)",borderRadius:12,padding:"14px 16px",border:"1px solid #1a2d4a"}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,color:"#5a6a8a",marginBottom:12}}>{lang==="es"?"PRONÓSTICO PREVIO":"PRE-MATCH ODDS"}</div>
+            {outcomes.map(({key,flag,name,pct})=>{
+              const col=getColor(key);
+              return(
+                <div key={key} style={{display:"flex",alignItems:"center",gap:10,marginBottom:key==="away"?0:10}}>
+                  <span style={{fontSize:18,width:24,textAlign:"center",flexShrink:0}}>{flag}</span>
+                  <span style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:500,color:"#c8c0b0",flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</span>
+                  <div style={{width:90,height:6,background:"#1a2d4a",borderRadius:4,overflow:"hidden",flexShrink:0}}>
+                    <div style={{width:`${pct}%`,height:"100%",background:col,borderRadius:4}}/>
+                  </div>
+                  <span style={{fontFamily:"'DM Sans'",fontSize:14,fontWeight:700,color:col,minWidth:36,textAlign:"right"}}>{pct}%</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Pick section */}
+          <div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,color:"#5a6a8a",marginBottom:10}}>
+              {isLocked?(lang==="es"?"PREDICCIONES":"PREDICTIONS"):(lang==="es"?"¿QUIÉN PASA?":"WHO GOES THROUGH?")}
+              {isLocked&&<span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",marginLeft:8,fontWeight:400,letterSpacing:0}}>· {lang==="es"?"bloqueado":"locked at kickoff"}</span>}
             </div>
-            {/* Player predictions */}
-            {predCount>0&&(
-              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>
-                {Object.entries(matchPredictions).map(([pidx,pred])=>{
-                  const pi=parseInt(pidx);
-                  const pcolor=getPlayerColor(pi,PC[pi]);
-                  return(<div key={pidx} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:6,background:`${pcolor}15`,border:`1px solid ${pcolor}33`}}>
-                    <div style={{width:14,height:14,borderRadius:3,background:pcolor,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[pi]||"?"}</div>
-                    <span style={{fontFamily:"'DM Sans'",fontSize:9,color:pcolor}}>{pred==="home"?(flagA||teamA):pred==="away"?(flagB||teamB):"?"}</span>
-                  </div>);
-                })}
-              </div>
-            )}
-            {/* Pick buttons — home/away only, no draw in KO */}
-            {myPlayerIdx!=null&&(
-              <div style={{display:"flex",gap:5}}>
-                {[["home",`${flagA} ${teamA}`],["away",`${flagB} ${teamB}`]].map(([side,label])=>(
-                  <button key={side} onClick={async()=>{
-                    const newVal=myPred===side?null:side;
-                    await savePrediction(poolCode,matchId,myPlayerIdx,newVal);
-                    if(newVal!==null)setOpen(false);
-                  }} style={{flex:1,padding:"6px 4px",borderRadius:6,border:`1.5px solid ${myPred===side?"rgba(107,155,209,0.6)":"#2a3a5c"}`,background:myPred===side?"rgba(107,155,209,0.15)":"transparent",color:myPred===side?"#6b9bd1":"#5a6a8a",fontSize:11,cursor:"pointer",fontFamily:"'DM Sans'",textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{label}</button>
-                ))}
+            <div style={{display:"flex",gap:8}}>
+              {outcomes.map(({key,flag,name})=>{
+                const picked=myPick===key;
+                const iHaveOne=myPick!==null;
+                const col=getColor(key);
+                const isWinner=winKey===key;
+                return(
+                  <div key={key} style={{flex:1,display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
+                    <button
+                      onClick={()=>doPick(key)}
+                      disabled={isLocked}
+                      style={{
+                        width:"100%",padding:"14px 4px",borderRadius:12,
+                        border:`2px solid ${picked?col:isWinner?col:`${col}44`}`,
+                        background:picked?`${col}22`:isWinner?"rgba(97,169,120,0.08)":"rgba(26,39,68,0.4)",
+                        color:picked?col:isWinner?col:"#8899b4",
+                        cursor:isLocked?"default":"pointer",
+                        display:"flex",flexDirection:"column",alignItems:"center",gap:6,
+                        opacity:isLocked&&!picked&&iHaveOne&&!isWinner?0.4:1,
+                        transition:"all 0.15s"
+                      }}>
+                      <span style={{fontSize:28}}>{flag}</span>
+                      <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,textAlign:"center",lineHeight:1.2}}>{name}</span>
+                      {picked&&<span style={{fontSize:10,color:col,fontFamily:"'DM Sans'",fontWeight:700}}>✓ {lang==="es"?"tu voto":"your pick"}</span>}
+                      {isWinner&&!picked&&<span style={{fontSize:10,color:"#61a978",fontFamily:"'DM Sans'",fontWeight:700}}>✓ {lang==="es"?"resultado":"result"}</span>}
+                    </button>
+                    {byOutcome[key].length>0&&(
+                      <div style={{display:"flex",flexWrap:"wrap",gap:3,justifyContent:"center"}}>
+                        {byOutcome[key].map(idx=>(
+                          <AvatarWithName key={idx} idx={idx} name={playerNames[idx]||`P${idx+1}`} size={24} picVersion={picVersion}/>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {!isLocked&&myPlayerIdx===null&&(
+              <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",textAlign:"center",marginTop:8}}>
+                {lang==="es"?"Selecciona tu jugador para predecir":"Select your player to make a prediction"}
               </div>
             )}
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

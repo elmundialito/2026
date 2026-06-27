@@ -2340,7 +2340,7 @@ function KoScoreEntry({matchId,teamA,teamB,result,onSetResult,readOnly}) {
   );
 }
 
-function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownership,initials,readOnly,playerNames=[],myTeams=new Set(),onOpenChat,chatCount=0,hasReactions=false,matchPredictions={},myPlayerIdx,poolCode}) {
+function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownership,initials,readOnly,playerNames=[],myTeams=new Set(),onOpenChat,chatCount=0,hasReactions=false,matchPredictions={},myPlayerIdx,poolCode,onOpenPredict}) {
   const lang=useContext(LangContext);
   const w=koWinner(result);
   const winA=w==="A";const winB=w==="B";const hasResult=!!w;
@@ -2363,7 +2363,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
         {match.ko&&!hasResult&&<span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1,whiteSpace:"nowrap"}}>{fmtKickoff(match.d,match.ko)}</span>}
         <div style={{display:"flex",alignItems:"center",gap:5}}>
           {/* 🔮 predictions — show when both teams confirmed */}
-          {bothConfirmed&&<KoOddsPopup matchId={match.id} teamA={teamA} teamB={teamB} lang={lang} hasResult={hasResult} myPlayerIdx={myPlayerIdx} playerNames={playerNames} initials={initials} matchPredictions={matchPredictions} poolCode={poolCode} koOdds={KO_ODDS[match.id]||null}/>}
+          {bothConfirmed&&KO_ODDS[match.id]&&onOpenPredict&&(()=>{const myPred=myPlayerIdx!=null?matchPredictions[myPlayerIdx]:null;const predCount=Object.keys(matchPredictions).length;return(<button onClick={onOpenPredict} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${myPred!=null?"rgba(107,155,209,0.4)":"rgba(107,155,209,0.2)"}`,background:myPred!=null?"rgba(107,155,209,0.15)":"rgba(107,155,209,0.06)",color:"#6b9bd1",cursor:"pointer",fontSize:12,fontFamily:"'DM Sans'",flexShrink:0}}>🔮{predCount>0&&<span style={{fontSize:10,fontWeight:600}}>{predCount}</span>}</button>);})()}
           {/* 🎬 highlights — 2.5hrs after kickoff */}
           {bothConfirmed&&match.ko&&(()=>{
             const kickoffUTC=new Date(match.d+"T"+match.ko+":00Z");
@@ -2690,13 +2690,16 @@ function KoPredictModal({matchId,teamA,teamB,koOdds,poolCode,myPlayerIdx,playerN
   );
 }
 
-function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false,playerRankings=[],groupOrderOverride={},poolCode,myPlayerIdx}) {
+function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false,playerRankings=[],groupOrderOverride={},poolCode,myPlayerIdx,allPredictions={}}) {
   const lang=useContext(LangContext);
   const [activeRound,setActiveRound]=useState("r32");
   const [matchChat,setMatchChat]=useState({});
   const [predictions,setPredictions]=useState({});
   const [openChatId,setOpenChatId]=useState(null);
+  const [openPredictId,setOpenPredictId]=useState(null);
   const [myTeamsOnly,setMyTeamsOnly]=useState(false);
+  // Merge internal predictions (host onSnapshot) with allPredictions prop (spectator top-level onSnapshot)
+  const effectivePredictions=useMemo(()=>({...allPredictions,...predictions}),[allPredictions,predictions]);
 
   const myTeams=useMemo(()=>myPlayerIdx!=null?new Set((picks||[]).filter(p=>p.playerIdx===myPlayerIdx).map(p=>p.team)):new Set(),[picks,myPlayerIdx]);
 
@@ -2763,7 +2766,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
                 <div style={{flex:1,height:isToday?2:1,background:isToday?"rgba(201,168,76,0.4)":"rgba(138,153,180,0.2)"}}/>
                 <span style={{fontFamily:"'DM Sans'",fontSize:10,color:isToday?"var(--accent)":"#5a6a8a",fontWeight:isToday?600:400}}>{scored}/{matches.length}</span>
               </div>
-              {matches.map(m=>{const bk=bracket[m.id];const mTeamA=bk?.a||null;const mTeamB=bk?.b||null;const bothConfirmed=!!(mTeamA&&mTeamB);const isMyKoMatch=myTeams.has(mTeamA)||myTeams.has(mTeamB);if(myTeamsOnly&&!isMyKoMatch)return null;return(<KoMatchCard key={m.id} match={m} teamA={mTeamA} teamB={mTeamB} result={koResults[m.id]} onSetOverride={(mid,side,val)=>setKoOverride(mid,side,val)} onSetResult={(mid,val)=>setKoResults(r=>({...r,[mid]:val}))} ownership={ownership} initials={koInitials} readOnly={readOnly} playerNames={config.playerNames||[]} myTeams={myTeams} onOpenChat={bothConfirmed?()=>setOpenChatId(m.id):null} chatCount={(matchChat[m.id]?.messages||[]).length||0} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)} matchPredictions={predictions[m.id]||{}} myPlayerIdx={myPlayerIdx} poolCode={poolCode}/>);})}
+              {matches.map(m=>{const bk=bracket[m.id];const mTeamA=bk?.a||null;const mTeamB=bk?.b||null;const bothConfirmed=!!(mTeamA&&mTeamB);const isMyKoMatch=myTeams.has(mTeamA)||myTeams.has(mTeamB);if(myTeamsOnly&&!isMyKoMatch)return null;return(<KoMatchCard key={m.id} match={m} teamA={mTeamA} teamB={mTeamB} result={koResults[m.id]} onSetOverride={(mid,side,val)=>setKoOverride(mid,side,val)} onSetResult={(mid,val)=>setKoResults(r=>({...r,[mid]:val}))} ownership={ownership} initials={koInitials} readOnly={readOnly} playerNames={config.playerNames||[]} myTeams={myTeams} onOpenChat={bothConfirmed?()=>setOpenChatId(m.id):null} chatCount={(matchChat[m.id]?.messages||[]).length||0} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)} matchPredictions={effectivePredictions[m.id]||{}} myPlayerIdx={myPlayerIdx} poolCode={poolCode} onOpenPredict={bothConfirmed&&KO_ODDS[m.id]?()=>setOpenPredictId(m.id):null}/>);})}
             </div>
           );
         });
@@ -2793,6 +2796,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
         </button>
       )}
       {openChatId&&(()=>{const m=KM.find(x=>x.id===openChatId);const bk=bracket[openChatId];return m&&bk?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={{...m,t:[bk.a||"TBD",bk.b||"TBD"]}} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={koInitials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
+      {openPredictId&&(()=>{const m=KM.find(x=>x.id===openPredictId);const bk=bracket[openPredictId];if(!m||!bk?.a||!bk?.b||!KO_ODDS[openPredictId])return null;const w=koWinner(koResults[openPredictId]);return(<KoPredictModal matchId={openPredictId} teamA={bk.a} teamB={bk.b} koOdds={KO_ODDS[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames||[]} initials={koInitials} matchPredictions={effectivePredictions[openPredictId]||{}} hasResult={!!w} onClose={()=>setOpenPredictId(null)}/>);})()}
     </div>
   );
 }
@@ -4803,7 +4807,7 @@ export default function Mundialito() {
       return <SetupScreen config={st.config} setConfig={c=>setSt(p=>({...p,config:typeof c==="function"?c(p.config):c}))} onLock={()=>{setSt(p=>({...p,setupLocked:true}));setActiveTab("draft");}} readOnly={readOnly}/>;}
     if(activeTab==="draft")return <DraftScreen config={st.config} draftOrder={st.draftOrder} setDraftOrder={o=>setSt(p=>({...p,draftOrder:o}))} picks={st.picks} setPicks={v=>setSt(p=>({...p,picks:typeof v==="function"?v(p.picks):v}))} onLockDraft={()=>{setSt(p=>({...p,draftLocked:true}));setActiveTab("group");}} readOnly={readOnly} initials={initials} draftMode={st.draftMode} setDraftMode={v=>setSt(p=>({...p,draftMode:v}))}/>;
     if(activeTab==="group")return <GroupStageScreen config={st.config} picks={st.picks} matchResults={st.matchResults} setMatchResults={v=>setSt(p=>({...p,matchResults:typeof v==="function"?v(p.matchResults):v}))} readOnly={readOnly} initials={initials} myPlayerIdx={myPlayerIdx} onPicsLoaded={()=>setPicRefresh(n=>n+1)} onPredictionsUpdate={p=>setAllPredictions(p)} bracket={resolvedBracket} koResults={st.koResults} playerRankings={playerRankings} groupOrderOverride={st.groupOrderOverride||{}} setGroupOrderOverride={(grp,order)=>setSt(p=>{const next={...(p.groupOrderOverride||{})};if(order)next[grp]=order;else delete next[grp];return{...p,groupOrderOverride:next};})}/>;
-    if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly} isPreview={isHost&&!anyGroupDone} playerRankings={playerRankings} groupOrderOverride={st.groupOrderOverride||{}} poolCode={poolCode} myPlayerIdx={myPlayerIdx}/>;
+    if(activeTab==="knockout")return <KnockoutScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} koOverrides={st.koOverrides} setKoOverride={setKoOverride} setKoResults={v=>setSt(p=>({...p,koResults:typeof v==="function"?v(p.koResults):v}))} readOnly={readOnly} isPreview={isHost&&!anyGroupDone} playerRankings={playerRankings} groupOrderOverride={st.groupOrderOverride||{}} poolCode={poolCode||spectatorPoolCode} myPlayerIdx={myPlayerIdx} allPredictions={allPredictions}/>;
     if(activeTab==="standings")return <StandingsScreen config={st.config} picks={st.picks} matchResults={st.matchResults} bracket={resolvedBracket} koResults={st.koResults} initials={initials} myPlayerIdx={myPlayerIdx} onChangeUser={()=>setShowSelectName(true)} onEditProfile={()=>{if(myPlayerIdx!==null){setProfileSetupIdx(myPlayerIdx);setShowProfileSetup(true);}}} onSuggestions={()=>setShowSuggestions(true)} picRefresh={picRefresh} allPredictions={allPredictions} draftOrder={st.draftOrder||[]} groupOrderOverride={st.groupOrderOverride||{}}/>;
     return null;
   };

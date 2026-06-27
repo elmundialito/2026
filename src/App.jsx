@@ -451,7 +451,112 @@ const KM = [
   {id:"K103",round:"third",n:103,sA:"Loss M101",sB:"Loss M102",v:"Miami",ko:"21:00",d:"2026-07-18"},{id:"K104",round:"final",n:104,sA:"Win M101",sB:"Win M102",v:"New York/NJ",ko:"19:00",d:"2026-07-19"},
 ];
 
-const SLOT_3RD = {"K75":["A","B","C","D","F"],"K78":["C","D","F","G","H"],"K79":["C","E","F","H","I"],"K80":["E","H","I","J","K"],"K81":["A","E","H","I","J"],"K82":["B","E","F","I","J"],"K85":["D","E","I","J","L"],"K88":["D","E","I","J","L"]};
+// FIFA Annex C lookup table: 8-letter sorted group key -> which 3rd place group goes into each slot
+// Cols: 1A=K79, 1B=K85, 1D=K81, 1E=K75(K74), 1G=K82, 1I=K77, 1K=K87, 1L=K80
+// Source: Wikipedia 2026 FIFA World Cup knockout stage + FIFA Regulations Annex C
+const FIFA_THIRD_PLACE_TABLE={
+"EFGHIJKL":{K79:"E",K85:"J",K82:"I",K75:"F",K81:"H",K78:"G",K88:"L",K80:"K"},
+"DFGHIJKL":{K79:"H",K85:"G",K82:"I",K75:"D",K81:"J",K78:"F",K88:"L",K80:"K"},
+"DEGHIJKL":{K79:"E",K85:"J",K82:"I",K75:"D",K81:"H",K78:"G",K88:"L",K80:"K"},
+"DEFHIJKL":{K79:"E",K85:"J",K82:"I",K75:"D",K81:"H",K78:"F",K88:"L",K80:"K"},
+"DEFGIJKL":{K79:"E",K85:"G",K82:"I",K75:"D",K81:"J",K78:"F",K88:"L",K80:"K"},
+"DEFGHJKL":{K79:"E",K85:"G",K82:"J",K75:"D",K81:"H",K78:"F",K88:"L",K80:"K"},
+"DEFGHIKL":{K79:"E",K85:"G",K82:"I",K75:"D",K81:"H",K78:"F",K88:"L",K80:"K"},
+"DEFGHIJL":{K79:"E",K85:"G",K82:"J",K75:"D",K81:"H",K78:"F",K88:"L",K80:"I"},
+"DEFGHIJK":{K79:"E",K85:"G",K82:"J",K75:"D",K81:"H",K78:"F",K88:"I",K80:"K"},
+"CFGHIJKL":{K79:"H",K85:"G",K82:"I",K75:"C",K81:"J",K78:"F",K88:"L",K80:"K"},
+"CEGHIJKL":{K79:"E",K85:"J",K82:"I",K75:"C",K81:"H",K78:"G",K88:"L",K80:"K"},
+"CEFHIJKL":{K79:"E",K85:"J",K82:"I",K75:"C",K81:"H",K78:"F",K88:"L",K80:"K"},
+"CEFGIJKL":{K79:"E",K85:"G",K82:"I",K75:"C",K81:"J",K78:"F",K88:"L",K80:"K"},
+"CEFGHJKL":{K79:"E",K85:"G",K82:"J",K75:"C",K81:"H",K78:"F",K88:"L",K80:"K"},
+"CEFGHIKL":{K79:"E",K85:"G",K82:"I",K75:"C",K81:"H",K78:"F",K88:"L",K80:"K"},
+"CEFGHIJL":{K79:"E",K85:"G",K82:"J",K75:"C",K81:"H",K78:"F",K88:"L",K80:"I"},
+"CEFGHIJK":{K79:"E",K85:"G",K82:"J",K75:"C",K81:"H",K78:"F",K88:"I",K80:"K"},
+"CDGHIJKL":{K79:"H",K85:"G",K82:"I",K75:"C",K81:"J",K78:"D",K88:"L",K80:"K"},
+"CDFHIJKL":{K79:"C",K85:"J",K82:"I",K75:"D",K81:"H",K78:"F",K88:"L",K80:"K"},
+"CDFGIJKL":{K79:"C",K85:"G",K82:"I",K75:"D",K81:"J",K78:"F",K88:"L",K80:"K"},
+"CDFGHJKL":{K79:"C",K85:"G",K82:"J",K75:"D",K81:"H",K78:"F",K88:"L",K80:"K"},
+"CDFGHIKL":{K79:"C",K85:"G",K82:"I",K75:"D",K81:"H",K78:"F",K88:"L",K80:"K"},
+"CDFGHIJL":{K79:"C",K85:"G",K82:"J",K75:"D",K81:"H",K78:"F",K88:"L",K80:"I"},
+"CDFGHIJK":{K79:"C",K85:"G",K82:"J",K75:"D",K81:"H",K78:"F",K88:"I",K80:"K"},
+"CDEHIJKL":{K79:"E",K85:"J",K82:"I",K75:"C",K81:"H",K78:"D",K88:"L",K80:"K"},
+"CDEGIJKL":{K79:"E",K85:"G",K82:"I",K75:"C",K81:"J",K78:"D",K88:"L",K80:"K"},
+"CDEGHJKL":{K79:"E",K85:"G",K82:"J",K75:"C",K81:"H",K78:"D",K88:"L",K80:"K"},
+"CDEGHIKL":{K79:"E",K85:"G",K82:"I",K75:"C",K81:"H",K78:"D",K88:"L",K80:"K"},
+"CDEGHIJL":{K79:"E",K85:"G",K82:"J",K75:"C",K81:"H",K78:"D",K88:"L",K80:"I"},
+"CDEGHIJK":{K79:"E",K85:"G",K82:"J",K75:"C",K81:"H",K78:"D",K88:"I",K80:"K"},
+"CDEFIJKL":{K79:"C",K85:"J",K82:"E",K75:"D",K81:"I",K78:"F",K88:"L",K80:"K"},
+"CDEFHJKL":{K79:"C",K85:"J",K82:"E",K75:"D",K81:"H",K78:"F",K88:"L",K80:"K"},
+"CDEFHIKL":{K79:"C",K85:"E",K82:"I",K75:"D",K81:"H",K78:"F",K88:"L",K80:"K"},
+"CDEFHIJL":{K79:"C",K85:"J",K82:"E",K75:"D",K81:"H",K78:"F",K88:"L",K80:"I"},
+"CDEFHIJK":{K79:"C",K85:"J",K82:"E",K75:"D",K81:"H",K78:"F",K88:"I",K80:"K"},
+"CDEFGJKL":{K79:"C",K85:"G",K82:"E",K75:"D",K81:"J",K78:"F",K88:"L",K80:"K"},
+"CDEFGIKL":{K79:"C",K85:"G",K82:"E",K75:"D",K81:"I",K78:"F",K88:"L",K80:"K"},
+"CDEFGIJL":{K79:"C",K85:"G",K82:"E",K75:"D",K81:"J",K78:"F",K88:"L",K80:"I"},
+"CDEFGIJK":{K79:"C",K85:"G",K82:"E",K75:"D",K81:"J",K78:"F",K88:"I",K80:"K"},
+"CDEFGHKL":{K79:"C",K85:"G",K82:"E",K75:"D",K81:"H",K78:"F",K88:"L",K80:"K"},
+"CDEFGHJL":{K79:"C",K85:"G",K82:"J",K75:"D",K81:"H",K78:"F",K88:"L",K80:"E"},
+"CDEFGHJK":{K79:"C",K85:"G",K82:"J",K75:"D",K81:"H",K78:"F",K88:"E",K80:"K"},
+"CDEFGHIL":{K79:"C",K85:"G",K82:"E",K75:"D",K81:"H",K78:"F",K88:"L",K80:"I"},
+"CDEFGHIK":{K79:"C",K85:"G",K82:"E",K75:"D",K81:"H",K78:"F",K88:"I",K80:"K"},
+"CDEFGHIJ":{K79:"C",K85:"G",K82:"J",K75:"D",K81:"H",K78:"F",K88:"E",K80:"I"},
+"BFGHIJKL":{K79:"H",K85:"J",K82:"B",K75:"F",K81:"I",K78:"G",K88:"L",K80:"K"},
+"BEGHIJKL":{K79:"E",K85:"J",K82:"I",K75:"B",K81:"H",K78:"G",K88:"L",K80:"K"},
+"BEFHIJKL":{K79:"E",K85:"J",K82:"B",K75:"F",K81:"I",K78:"H",K88:"L",K80:"K"},
+"BEFGIJKL":{K79:"E",K85:"J",K82:"B",K75:"F",K81:"I",K78:"G",K88:"L",K80:"K"},
+"BEFGHJKL":{K79:"E",K85:"J",K82:"B",K75:"F",K81:"H",K78:"G",K88:"L",K80:"K"},
+"BEFGHIKL":{K79:"E",K85:"G",K82:"B",K75:"F",K81:"I",K78:"H",K88:"L",K80:"K"},
+"BEFGHIJL":{K79:"E",K85:"J",K82:"B",K75:"F",K81:"H",K78:"G",K88:"L",K80:"I"},
+"BEFGHIJK":{K79:"E",K85:"J",K82:"B",K75:"F",K81:"H",K78:"G",K88:"I",K80:"K"},
+"BDGHIJKL":{K79:"H",K85:"J",K82:"B",K75:"D",K81:"I",K78:"G",K88:"L",K80:"K"},
+"BDFHIJKL":{K79:"H",K85:"J",K82:"B",K75:"D",K81:"I",K78:"F",K88:"L",K80:"K"},
+"BDFGIJKL":{K79:"I",K85:"G",K82:"B",K75:"D",K81:"J",K78:"F",K88:"L",K80:"K"},
+"BDFGHJKL":{K79:"H",K85:"G",K82:"B",K75:"D",K81:"J",K78:"F",K88:"L",K80:"K"},
+"BDFGHIKL":{K79:"H",K85:"G",K82:"B",K75:"D",K81:"I",K78:"F",K88:"L",K80:"K"},
+"BDFGHIJL":{K79:"H",K85:"G",K82:"B",K75:"D",K81:"J",K78:"F",K88:"L",K80:"I"},
+"BDFGHIJK":{K79:"H",K85:"G",K82:"B",K75:"D",K81:"J",K78:"F",K88:"I",K80:"K"},
+"BDEHIJKL":{K79:"E",K85:"J",K82:"B",K75:"D",K81:"I",K78:"H",K88:"L",K80:"K"},
+"BDEGIJKL":{K79:"E",K85:"J",K82:"B",K75:"D",K81:"I",K78:"G",K88:"L",K80:"K"},
+"BDEGHJKL":{K79:"E",K85:"J",K82:"B",K75:"D",K81:"H",K78:"G",K88:"L",K80:"K"},
+"BDEGHIKL":{K79:"E",K85:"G",K82:"B",K75:"D",K81:"I",K78:"H",K88:"L",K80:"K"},
+"BDEGHIJL":{K79:"E",K85:"J",K82:"B",K75:"D",K81:"H",K78:"G",K88:"L",K80:"I"},
+"BDEGHIJK":{K79:"E",K85:"J",K82:"B",K75:"D",K81:"H",K78:"G",K88:"I",K80:"K"},
+"BDEFIJKL":{K79:"E",K85:"J",K82:"B",K75:"D",K81:"I",K78:"F",K88:"L",K80:"K"},
+"BDEFHJKL":{K79:"E",K85:"J",K82:"B",K75:"D",K81:"H",K78:"F",K88:"L",K80:"K"},
+"BDEFHIKL":{K79:"E",K85:"I",K82:"B",K75:"D",K81:"H",K78:"F",K88:"L",K80:"K"},
+"BDEFHIJL":{K79:"E",K85:"J",K82:"B",K75:"D",K81:"H",K78:"F",K88:"L",K80:"I"},
+"BDEFHIJK":{K79:"E",K85:"J",K82:"B",K75:"D",K81:"H",K78:"F",K88:"I",K80:"K"},
+"BDEFGJKL":{K79:"E",K85:"G",K82:"B",K75:"D",K81:"J",K78:"F",K88:"L",K80:"K"},
+"BDEFGIKL":{K79:"E",K85:"G",K82:"B",K75:"D",K81:"I",K78:"F",K88:"L",K80:"K"},
+"BDEFGIJL":{K79:"E",K85:"G",K82:"B",K75:"D",K81:"J",K78:"F",K88:"L",K80:"I"},
+"BDEFGIJK":{K79:"E",K85:"G",K82:"B",K75:"D",K81:"J",K78:"F",K88:"I",K80:"K"},
+"BDEFGHKL":{K79:"E",K85:"G",K82:"B",K75:"D",K81:"H",K78:"F",K88:"L",K80:"K"},
+"BDEFGHJL":{K79:"H",K85:"G",K82:"B",K75:"D",K81:"J",K78:"F",K88:"L",K80:"E"},
+"BDEFGHJK":{K79:"H",K85:"G",K82:"B",K75:"D",K81:"J",K78:"F",K88:"E",K80:"K"},
+"BDEFGHIL":{K79:"E",K85:"G",K82:"B",K75:"D",K81:"H",K78:"F",K88:"L",K80:"I"},
+"BDEFGHIK":{K79:"E",K85:"G",K82:"B",K75:"D",K81:"H",K78:"F",K88:"I",K80:"K"},
+"BDEFGHIJ":{K79:"H",K85:"G",K82:"B",K75:"D",K81:"J",K78:"F",K88:"E",K80:"I"},
+"ABDEFGIL":{K79:"E",K85:"G",K82:"B",K75:"D",K81:"A",K78:"F",K88:"L",K80:"I"},
+"ABDEFGIK":{K79:"E",K85:"G",K82:"B",K75:"D",K81:"A",K78:"F",K88:"I",K80:"K"},
+"ABDEFGIJ":{K79:"E",K85:"G",K82:"B",K75:"D",K81:"A",K78:"F",K88:"I",K80:"J"},
+"ABCDEFGI":{K79:"C",K85:"G",K82:"B",K75:"D",K81:"A",K78:"F",K88:"E",K80:"I"},
+};
+
+function resolveThirdPlaceSlots(mr, kov, groupOverrides={}) {
+  // Only run once all groups are complete
+  if(!Object.keys(GROUPS).every(g=>GM.filter(m=>m.g===g).every(m=>mr[m.id]!=null))) return {};
+  const top8=get3rdPlaceTeams(mr,groupOverrides).slice(0,8);
+  const qualGroups=top8.map(t=>t.group).sort().join('');
+  const mapping=FIFA_THIRD_PLACE_TABLE[qualGroups];
+  if(!mapping) return {}; // combination not in table yet - fall back to override
+  const result={};
+  Object.entries(mapping).forEach(([matchId,grp])=>{
+    if(kov[matchId]?.b!=null) return; // host override takes priority
+    const team=top8.find(t=>t.group===grp)?.team||null;
+    if(team) result[matchId]=team;
+  });
+  return result;
+}
 
 function getMatchOutcome(r) {
   if (!r||r.home==null||r.away==null) return null;
@@ -531,14 +636,7 @@ function getLive3rdPlaceTeams(mr, overrides={}) {
 
 function resolveKOBracket(mr, kr, kov, groupOverrides={}) {
   const st={}; Object.keys(GROUPS).forEach(g=>{st[g]=groupStandings(g,mr,groupOverrides[g]);});
-  const a3={};
-  if(Object.keys(GROUPS).every(g=>GM.filter(m=>m.g===g).every(m=>mr[m.id]!=null))) {
-    const top8=get3rdPlaceTeams(mr,groupOverrides).slice(0,8);
-    const sl=Object.entries(SLOT_3RD);
-    const used=new Set(sl.filter(([id])=>kov[id]?.b!=null).map(([id])=>kov[id].b));
-    function bt(i){if(i===sl.length)return true;const[id,gs]=sl[i];if(kov[id]?.b!=null)return bt(i+1);for(const t of top8){if(!used.has(t.team)&&gs.includes(t.group)){a3[id]=t.team;used.add(t.team);if(bt(i+1))return true;delete a3[id];used.delete(t.team);}}return false;}
-    bt(0);
-  }
+  const a3=resolveThirdPlaceSlots(mr, kov, groupOverrides);
   const bk={};
   KM.forEach(m=>{
     const res=(slot,side)=>{

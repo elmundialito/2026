@@ -2586,8 +2586,10 @@ function KoPredictModal({matchId,teamA,teamB,koOdds,poolCode,myPlayerIdx,playerN
   };
 
   const doPick=async(outcome)=>{
-    if(isLocked||myPlayerIdx===null||!poolCode)return;
-    await savePrediction(poolCode,matchId,myPlayerIdx,outcome);
+    if(isLocked||myPlayerIdx===null)return;
+    const code=poolCode||window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
+    if(!code)return;
+    await savePrediction(code,matchId,myPlayerIdx,outcome);
   };
 
   const outcomes=[

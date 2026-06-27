@@ -543,18 +543,46 @@ const FIFA_THIRD_PLACE_TABLE={
 };
 
 function resolveThirdPlaceSlots(mr, kov, groupOverrides={}) {
-  // Only run once all groups are complete
-  if(!Object.keys(GROUPS).every(g=>GM.filter(m=>m.g===g).every(m=>mr[m.id]!=null))) return {};
-  const top8=get3rdPlaceTeams(mr,groupOverrides).slice(0,8);
-  const qualGroups=top8.map(t=>t.group).sort().join('');
-  const mapping=FIFA_THIRD_PLACE_TABLE[qualGroups];
-  if(!mapping) return {}; // combination not in table yet - fall back to override
+  const allGroupsDone=Object.keys(GROUPS).every(g=>GM.filter(m=>m.g===g).every(m=>mr[m.id]!=null));
+  // Get 3rd-place teams from completed groups only
+  const confirmed3rds=get3rdPlaceTeams(mr,groupOverrides);
+  if(confirmed3rds.length===0) return {};
+  const confirmedGroups=confirmed3rds.map(t=>t.group);
+
+  if(allGroupsDone) {
+    // Full resolution: exact key lookup
+    const top8=confirmed3rds.slice(0,8);
+    const qualGroups=top8.map(t=>t.group).sort().join('');
+    const mapping=FIFA_THIRD_PLACE_TABLE[qualGroups];
+    if(!mapping) return {};
+    const result={};
+    Object.entries(mapping).forEach(([matchId,grp])=>{
+      if(kov[matchId]?.b!=null) return;
+      const team=top8.find(t=>t.group===grp)?.team||null;
+      if(team) result[matchId]=team;
+    });
+    return result;
+  }
+
+  // Partial resolution: filter table to combos consistent with confirmed qualifiers,
+  // then place any slot where ALL matching combos agree on the same group
+  // A combo is consistent if it contains all confirmed qualifying groups
+  const matchingCombos=Object.entries(FIFA_THIRD_PLACE_TABLE).filter(([key])=>
+    confirmedGroups.every(g=>key.includes(g))
+  );
+  if(matchingCombos.length===0) return {};
+
+  const slots=["K79","K85","K82","K75","K81","K78","K88","K80"];
   const result={};
-  Object.entries(mapping).forEach(([matchId,grp])=>{
-    if(kov[matchId]?.b!=null) return; // host override takes priority
-    const team=top8.find(t=>t.group===grp)?.team||null;
-    if(team) result[matchId]=team;
-  });
+  for(const slot of slots) {
+    if(kov[slot]?.b!=null) continue; // host override takes priority
+    const vals=[...new Set(matchingCombos.map(([,m])=>m[slot]))];
+    if(vals.length===1) {
+      // All remaining combos agree — place this team now
+      const team=confirmed3rds.find(t=>t.group===vals[0])?.team||null;
+      if(team) result[slot]=team;
+    }
+  }
   return result;
 }
 

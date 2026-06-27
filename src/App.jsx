@@ -564,11 +564,13 @@ function resolveThirdPlaceSlots(mr, kov, groupOverrides={}) {
     return result;
   }
 
-  // Partial resolution: filter table to combos consistent with confirmed qualifiers,
-  // then place any slot where ALL matching combos agree on the same group
-  // A combo is consistent if it contains all confirmed qualifying groups
+  // Partial resolution: filter table to combos that contain all groups whose 3rd-place
+  // team is locked into the top 8. Use top 8 only — table keys are 8 letters, so
+  // filtering with more confirmed groups than that would never match anything.
+  const top8confirmed=confirmed3rds.slice(0,8);
+  const lockedGroups=top8confirmed.map(t=>t.group);
   const matchingCombos=Object.entries(FIFA_THIRD_PLACE_TABLE).filter(([key])=>
-    confirmedGroups.every(g=>key.includes(g))
+    lockedGroups.every(g=>key.includes(g))
   );
   if(matchingCombos.length===0) return {};
 

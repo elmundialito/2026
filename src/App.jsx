@@ -415,6 +415,20 @@ const MATCH_ODDS = {
   G22:[57,25,18], G23:[43,29,28], G46:[79,14,7],  G47:[14,23,63], G67:[10,13,77], G68:[59,24,17],
 };
 
+// KO stage odds (to qualify, no draw) — [home%, away%] summing to 100
+// Source: bet365 decimal odds, vig-normalised. Home team = sA side of the match.
+const KO_ODDS = {
+  K73:[28,72],  // South Africa vs Canada
+  K74:[72,28],  // Brazil vs Japan
+  K75:[79,21],  // Germany vs Paraguay
+  K76:[60,40],  // Netherlands vs Morocco
+  K77:[36,64],  // Ivory Coast vs Norway
+  K78:[84,16],  // France vs Sweden
+  K82:[81,19],  // USA vs Bosnia
+  K86:[41,59],  // Australia vs Egypt
+  K87:[90,10],  // Argentina vs Cape Verde
+};
+
 const fmtKickoff = (dateStr, timeUTC) => {
   if(!timeUTC) return "";
   try {
@@ -564,13 +578,20 @@ function resolveThirdPlaceSlots(mr, kov, groupOverrides={}) {
     return result;
   }
 
-  // Partial resolution: filter table to combos that contain all groups whose 3rd-place
-  // team is locked into the top 8. Use top 8 only — table keys are 8 letters, so
-  // filtering with more confirmed groups than that would never match anything.
-  const top8confirmed=confirmed3rds.slice(0,8);
-  const lockedGroups=top8confirmed.map(t=>t.group);
+  // Partial resolution: only place teams that are mathematically guaranteed in the top 8.
+  // A team currently ranked r (1-indexed) among completed groups is guaranteed if:
+  //   r + remainingGroups <= 8
+  // because even if every remaining group produces a better 3rd-place team, they
+  // can only be pushed down by that many positions.
+  const completedGroupCount=Object.keys(GROUPS).filter(g=>GM.filter(m=>m.g===g).every(m=>mr[m.id]!=null)).length;
+  const remainingGroups=Object.keys(GROUPS).length-completedGroupCount;
+  const maxGuaranteedRank=8-remainingGroups;
+  if(maxGuaranteedRank<1) return {};
+  const guaranteedTeams=confirmed3rds.slice(0,maxGuaranteedRank);
+  const guaranteedGroups=guaranteedTeams.map(t=>t.group);
+
   const matchingCombos=Object.entries(FIFA_THIRD_PLACE_TABLE).filter(([key])=>
-    lockedGroups.every(g=>key.includes(g))
+    guaranteedGroups.every(g=>key.includes(g))
   );
   if(matchingCombos.length===0) return {};
 
@@ -581,7 +602,7 @@ function resolveThirdPlaceSlots(mr, kov, groupOverrides={}) {
     const vals=[...new Set(matchingCombos.map(([,m])=>m[slot]))];
     if(vals.length===1) {
       // All remaining combos agree — place this team now
-      const team=confirmed3rds.find(t=>t.group===vals[0])?.team||null;
+      const team=guaranteedTeams.find(t=>t.group===vals[0])?.team||null;
       if(team) result[slot]=team;
     }
   }
@@ -2342,7 +2363,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
         {match.ko&&!hasResult&&<span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:1,whiteSpace:"nowrap"}}>{fmtKickoff(match.d,match.ko)}</span>}
         <div style={{display:"flex",alignItems:"center",gap:5}}>
           {/* 🔮 predictions — show when both teams confirmed */}
-          {bothConfirmed&&<KoOddsPopup matchId={match.id} teamA={teamA} teamB={teamB} lang={lang} hasResult={hasResult} myPlayerIdx={myPlayerIdx} playerNames={playerNames} initials={initials} matchPredictions={matchPredictions} poolCode={poolCode} koOdds={null}/>}
+          {bothConfirmed&&<KoOddsPopup matchId={match.id} teamA={teamA} teamB={teamB} lang={lang} hasResult={hasResult} myPlayerIdx={myPlayerIdx} playerNames={playerNames} initials={initials} matchPredictions={matchPredictions} poolCode={poolCode} koOdds={KO_ODDS[match.id]||null}/>}
           {/* 🎬 highlights — 2.5hrs after kickoff */}
           {bothConfirmed&&match.ko&&(()=>{
             const kickoffUTC=new Date(match.d+"T"+match.ko+":00Z");
@@ -2527,13 +2548,15 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
   </>);
 }
 
-// KO predictions popup — fetches live from Polymarket for the specific matchup
+// KO predictions popup — shows bet365 to-qualify odds and lets players predict
 function KoOddsPopup({matchId,teamA,teamB,lang,hasResult,myPlayerIdx,playerNames=[],initials,matchPredictions={},poolCode,koOdds=null}) {
   const [open,setOpen]=useState(false);
   const predCount=Object.keys(matchPredictions).length;
   const myPred=myPlayerIdx!=null?matchPredictions[myPlayerIdx]:null;
-  // Only show button if we have actual odds for this match
   if(!koOdds)return null;
+  const [homeP,awayP]=koOdds;
+  const flagA=TBN[teamA]?.flag||"";
+  const flagB=TBN[teamB]?.flag||"";
   return(
     <div style={{display:"inline-flex",flexDirection:"column",alignItems:"flex-end",position:"relative"}}>
       <button onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${myPred!=null?"rgba(107,155,209,0.4)":"rgba(107,155,209,0.2)"}`,background:myPred!=null?"rgba(107,155,209,0.15)":"rgba(107,155,209,0.06)",color:"#6b9bd1",cursor:"pointer",fontSize:12}}>
@@ -2542,8 +2565,19 @@ function KoOddsPopup({matchId,teamA,teamB,lang,hasResult,myPlayerIdx,playerNames
       {open&&(
         <>
           <div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setOpen(false)}/>
-          <div onClick={e=>e.stopPropagation()} style={{position:"absolute",zIndex:300,top:28,right:0,background:"#0a1628",border:"1px solid rgba(107,155,209,0.25)",borderRadius:10,padding:"12px 14px",minWidth:200,boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1.5,color:"#5a6a8a",marginBottom:8}}>PREDICTIONS</div>
+          <div onClick={e=>e.stopPropagation()} style={{position:"absolute",zIndex:300,top:28,right:0,background:"#0a1628",border:"1px solid rgba(107,155,209,0.25)",borderRadius:10,padding:"12px 14px",minWidth:210,boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
+            {/* Odds bar */}
+            <div style={{marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#e0dcd4"}}>{flagA} {homeP}%</span>
+                <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#e0dcd4"}}>{awayP}% {flagB}</span>
+              </div>
+              <div style={{height:6,borderRadius:3,overflow:"hidden",background:"#1e2f50",display:"flex"}}>
+                <div style={{width:`${homeP}%`,background:"var(--accent)",transition:"width 0.3s"}}/>
+                <div style={{width:`${awayP}%`,background:"#3a5070"}}/>
+              </div>
+            </div>
+            {/* Player predictions */}
             {predCount>0&&(
               <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>
                 {Object.entries(matchPredictions).map(([pidx,pred])=>{
@@ -2551,19 +2585,20 @@ function KoOddsPopup({matchId,teamA,teamB,lang,hasResult,myPlayerIdx,playerNames
                   const pcolor=getPlayerColor(pi,PC[pi]);
                   return(<div key={pidx} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:6,background:`${pcolor}15`,border:`1px solid ${pcolor}33`}}>
                     <div style={{width:14,height:14,borderRadius:3,background:pcolor,color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[pi]||"?"}</div>
-                    <span style={{fontFamily:"'DM Sans'",fontSize:9,color:pcolor}}>{pred==="home"?(TBN[teamA]?.flag||teamA):pred==="away"?(TBN[teamB]?.flag||teamB):"🤝"}</span>
+                    <span style={{fontFamily:"'DM Sans'",fontSize:9,color:pcolor}}>{pred==="home"?(flagA||teamA):pred==="away"?(flagB||teamB):"?"}</span>
                   </div>);
                 })}
               </div>
             )}
+            {/* Pick buttons — home/away only, no draw in KO */}
             {myPlayerIdx!=null&&(
               <div style={{display:"flex",gap:5}}>
-                {[["home",TBN[teamA]?.flag||teamA],["draw","🤝"],["away",TBN[teamB]?.flag||teamB]].map(([side,label])=>(
+                {[["home",`${flagA} ${teamA}`],["away",`${flagB} ${teamB}`]].map(([side,label])=>(
                   <button key={side} onClick={async()=>{
                     const newVal=myPred===side?null:side;
                     await savePrediction(poolCode,matchId,myPlayerIdx,newVal);
-                    if(newVal!==null)setOpen(false); // only close when setting, not removing
-                  }} style={{flex:1,padding:"6px 0",borderRadius:6,border:`1.5px solid ${myPred===side?"rgba(107,155,209,0.6)":"#2a3a5c"}`,background:myPred===side?"rgba(107,155,209,0.15)":"transparent",color:myPred===side?"#6b9bd1":"#5a6a8a",fontSize:13,cursor:"pointer"}}>{label}</button>
+                    if(newVal!==null)setOpen(false);
+                  }} style={{flex:1,padding:"6px 4px",borderRadius:6,border:`1.5px solid ${myPred===side?"rgba(107,155,209,0.6)":"#2a3a5c"}`,background:myPred===side?"rgba(107,155,209,0.15)":"transparent",color:myPred===side?"#6b9bd1":"#5a6a8a",fontSize:11,cursor:"pointer",fontFamily:"'DM Sans'",textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{label}</button>
                 ))}
               </div>
             )}

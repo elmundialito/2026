@@ -418,15 +418,22 @@ const MATCH_ODDS = {
 // KO stage odds (to qualify, no draw) — [home%, away%] summing to 100
 // Source: bet365 decimal odds, vig-normalised. Home team = sA side of the match.
 const KO_ODDS = {
-  K73:[28,72],  // South Africa vs Canada
-  K74:[72,28],  // Brazil vs Japan
-  K75:[79,21],  // Germany vs Paraguay
-  K76:[60,40],  // Netherlands vs Morocco
-  K77:[36,64],  // Ivory Coast vs Norway
-  K78:[84,16],  // France vs Sweden
-  K82:[81,19],  // USA vs Bosnia
-  K86:[41,59],  // Australia vs Egypt
-  K87:[90,10],  // Argentina vs Cape Verde
+  K73:[28,72],  // South Africa vs Canada (3.50/1.30)
+  K74:[72,28],  // Brazil vs Japan (1.33/3.40)
+  K75:[79,21],  // Germany vs Paraguay (1.20/4.50)
+  K76:[60,40],  // Netherlands vs Morocco (1.53/2.50)
+  K77:[36,64],  // Ivory Coast vs Norway (2.50/1.53)
+  K78:[84,16],  // France vs Sweden (1.12/6.00)
+  K79:[62,38],  // Mexico vs Ecuador (1.53/2.50)
+  K80:[85,15],  // England vs DR Congo (1.11/6.50)
+  K81:[64,36],  // Belgium vs Senegal (1.50/2.62)
+  K82:[81,19],  // USA vs Bosnia (1.16/5.00)
+  K83:[85,15],  // Spain vs Austria (1.11/6.50)
+  K84:[70,30],  // Portugal vs Croatia (1.36/3.20)
+  K85:[68,32],  // Switzerland vs Algeria (1.40/3.00)
+  K86:[43,57],  // Australia vs Egypt (2.20/1.66)
+  K87:[89,11],  // Argentina vs Cape Verde (1.071/9.00)
+  K88:[75,25],  // Colombia vs Ghana (1.28/3.75)
 };
 
 const fmtKickoff = (dateStr, timeUTC) => {
@@ -2731,7 +2738,8 @@ function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initia
       ctx.beginPath();ctx.roundRect?ctx.roundRect(badgeX,y+8,badgeW,badgeH,4):ctx.rect(badgeX,y+8,badgeW,badgeH);ctx.fill();
       ctx.fillStyle="#8899b4";ctx.font=`700 10px BebasNeue,Arial`;ctx.textAlign="center";
       // Stage view: show date; Day view: show round label
-      const badgeText=isStage?(()=>{try{const d=new Date(m.d+"T"+(m.ko||"12:00")+":00Z");return d.toLocaleDateString("en-AU",{day:"numeric",month:"short"}).toUpperCase();}catch(e){return m.d;}})():roundLabel.toUpperCase().slice(0,6);
+      const ROUND_ABBR={"Round of 32":"R32","Round of 16":"R16","Quarter-finals":"QF","Semi-finals":"SF","Final":"FINAL","3rd Place":"3RD"};
+      const badgeText=isStage?(()=>{try{const d=new Date(m.d+"T"+(m.ko||"12:00")+":00Z");return d.toLocaleDateString("en-AU",{day:"numeric",month:"short"}).toUpperCase();}catch(e){return m.d;}})():(ROUND_ABBR[roundLabel]||roundLabel.toUpperCase().slice(0,5));
       ctx.fillText(badgeText,W/2,y+20);
       const OFFSET=6;
       if(result&&result.home!=null&&result.away!=null){

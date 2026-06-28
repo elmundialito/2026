@@ -2811,162 +2811,137 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       document.fonts.add(bebas);document.fonts.add(dm);
     }catch(e){}
 
-    const W=900,H=1060,DPR=2;
+    // 9 columns: R32|R16|QF|SF|FINAL|SF|QF|R16|R32
+    const W=920,H=1120,DPR=2;
     const canvas=document.createElement("canvas");
     canvas.width=W*DPR;canvas.height=H*DPR;
     const ctx=canvas.getContext("2d");ctx.scale(DPR,DPR);
 
-    // Background
     const bg=ctx.createLinearGradient(0,0,0,H);
     bg.addColorStop(0,"#080f1e");bg.addColorStop(0.5,"#0a1628");bg.addColorStop(1,"#080f1e");
     ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
     ctx.fillStyle="#c9a84c";ctx.fillRect(0,0,W,3);
+    ctx.fillStyle="#c9a84c";ctx.font=`700 26px BebasNeue,Arial`;ctx.textAlign="center";
+    ctx.fillText("⚽  MUNDIALITO 2026  🏆",W/2,34);
+    ctx.fillStyle="#3d5070";ctx.font=`400 10px DMSans,Arial`;
+    ctx.fillText("KNOCKOUT BRACKET",W/2,50);
+    ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.15;ctx.fillRect(20,58,W-40,1);ctx.globalAlpha=1;
 
-    // Header
-    ctx.fillStyle="#c9a84c";ctx.font=`700 30px BebasNeue,Arial`;ctx.textAlign="center";
-    ctx.fillText("⚽  MUNDIALITO 2026  🏆",W/2,36);
-    ctx.fillStyle="#3d5070";ctx.font=`400 11px DMSans,Arial`;
-    ctx.fillText("KNOCKOUT BRACKET",W/2,52);
-    ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.15;ctx.fillRect(20,60,W-40,1);ctx.globalAlpha=1;
-
-    // Layout constants
-    const HEADER=72,FOOTER=40;
+    const HEADER=66,FOOTER=28;
     const USABLE=H-HEADER-FOOTER;
     const SLOTS=16;
-    const SH=USABLE/SLOTS;
-    const CW=90,CH=21;
-    const COLS=9;
-    const COL_W=W/COLS;
-    const colCX=i=>COL_W*i+COL_W/2;
+    const SH=USABLE/SLOTS; // ~65px — good breathing room
+    const CH=22,GAP=3;
+
+    // Column widths [R32,R16,QF,SF,FINAL,SF,QF,R16,R32]
+    const CW=[108,84,72,64,72,64,72,84,108];
+    const CGAP=6;
+    const margin=(W-CW.reduce((a,b)=>a+b)-CGAP*8)/2;
+    const colX=[margin];
+    for(let i=1;i<9;i++)colX.push(colX[i-1]+CW[i-1]+CGAP);
+    const colCX=i=>colX[i]+CW[i]/2;
     const slotY=s=>HEADER+s*SH+SH/2;
 
-    // Column header labels
-    const colHeaders=["R32","R16","QF","SF","FINAL","SF","QF","R16","R32"];
-    colHeaders.forEach((lbl,i)=>{
+    // Column headers
+    const colLabels=["R32","R16","QF","SF","FINAL","SF","QF","R16","R32"];
+    colLabels.forEach((lbl,i)=>{
       ctx.fillStyle=lbl==="FINAL"?"#c9a84c":"#2a3a5c";
       ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="center";
-      ctx.fillText(lbl,colCX(i),67);
+      ctx.fillText(lbl,colCX(i),63);
     });
 
-    // Match tree: {id, col(0-8), slot(centre), sideA, sideB}
-    // slot = vertical centre in slot units (0=top, 16=bottom)
-    // R32 matches: each occupies 2 slots, centre at n+0.5
+    // Full tree — 9 columns (0-8)
     const TREE=[
-      // LEFT R32 (col 0) — top to bottom, matching FIFA bracket order
-      {id:"K73",col:0,slot:0.5},{id:"K76",col:0,slot:2.5},  // RSA/CAN, NED/MAR -> feed K90 top
-      {id:"K75",col:0,slot:4.5},{id:"K78",col:0,slot:6.5},  // GER/PAR, FRA/SWE -> feed K89 below
-      {id:"K82",col:0,slot:8.5},{id:"K81",col:0,slot:10.5}, // USA/BOS, BEL/3rd -> feed K94
-      {id:"K84",col:0,slot:12.5},{id:"K83",col:0,slot:14.5},// RunK/L, ESP/ALG  -> feed K93
-      // LEFT R16 (col 1)
-      {id:"K90",col:1,slot:1.5},{id:"K89",col:1,slot:5.5},  // K90 top (RSA+NED), K89 below (GER+FRA)
-      {id:"K94",col:1,slot:9.5},{id:"K93",col:1,slot:13.5}, // K94 (USA+BEL), K93 (RunK+ESP)
-      // LEFT QF (col 2)
+      // Left R32 (col 0)
+      {id:"K73",col:0,slot:0.5},{id:"K76",col:0,slot:2.5},
+      {id:"K75",col:0,slot:4.5},{id:"K78",col:0,slot:6.5},
+      {id:"K82",col:0,slot:8.5},{id:"K81",col:0,slot:10.5},
+      {id:"K84",col:0,slot:12.5},{id:"K83",col:0,slot:14.5},
+      // Left R16 (col 1)
+      {id:"K90",col:1,slot:1.5},{id:"K89",col:1,slot:5.5},
+      {id:"K94",col:1,slot:9.5},{id:"K93",col:1,slot:13.5},
+      // Left QF (col 2)
       {id:"K97",col:2,slot:3.5},{id:"K98",col:2,slot:11.5},
-      // LEFT SF (col 3)
+      // Left SF (col 3)
       {id:"K101",col:3,slot:7.5},
-      // FINAL (col 4)
+      // Final (col 4)
       {id:"K104",col:4,slot:7.5},
-      // RIGHT SF (col 5)
+      // Right SF (col 5)
       {id:"K102",col:5,slot:7.5},
-      // RIGHT QF (col 6)
+      // Right QF (col 6)
       {id:"K99",col:6,slot:3.5},{id:"K100",col:6,slot:11.5},
-      // RIGHT R16 (col 7)
+      // Right R16 (col 7)
       {id:"K91",col:7,slot:1.5},{id:"K92",col:7,slot:5.5},
       {id:"K95",col:7,slot:9.5},{id:"K96",col:7,slot:13.5},
-      // RIGHT R32 (col 8)
+      // Right R32 (col 8)
       {id:"K74",col:8,slot:0.5},{id:"K77",col:8,slot:2.5},
       {id:"K79",col:8,slot:4.5},{id:"K80",col:8,slot:6.5},
       {id:"K87",col:8,slot:8.5},{id:"K86",col:8,slot:10.5},
       {id:"K85",col:8,slot:12.5},{id:"K88",col:8,slot:14.5},
     ];
+    const treeMap={};TREE.forEach(m=>{treeMap[m.id]=m;});
+    const matchCX=id=>colCX(treeMap[id].col);
+    const matchCY=id=>slotY(treeMap[id].slot);
 
-    // Connector lines — draw first (behind chips)
-    // Connections: child -> parent (left side goes right, right side goes left)
+    // Connections
     const connections=[
-      // left side: from R32 to R16 (matching new slot order)
-      {from:"K73",to:"K90"},{from:"K76",to:"K90"},  // RSA/CAN + NED/MAR -> K90
-      {from:"K75",to:"K89"},{from:"K78",to:"K89"},  // GER/PAR + FRA/SWE -> K89
-      {from:"K82",to:"K94"},{from:"K81",to:"K94"},  // USA/BOS + BEL/3rd -> K94
-      {from:"K84",to:"K93"},{from:"K83",to:"K93"},  // RunK/L + ESP/ALG  -> K93
-      // left R16 to QF
-      {from:"K89",to:"K97"},{from:"K90",to:"K97"},
-      {from:"K93",to:"K98"},{from:"K94",to:"K98"},
-      // left QF to SF
+      {from:"K73",to:"K90"},{from:"K76",to:"K90"},
+      {from:"K75",to:"K89"},{from:"K78",to:"K89"},
+      {from:"K82",to:"K94"},{from:"K81",to:"K94"},
+      {from:"K84",to:"K93"},{from:"K83",to:"K93"},
+      {from:"K90",to:"K97"},{from:"K89",to:"K97"},
+      {from:"K94",to:"K98"},{from:"K93",to:"K98"},
       {from:"K97",to:"K101"},{from:"K98",to:"K101"},
-      // SF to Final
       {from:"K101",to:"K104"},{from:"K102",to:"K104"},
-      // right side: from R32 to R16
       {from:"K74",to:"K91"},{from:"K77",to:"K91"},
       {from:"K79",to:"K92"},{from:"K80",to:"K92"},
       {from:"K87",to:"K95"},{from:"K86",to:"K95"},
       {from:"K85",to:"K96"},{from:"K88",to:"K96"},
-      // right R16 to QF
       {from:"K91",to:"K99"},{from:"K92",to:"K99"},
       {from:"K95",to:"K100"},{from:"K96",to:"K100"},
-      // right QF to SF
       {from:"K99",to:"K102"},{from:"K100",to:"K102"},
     ];
 
-    const treeMap={};TREE.forEach(m=>{treeMap[m.id]=m;});
-
-    const matchCX=id=>colCX(treeMap[id].col);
-    const matchCY=id=>slotY(treeMap[id].slot);
-
     ctx.strokeStyle="#1e3060";ctx.lineWidth=1;
     connections.forEach(({from,to})=>{
+      const fc=treeMap[from].col,tc=treeMap[to].col;
+      const isLeft=fc<4;
+      const fw=CW[fc],tw=CW[tc];
       const fx=matchCX(from),fy=matchCY(from);
-      const tx=matchCX(to),ty=matchCY(to);
-      const fromCol=treeMap[from].col;
-      const toCol=treeMap[to].col;
-      const isLeft=fromCol<4;
-      const fromW=(fromCol===0||fromCol===8)?CW+14:CW;
-      const toW=(toCol===0||toCol===8)?CW+14:CW;
-      const edgeX=isLeft?fx+fromW/2:fx-fromW/2;
-      const targetX=isLeft?tx-toW/2:tx+toW/2;
+      const tx2=matchCX(to),ty2=matchCY(to);
+      const edgeX=isLeft?fx+fw/2:fx-fw/2;
+      const targetX=isLeft?tx2-tw/2:tx2+tw/2;
       const midX=(edgeX+targetX)/2;
-      ctx.beginPath();
-      ctx.moveTo(edgeX,fy);
-      ctx.lineTo(midX,fy);
-      ctx.lineTo(midX,ty);
-      ctx.lineTo(targetX,ty);
-      ctx.stroke();
+      ctx.beginPath();ctx.moveTo(edgeX,fy);ctx.lineTo(midX,fy);
+      ctx.lineTo(midX,ty2);ctx.lineTo(targetX,ty2);ctx.stroke();
     });
 
-    // 3-letter country code helper
     const abbr3=(team)=>{
       if(!team)return"TBD";
-      const n=TBN[team]?.name||team;
-      // common overrides
+      const n=(TBN[team]?.name||team).toUpperCase();
       const MAP={"UNITED STATES":"USA","BOSNIA AND HERZEGOVINA":"B&H","IVORY COAST":"CIV",
         "SOUTH AFRICA":"RSA","CAPE VERDE":"CPV","DR CONGO":"COD","SOUTH KOREA":"KOR",
         "SAUDI ARABIA":"KSA","NEW ZEALAND":"NZL","CZECH REPUBLIC":"CZE"};
-      if(MAP[n.toUpperCase()])return MAP[n.toUpperCase()];
-      return n.toUpperCase().replace(/[^A-Z]/g,"").slice(0,3);
+      return MAP[n]||n.replace(/[^A-Z]/g,"").slice(0,3);
     };
-
-    // Full country name (caps, shortened where needed)
     const fullName=(team)=>{
       if(!team)return"TBD";
       const n=(TBN[team]?.name||team).toUpperCase();
       const MAP={"BOSNIA AND HERZEGOVINA":"BOSNIA","UNITED STATES":"USA",
-        "DR CONGO":"DR CONGO","IVORY COAST":"IVORY COAST","CAPE VERDE":"CAPE VERDE",
-        "SAUDI ARABIA":"SAUDI ARABIA","SOUTH KOREA":"SOUTH KOREA","NEW ZEALAND":"NEW ZEALAND",
-        "CZECH REPUBLIC":"CZECH REP."};
+        "DR CONGO":"DR CONGO","IVORY COAST":"IVORY CST","CAPE VERDE":"CAPE VERDE",
+        "SOUTH AFRICA":"S. AFRICA","SAUDI ARABIA":"SAUDI ARB","NEW ZEALAND":"N. ZEALAND"};
       return MAP[n]||n;
     };
 
-    // Draw each match as 2 stacked chips
     TREE.forEach(({id,col,slot})=>{
       const bk=bracket[id]||{};
       const cx=colCX(col);
       const cy=slotY(slot);
       const isR32=(col===0||col===8);
-      const isRightSide=col>=5; // right half of bracket
+      const isRight=col>=5;
       const isFinal=col===4;
-      // R32 chips are wider to fit full name
-      const chipW=isR32?CW+14:CW;
+      const chipW=CW[col]-4;
       const chipX=cx-chipW/2;
-      const GAP=isFinal?6:4;
       const aY=cy-CH-GAP/2;
       const bY=cy+GAP/2;
       const result=koResults[id];
@@ -2985,42 +2960,25 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
         ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,yPos,chipW,CH,3):ctx.rect(chipX,yPos,chipW,CH);
         ctx.fill();ctx.stroke();
         if(team){
-          if(isRightSide){
-            // RIGHT side: owner | name | flag (flipped)
-            if(owner!=null){
-              ctx.fillStyle=pcol;ctx.font=`700 7px BebasNeue,Arial`;ctx.textAlign="left";
-              ctx.fillText(initials[owner.playerIdx]||"?",chipX+3,yPos+CH/2+3);
-            }
-            ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#b0bbd0";
-            if(isR32){
-              ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="center";
-              ctx.fillText(fullName(team),chipX+chipW/2-(owner!=null?4:0),yPos+CH/2+4);
-            } else {
-              ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="left";
-              ctx.fillText(abbr3(team),chipX+(owner!=null?11:3),yPos+CH/2+4);
-            }
+          const label=isR32?fullName(team):abbr3(team);
+          const fsize=isR32?(label.length>8?8:9):9;
+          if(isRight){
+            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 7px BebasNeue,Arial`;ctx.textAlign="left";ctx.fillText(initials[owner.playerIdx]||"?",chipX+3,yPos+CH/2+3);}
+            ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#c8c0b0";
+            ctx.font=`700 ${fsize}px BebasNeue,Arial`;ctx.textAlign="center";
+            ctx.fillText(label,cx+(owner?2:-4),yPos+CH/2+4);
             ctx.font=`400 12px Arial`;ctx.textAlign="right";
-            ctx.fillText(tm?.flag||"",chipX+chipW-2,yPos+CH/2+5);
+            ctx.fillText(tm?.flag||"",chipX+chipW-1,yPos+CH/2+5);
           } else {
-            // LEFT side (and Final): flag | name | owner
-            ctx.font=`400 12px Arial`;ctx.textAlign="left";
-            ctx.fillText(tm?.flag||"",chipX+3,yPos+CH/2+5);
-            ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#b0bbd0";
-            if(isR32){
-              ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="center";
-              ctx.fillText(fullName(team),chipX+chipW/2+(owner!=null?-4:0),yPos+CH/2+4);
-            } else {
-              ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="left";
-              ctx.fillText(abbr3(team),chipX+19,yPos+CH/2+4);
-            }
-            if(owner!=null){
-              ctx.fillStyle=pcol;ctx.font=`700 7px BebasNeue,Arial`;ctx.textAlign="right";
-              ctx.fillText(initials[owner.playerIdx]||"?",chipX+chipW-3,yPos+CH/2+3);
-            }
+            ctx.font=`400 12px Arial`;ctx.textAlign="left";ctx.fillText(tm?.flag||"",chipX+2,yPos+CH/2+5);
+            ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#c8c0b0";
+            ctx.font=`700 ${fsize}px BebasNeue,Arial`;ctx.textAlign="center";
+            ctx.fillText(label,cx+(owner?-2:4),yPos+CH/2+4);
+            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 7px BebasNeue,Arial`;ctx.textAlign="right";ctx.fillText(initials[owner.playerIdx]||"?",chipX+chipW-2,yPos+CH/2+3);}
           }
         } else {
           const km=KM.find(x=>x.id===id);
-          const slotLabel=side==="a"?(km?.sA||"TBD"):(km?.sB||"TBD");
+          const slotLabel=(side==="a"?km?.sA:km?.sB)||"TBD";
           ctx.fillStyle="#2a3a5c";ctx.font=`400 7px DMSans,Arial`;ctx.textAlign="center";
           ctx.fillText(slotLabel.replace("Win ",""),cx,yPos+CH/2+3);
         }
@@ -3030,33 +2988,8 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       drawChip(bk.b,"b",bY);
     });
 
-    // Bronze final label + chips at bottom
-    const bfY=H-FOOTER-CH*2-10;
-    ctx.fillStyle="#2a3a5c";ctx.font=`700 8px BebasNeue,Arial`;ctx.textAlign="center";
-    ctx.letterSpacing=1;ctx.fillText("BRONZE FINAL",W/2,bfY-5);
-    const bfBk=bracket["K103"]||{};const bfResult=koResults["K103"];const bfw=bfResult?koWinner(bfResult):null;
-    const bfCW=CW+10;
-    [{team:bfBk.a,side:"a",x:W/2-bfCW-6},{team:bfBk.b,side:"b",x:W/2+6}].forEach(({team,side,x})=>{
-      const isWin=bfw===side.toUpperCase();const isLoss=bfw&&!isWin;
-      const tm=team?TBN[team]:null;const owner=team?ownership[team]:null;
-      const pcol=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):"#2a3a5c";
-      ctx.globalAlpha=isLoss?0.3:1;
-      ctx.fillStyle=isWin?`${pcol}30`:"rgba(12,22,45,0.9)";
-      ctx.strokeStyle=isWin?pcol:"#1e3060";ctx.lineWidth=isWin?1.5:1;
-      ctx.beginPath();ctx.roundRect?ctx.roundRect(x,bfY,bfCW,CH,3):ctx.rect(x,bfY,bfCW,CH);ctx.fill();ctx.stroke();
-      if(team){
-        ctx.font=`400 12px Arial`;ctx.textAlign="left";ctx.fillText(tm?.flag||"",x+3,bfY+CH/2+5);
-        ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#b0bbd0";ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="left";
-        ctx.fillText(abbr3(team),x+19,bfY+CH/2+4);
-      } else {
-        ctx.fillStyle="#2a3a5c";ctx.font=`400 7px DMSans,Arial`;ctx.textAlign="center";ctx.fillText("TBD",x+bfCW/2,bfY+CH/2+3);
-      }
-      ctx.globalAlpha=1;
-    });
-
-    // Footer
-    ctx.fillStyle="#1e2f50";ctx.font=`400 10px DMSans,Arial`;ctx.textAlign="center";
-    ctx.fillText("elmundialito.github.io/2026",W/2,H-10);
+    ctx.fillStyle="#1e2f50";ctx.font=`400 9px DMSans,Arial`;ctx.textAlign="center";
+    ctx.fillText("elmundialito.github.io/2026",W/2,H-8);
     return canvas;
   };
 

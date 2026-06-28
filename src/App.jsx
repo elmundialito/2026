@@ -2797,6 +2797,7 @@ function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initia
 function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,config,canShare=true}) {
   const [generating,setGenerating]=useState(false);
   const [imgUrl,setImgUrl]=useState(null);
+  const [blobReady,setBlobReady]=useState(false);
   const blobRef=useRef(null);
 
   const buildCanvas=async()=>{
@@ -2814,7 +2815,7 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     const HEADER=66,FOOTER=26;
     const totalContent=8*matchH+7*MATCH_GAP; // 644px
     const H=totalContent+HEADER+FOOTER; // 736px
-    const W=960,DPR=2;
+    const W=840,DPR=2;
     const canvas=document.createElement("canvas");
     canvas.width=W*DPR;canvas.height=H*DPR;
     const ctx=canvas.getContext("2d");ctx.scale(DPR,DPR);
@@ -2998,8 +2999,12 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
 
 
     // Champion box — above Final, gold border
+    // Final pair top chip is at finY - CH - INNER_GAP/2
+    // Place champion box above that with 14px gap
     const finY2=matchY["K104"];
-    const champY=finY2-CH-26;
+    const finalTopChipY=finY2-CH-INNER_GAP/2;
+    const champH=CH+4;
+    const champY=finalTopChipY-champH-14;
     const champW=CW[4]+20;
     const champX=colCX(4)-champW/2;
     const finalBk=bracket["K104"]||{};
@@ -3010,17 +3015,17 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     // gold glow bg
     ctx.fillStyle=champion?`${champCol}22`:"rgba(20,35,65,0.95)";
     ctx.strokeStyle="#c9a84c";ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.roundRect?ctx.roundRect(champX,champY,champW,CH+4,4):ctx.rect(champX,champY,champW,CH+4);
+    ctx.beginPath();ctx.roundRect?ctx.roundRect(champX,champY,champW,champH,4):ctx.rect(champX,champY,champW,champH);
     ctx.fill();ctx.stroke();
     ctx.font=`400 18px Arial`;ctx.textAlign="center";
-    ctx.fillText("🏆",colCX(4),champY+(CH+4)/2+7);
+    ctx.fillText("🏆",colCX(4),champY+champH/2+7);
     if(champion&&champTm){
       ctx.font=`400 14px Arial`;ctx.textAlign="left";ctx.fillText(champTm.flag||"",champX+4,champY+(CH+4)/2+6);
       ctx.fillStyle=champCol;ctx.font=`700 12px BebasNeue,Arial`;ctx.textAlign="center";
-      ctx.fillText(fullName(champion),colCX(4),champY+(CH+4)/2+6);
+      ctx.fillText(fullName(champion),colCX(4),champY+champH/2+6);
     } else {
       ctx.fillStyle="#3d5070";ctx.font=`700 10px BebasNeue,Arial`;ctx.textAlign="center";
-      ctx.fillText("CHAMPION",colCX(4),champY+(CH+4)/2+5);
+      ctx.fillText("CHAMPION",colCX(4),champY+champH/2+5);
     }
 
     ctx.fillStyle="#1e2f50";ctx.font=`400 9px DMSans,Arial`;ctx.textAlign="center";
@@ -3034,23 +3039,30 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       const blob=await new Promise(res=>canvas.toBlob(res,"image/png"));
       if(!blob)return;
       blobRef.current=blob;
+      setBlobReady(true);
       setImgUrl(URL.createObjectURL(blob));
     });
   },[]);
 
+  // Share: regenerate fresh on tap (same pattern as working share modals — iOS gesture chain)
   const generate=async()=>{
-    const blob=blobRef.current;
-    if(!blob)return;
     setGenerating(true);
-    const file=new File([blob],"mundialito-bracket.png",{type:"image/png"});
-    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-      try{await navigator.share({files:[file],title:"Mundialito Bracket"});}catch(e){}
-    } else {
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement("a");a.href=url;a.download="mundialito-bracket.png";a.click();
-      URL.revokeObjectURL(url);
-    }
-    setGenerating(false);
+    try{
+      const canvas=await buildCanvas();
+      if(!canvas){setGenerating(false);return;}
+      canvas.toBlob(async blob=>{
+        setGenerating(false);
+        if(!blob)return;
+        const file=new File([blob],"mundialito-bracket.png",{type:"image/png"});
+        if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+          try{await navigator.share({files:[file],title:"Mundialito 2026 Bracket"});}catch(e){}
+        } else {
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement("a");a.href=url;a.download="mundialito-bracket.png";a.click();
+          URL.revokeObjectURL(url);
+        }
+      },"image/png");
+    }catch(e){setGenerating(false);}
   };
   const imgRef=useRef(null);
   const containerRef=useRef(null);

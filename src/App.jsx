@@ -3303,7 +3303,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   );
 }
 
-function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,initials,lang,playerDataWithRanks=[]}) {
+function PredictionRecap({allPredictions,matchResults,koResults={},playerNames,playerCount,initials,lang,playerDataWithRanks=[]}) {
   const [open,setOpen]=useState(false);
   const picVersion=useContext(PicContext);
 
@@ -3317,6 +3317,7 @@ function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,in
   const stats=useMemo(()=>{
     return Array.from({length:playerCount},(_,i)=>{
       let correct=0,total=0;
+      // Group stage
       GM.forEach(m=>{
         const pick=allPredictions[m.id]?.[String(i)];
         const result=matchResults[m.id];
@@ -3326,6 +3327,16 @@ function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,in
         total++;
         const pickOutcome=pick==="home"?"A":pick==="away"?"B":"D";
         if(pickOutcome===out)correct++;
+      });
+      // KO stage — "home"=A side wins, "away"=B side wins (no draw)
+      KM.forEach(m=>{
+        const pick=allPredictions[m.id]?.[String(i)];
+        const result=koResults[m.id];
+        if(!pick||!result)return;
+        const w=koWinner(result);
+        if(!w)return;
+        total++;
+        if((pick==="home"&&w==="A")||(pick==="away"&&w==="B"))correct++;
       });
       return{idx:i,correct,total,pct:total>0?Math.round(correct/total*100):null};
     }).filter(p=>playerNames[p.idx]).sort((a,b)=>{
@@ -3338,7 +3349,7 @@ function PredictionRecap({allPredictions,matchResults,playerNames,playerCount,in
       const ar=mainRank[a.idx]??99, br=mainRank[b.idx]??99;
       return ar-br;
     });
-  },[allPredictions,matchResults,playerCount,mainRank]);
+  },[allPredictions,matchResults,koResults,playerCount,mainRank]);
 
   if(stats.length===0)return null;
 
@@ -3608,7 +3619,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         })}
       </div>
       <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",marginTop:20,lineHeight:1.7,fontStyle:"italic"}}>{t(lang,"tiebreaker")}</div>
-      <PredictionRecap allPredictions={allPredictions} matchResults={matchResults} playerNames={config.playerNames} playerCount={config.playerCount} initials={initials} lang={lang} playerDataWithRanks={playerDataWithRanks}/>
+      <PredictionRecap allPredictions={allPredictions} matchResults={matchResults} koResults={koResults} playerNames={config.playerNames} playerCount={config.playerCount} initials={initials} lang={lang} playerDataWithRanks={playerDataWithRanks}/>
       <button onClick={async()=>{
         try {
           const bebas=new FontFace("BebasNeue","url(https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9WdhyyTh89ZNpQ.woff2)");
@@ -5022,6 +5033,15 @@ export default function Mundialito() {
   const [profileSetupIdx,setProfileSetupIdx]=useState(null);
   const [spectatorPoolCode,setSpectatorPoolCode]=useState(()=>{try{return window.localStorage?.getItem('mundi_spectator_code')||null;}catch(e){return null;}});
   const [allPredictions,setAllPredictions]=useState({});
+
+  // Keep allPredictions live for host regardless of which tab is active
+  useEffect(()=>{
+    if(!poolCode)return;
+    const unsub=onSnapshot(doc(db,'pools',poolCode),(snap)=>{
+      if(snap.exists())setAllPredictions(snap.data().predictions||{});
+    });
+    return()=>unsub();
+  },[poolCode]);
 
   // Live sync for spectators
   useEffect(()=>{

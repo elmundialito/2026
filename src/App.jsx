@@ -2967,27 +2967,27 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
         ctx.fill();ctx.stroke();
         if(team){
           const label=isR32?fullName(team):abbr3(team);
-          const fsize=isR32?(label.length>8?10:12):11;
+          const fsize=isR32?(label.length>8?12:14):13;
           if(isRight){
             // right: owner | name | flag
-            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="left";ctx.fillText(initials[owner.playerIdx]||"?",chipX+4,yPos+CH/2+4);}
+            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 11px BebasNeue,Arial`;ctx.textAlign="left";ctx.fillText(initials[owner.playerIdx]||"?",chipX+4,yPos+CH/2+5);}
             ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#c8c0b0";
             ctx.font=`700 ${fsize}px BebasNeue,Arial`;ctx.textAlign="center";
-            ctx.fillText(label,cx+(owner?3:-5),yPos+CH/2+5);
-            ctx.font=`400 16px Arial`;ctx.textAlign="right";
-            ctx.fillText(tm?.flag||"",chipX+chipW-1,yPos+CH/2+7);
+            ctx.fillText(label,cx+(owner?3:-5),yPos+CH/2+6);
+            ctx.font=`400 18px Arial`;ctx.textAlign="right";
+            ctx.fillText(tm?.flag||"",chipX+chipW-1,yPos+CH/2+8);
           } else {
             // left + final: flag | name | owner
-            ctx.font=`400 16px Arial`;ctx.textAlign="left";ctx.fillText(tm?.flag||"",chipX+2,yPos+CH/2+7);
+            ctx.font=`400 18px Arial`;ctx.textAlign="left";ctx.fillText(tm?.flag||"",chipX+2,yPos+CH/2+8);
             ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#c8c0b0";
             ctx.font=`700 ${fsize}px BebasNeue,Arial`;ctx.textAlign="center";
-            ctx.fillText(label,cx+(owner?-3:5),yPos+CH/2+5);
-            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="right";ctx.fillText(initials[owner.playerIdx]||"?",chipX+chipW-3,yPos+CH/2+4);}
+            ctx.fillText(label,cx+(owner?-3:5),yPos+CH/2+6);
+            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 11px BebasNeue,Arial`;ctx.textAlign="right";ctx.fillText(initials[owner.playerIdx]||"?",chipX+chipW-3,yPos+CH/2+5);}
           }
         } else {
           const km=KM.find(x=>x.id===id);
           const slotLabel=(side==="a"?km?.sA:km?.sB)||"TBD";
-          ctx.fillStyle="#2a3a5c";ctx.font=`400 7px DMSans,Arial`;ctx.textAlign="center";
+          ctx.fillStyle="#2a3a5c";ctx.font=`400 9px DMSans,Arial`;ctx.textAlign="center";
           ctx.fillText(slotLabel.replace("Win ",""),cx,yPos+CH/2+3);
         }
         ctx.globalAlpha=1;
@@ -2995,6 +2995,33 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       drawChip(bk.a,"a",aY);
       drawChip(bk.b,"b",bY);
     });
+
+
+    // Champion box — above Final, gold border
+    const finY2=matchY["K104"];
+    const champY=finY2-CH-26;
+    const champW=CW[4]+20;
+    const champX=colCX(4)-champW/2;
+    const finalBk=bracket["K104"]||{};
+    const champion=(()=>{const w=koResults["K104"]?koWinner(koResults["K104"]):null;if(!w)return null;return w==="A"?finalBk.a:finalBk.b;})();
+    const champTm=champion?TBN[champion]:null;
+    const champOwner=champion?ownership[champion]:null;
+    const champCol=champOwner!=null?getPlayerColor(champOwner.playerIdx,PC[champOwner.playerIdx]):"#c9a84c";
+    // gold glow bg
+    ctx.fillStyle=champion?`${champCol}22`:"rgba(20,35,65,0.95)";
+    ctx.strokeStyle="#c9a84c";ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.roundRect?ctx.roundRect(champX,champY,champW,CH+4,4):ctx.rect(champX,champY,champW,CH+4);
+    ctx.fill();ctx.stroke();
+    ctx.font=`400 18px Arial`;ctx.textAlign="center";
+    ctx.fillText("🏆",colCX(4),champY+(CH+4)/2+7);
+    if(champion&&champTm){
+      ctx.font=`400 14px Arial`;ctx.textAlign="left";ctx.fillText(champTm.flag||"",champX+4,champY+(CH+4)/2+6);
+      ctx.fillStyle=champCol;ctx.font=`700 12px BebasNeue,Arial`;ctx.textAlign="center";
+      ctx.fillText(fullName(champion),colCX(4),champY+(CH+4)/2+6);
+    } else {
+      ctx.fillStyle="#3d5070";ctx.font=`700 10px BebasNeue,Arial`;ctx.textAlign="center";
+      ctx.fillText("CHAMPION",colCX(4),champY+(CH+4)/2+5);
+    }
 
     ctx.fillStyle="#1e2f50";ctx.font=`400 9px DMSans,Arial`;ctx.textAlign="center";
     ctx.fillText("elmundialito.github.io/2026",W/2,H-8);

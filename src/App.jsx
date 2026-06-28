@@ -3080,11 +3080,28 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     },"image/png");
   };
   const imgRef=useRef(null);
+  const containerRef=useRef(null);
   const zoomState=useRef({scale:1,tx:0,ty:0,lastDist:null,lastMid:null,pointers:{}});
+
+  const clamp=(val,min,max)=>Math.min(Math.max(val,min),max);
+  const clampTranslation=(tx,ty,scale)=>{
+    if(!imgRef.current||!containerRef.current)return{tx,ty};
+    const img=imgRef.current;
+    const con=containerRef.current;
+    const cW=con.clientWidth, cH=con.clientHeight;
+    const iW=img.clientWidth*scale, iH=img.clientHeight*scale;
+    // max pan = half the overflow on each side
+    const maxX=Math.max(0,(iW-cW)/2);
+    const maxY=Math.max(0,(iH-cH)/2);
+    return{tx:clamp(tx,-maxX,maxX),ty:clamp(ty,-maxY,maxY)};
+  };
+
   const applyTransform=()=>{
     if(!imgRef.current)return;
-    const {scale,tx,ty}=zoomState.current;
-    imgRef.current.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;
+    const z=zoomState.current;
+    const {tx,ty}=clampTranslation(z.tx,z.ty,z.scale);
+    z.tx=tx;z.ty=ty;
+    imgRef.current.style.transform=`translate(${tx}px,${ty}px) scale(${z.scale})`;
   };
   const onPointerDown=e=>{
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -3140,6 +3157,7 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       {/* tap outside image area to close */}
       <div style={{position:"absolute",inset:0}} onClick={onClose}/>
       <div
+        ref={containerRef}
         style={{flex:1,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",touchAction:"none",userSelect:"none"}}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

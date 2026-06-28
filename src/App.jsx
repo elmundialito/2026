@@ -2347,7 +2347,7 @@ function KoScoreEntry({matchId,teamA,teamB,result,onSetResult,readOnly}) {
   );
 }
 
-function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownership,initials,readOnly,playerNames=[],myTeams=new Set(),onOpenChat,chatCount=0,hasReactions=false,matchPredictions={},myPlayerIdx,poolCode,onOpenPredict}) {
+function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownership,initials,readOnly,playerNames=[],myTeams=new Set(),onOpenChat,chatCount=0,hasReactions=false,matchPredictions={},myPlayerIdx,poolCode,onOpenPredict,overrideMode=false}) {
   const lang=useContext(LangContext);
   const w=koWinner(result);
   const winA=w==="A";const winB=w==="B";const hasResult=!!w;
@@ -2355,6 +2355,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
   const wasPens=hasScore&&result.pens;
   const oA=teamA?ownership[teamA]:null;const oB=teamB?ownership[teamB]:null;
   const [editOpen,setEditOpen]=useState(false);const [editA,setEditA]=useState("");const [editB,setEditB]=useState("");
+  useEffect(()=>{if(overrideMode){setEditA(teamA||"");setEditB(teamB||"");setEditOpen(true);}else{setEditOpen(false);};},[overrideMode]);
   const winColor=winA?(oA?PC[oA.playerIdx]:"#61a978"):winB?(oB?PC[oB.playerIdx]:"#6b9bd1"):null;
   const isMyMatch=teamA&&teamB&&(myTeams.has(teamA)||myTeams.has(teamB));
   const myHasA=myTeams.has(teamA),myHasB=myTeams.has(teamB),myBoth=myHasA&&myHasB;
@@ -2386,7 +2387,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
           {/* ✎ override — host only, moved to bottom of card */}
         </div>
       </div>
-      {editOpen&&!readOnly&&(
+      {editOpen&&overrideMode&&(
         <div style={{background:"rgba(26,39,68,0.6)",borderRadius:8,padding:"10px",marginBottom:8,border:"1px solid #2a3a5c"}}>
           {["a","b"].map(side=>(
             <div key={side} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
@@ -2431,11 +2432,6 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
         </div>
         <KoTeamDisplay team={teamB} slot={match.sB} owner={oB} initials={initials} isWinner={winB} hasResult={hasResult} isHome={false} playerNames={playerNames}/>
       </div>
-      {!readOnly&&(
-        <div style={{marginTop:6,display:"flex",justifyContent:"flex-start"}}>
-          <button onClick={()=>{setEditA(teamA||"");setEditB(teamB||"");setEditOpen(o=>!o);}} style={{fontSize:9,color:"#5a6a8a",background:"transparent",border:"1px solid #2a3a5c",borderRadius:4,padding:"2px 8px",cursor:"pointer"}}>✎ {lang==="es"?"Anular":"Override"}</button>
-        </div>
-      )}
     </div>
   );
 }
@@ -2774,15 +2770,14 @@ function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initia
     }
     ctx.fillStyle="#2a3a5c";ctx.font=`400 11px DMSans,Arial`;ctx.textAlign="center";
     ctx.fillText("elmundialito.github.io/2026",W/2,HEADER+MH*matches.length+24);
-    canvas.toBlob(async blob=>{
-      setGenerating(false);
-      if(!blob)return;
-      const file=new File([blob],"mundialito-ko.png",{type:"image/png"});
-      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-        try{await navigator.share({files:[file],title:"Mundialito KO"});}catch(e){}
-      } else {const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="mundialito-ko.png";a.click();URL.revokeObjectURL(url);}
-      onClose();
-    },"image/png");
+    const blob=await new Promise(res=>canvas.toBlob(res,"image/png"));
+    setGenerating(false);
+    if(!blob)return;
+    const file=new File([blob],"mundialito-ko.png",{type:"image/png"});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      try{await navigator.share({files:[file],title:"Mundialito KO"});}catch(e){}
+    } else {const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="mundialito-ko.png";a.click();URL.revokeObjectURL(url);}
+    onClose();
   };
   return(
     <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end"}} onClick={onClose}>
@@ -3016,13 +3011,16 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     const canvas=await buildCanvas();
     setGenerating(false);
     if(!canvas)return;
-    canvas.toBlob(async blob=>{
-      if(!blob)return;
-      const file=new File([blob],"mundialito-bracket.png",{type:"image/png"});
-      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-        try{await navigator.share({files:[file],title:"Mundialito Bracket"});}catch(e){}
-      } else {const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="mundialito-bracket.png";a.click();URL.revokeObjectURL(url);}
-    },"image/png");
+    const blob=await new Promise(res=>canvas.toBlob(res,"image/png"));
+    if(!blob)return;
+    const file=new File([blob],"mundialito-bracket.png",{type:"image/png"});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      try{await navigator.share({files:[file],title:"Mundialito Bracket"});}catch(e){}
+    } else {
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");a.href=url;a.download="mundialito-bracket.png";a.click();
+      URL.revokeObjectURL(url);
+    }
   };
   const imgRef=useRef(null);
   const containerRef=useRef(null);
@@ -3134,6 +3132,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   const [myTeamsOnly,setMyTeamsOnly]=useState(false);
   const [shareKO,setShareKO]=useState(null);
   const [shareKODate,setShareKODate]=useState(null);
+  const [overrideMode,setOverrideMode]=useState(false);
   // Merge internal predictions (host onSnapshot) with allPredictions prop (spectator top-level onSnapshot)
   const effectivePredictions=useMemo(()=>({...allPredictions,...predictions}),[allPredictions,predictions]);
 
@@ -3189,24 +3188,36 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           (byDate[localDate]=byDate[localDate]||[]).push(m);
         });
         const dates=Object.keys(byDate).sort();
+        const yesterday=new Date(Date.now()-86400000).toLocaleDateString("en-CA");
+        const tomorrow=new Date(Date.now()+86400000).toLocaleDateString("en-CA");
         return dates.map(date=>{
           const matches=byDate[date];
           const isToday=date===today;
+          const isYesterday=date===yesterday;
+          const isTomorrow=date===tomorrow;
           const scored=matches.filter(m=>koResults[m.id]).length;
           return(
             <div key={date} style={{marginBottom:18,marginTop:8,borderRadius:isToday?10:0,border:isToday?"1px solid rgba(201,168,76,0.2)":"none",background:isToday?"rgba(201,168,76,0.03)":"transparent",padding:isToday?"10px":"0"}}>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingTop:4}}>
-                <div style={{fontFamily:"'Bebas Neue'",fontSize:isToday?20:16,letterSpacing:3,color:isToday?"var(--accent)":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:isToday?22:18,letterSpacing:3,color:isToday?"var(--accent)":isYesterday?"#8899b4":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
                 {isToday&&<div style={{padding:"2px 10px",borderRadius:10,background:"rgba(201,168,76,0.25)",border:"1px solid rgba(201,168,76,0.5)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:2}}>⚡ {t(lang,"today")}</div>}
+                {isTomorrow&&<div style={{padding:"2px 8px",borderRadius:10,background:"rgba(107,155,209,0.15)",border:"1px solid rgba(107,155,209,0.3)",fontFamily:"'Bebas Neue'",fontSize:10,color:"#6b9bd1",letterSpacing:1}}>TOMORROW</div>}
                 <div style={{flex:1,height:isToday?2:1,background:isToday?"rgba(201,168,76,0.4)":"rgba(138,153,180,0.2)"}}/>
                 <button onClick={()=>{setShareKODate(date);setShareKO("day");}} style={{padding:"3px 7px",borderRadius:6,border:"1px solid rgba(201,168,76,0.2)",background:"rgba(201,168,76,0.04)",color:"var(--accent)",fontSize:11,cursor:"pointer",flexShrink:0,fontFamily:"'Bebas Neue'",letterSpacing:0.5}}>📤</button>
                 <span style={{fontFamily:"'DM Sans'",fontSize:10,color:isToday?"var(--accent)":"#5a6a8a",fontWeight:isToday?600:400}}>{scored}/{matches.length}</span>
               </div>
-              {matches.map(m=>{const bk=bracket[m.id];const mTeamA=bk?.a||null;const mTeamB=bk?.b||null;const bothConfirmed=!!(mTeamA&&mTeamB);const isMyKoMatch=myTeams.has(mTeamA)||myTeams.has(mTeamB);if(myTeamsOnly&&!isMyKoMatch)return null;return(<KoMatchCard key={m.id} match={m} teamA={mTeamA} teamB={mTeamB} result={koResults[m.id]} onSetOverride={(mid,side,val)=>setKoOverride(mid,side,val)} onSetResult={(mid,val)=>setKoResults(r=>({...r,[mid]:val}))} ownership={ownership} initials={koInitials} readOnly={readOnly} playerNames={config.playerNames||[]} myTeams={myTeams} onOpenChat={bothConfirmed?()=>setOpenChatId(m.id):null} chatCount={(matchChat[m.id]?.messages||[]).length||0} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)} matchPredictions={effectivePredictions[m.id]||{}} myPlayerIdx={myPlayerIdx} poolCode={poolCode} onOpenPredict={bothConfirmed&&KO_ODDS[m.id]?()=>setOpenPredictId(m.id):null}/>);})}
+              {matches.map(m=>{const bk=bracket[m.id];const mTeamA=bk?.a||null;const mTeamB=bk?.b||null;const bothConfirmed=!!(mTeamA&&mTeamB);const isMyKoMatch=myTeams.has(mTeamA)||myTeams.has(mTeamB);if(myTeamsOnly&&!isMyKoMatch)return null;return(<KoMatchCard key={m.id} match={m} teamA={mTeamA} teamB={mTeamB} result={koResults[m.id]} onSetOverride={(mid,side,val)=>setKoOverride(mid,side,val)} onSetResult={(mid,val)=>setKoResults(r=>({...r,[mid]:val}))} ownership={ownership} initials={koInitials} readOnly={readOnly} playerNames={config.playerNames||[]} myTeams={myTeams} onOpenChat={bothConfirmed?()=>setOpenChatId(m.id):null} chatCount={(matchChat[m.id]?.messages||[]).length||0} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)} matchPredictions={effectivePredictions[m.id]||{}} myPlayerIdx={myPlayerIdx} poolCode={poolCode} onOpenPredict={bothConfirmed&&KO_ODDS[m.id]?()=>setOpenPredictId(m.id):null} overrideMode={overrideMode}/>);})}
             </div>
           );
         });
       })()}
+      {!readOnly&&(
+        <div style={{textAlign:"center",marginBottom:12,marginTop:4}}>
+          <button onClick={()=>setOverrideMode(o=>!o)} style={{padding:"6px 16px",borderRadius:8,border:`1px solid ${overrideMode?"rgba(217,119,87,0.5)":"#2a3a5c"}`,background:overrideMode?"rgba(217,119,87,0.1)":"transparent",color:overrideMode?"#d97757":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:1,cursor:"pointer"}}>
+            {overrideMode?"✕ DONE OVERRIDING":"✎ OVERRIDE TEAMS"}
+          </button>
+        </div>
+      )}
       <div style={{background:"linear-gradient(135deg,rgba(201,168,76,0.06),rgba(26,39,68,0.4))",border:"1px solid rgba(201,168,76,0.15)",borderRadius:12,padding:"10px 14px",marginTop:8,marginBottom:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#5a6a8a"}}>{t(lang,"players")}</span>
@@ -5138,7 +5149,7 @@ export default function Mundialito() {
       newResults.push({
         team:myTeamName, flag:TBN[myTeamName]?.flag||"⚽",
         opponent:opponentName, opponentFlag:TBN[opponentName]?.flag||"⚽",
-        outcome, score:{home:r.home,away:r.away},
+        outcome, score:{home:myScore,away:oppScore},
         matchId, // keep for chronological sort
       });
     });

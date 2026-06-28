@@ -2690,6 +2690,301 @@ function KoPredictModal({matchId,teamA,teamB,koOdds,poolCode,myPlayerIdx,playerN
   );
 }
 
+// Share KO matches (stage or day) as canvas image
+function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initials,lang,roundLabel,config}) {
+  const [generating,setGenerating]=useState(false);
+  const generate=async()=>{
+    setGenerating(true);
+    try{
+      const bebas=new FontFace("BebasNeue","url(https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9WdhyyTh89ZNpQ.woff2)");
+      const dm=new FontFace("DMSans","url(https://fonts.gstatic.com/s/dmsans/v15/rP2Hp2ywxg089UriCZa4ET-DNl0.woff2)");
+      await Promise.all([bebas.load(),dm.load()]);
+      document.fonts.add(bebas);document.fonts.add(dm);
+    }catch(e){}
+    const W=420,HEADER=90,MH=90,PAD=14,FOOT=40;
+    const H=HEADER+MH*matches.length+FOOT;
+    const canvas=document.createElement("canvas");
+    const DPR=2;canvas.width=W*DPR;canvas.height=H*DPR;
+    const ctx=canvas.getContext("2d");ctx.scale(DPR,DPR);
+    const bg=ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,"#0a1628");bg.addColorStop(0.5,"#0f1e38");bg.addColorStop(1,"#0a1628");
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#c9a84c";ctx.fillRect(0,0,W,4);
+    ctx.fillStyle="#c9a84c";ctx.font=`700 32px BebasNeue,Arial`;ctx.textAlign="center";
+    ctx.fillText("⚽ MUNDIALITO 2026 🏆",W/2,42);
+    ctx.fillStyle="#4a5a7a";ctx.font=`400 12px DMSans,Arial`;
+    ctx.fillText(roundLabel.toUpperCase(),W/2,62);
+    ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.2;ctx.fillRect(PAD*2,74,W-PAD*4,1);ctx.globalAlpha=1;
+    for(let mi=0;mi<matches.length;mi++){
+      const m=matches[mi];
+      const y=HEADER+mi*MH;
+      const bk=bracket[m.id]||{};
+      const a=bk.a||null,b=bk.b||null;
+      const ta=a?TBN[a]:null,tb=b?TBN[b]:null;
+      const oa=a?ownership[a]:null,ob=b?ownership[b]:null;
+      const result=koResults[m.id];
+      const w=result?koWinner(result):null;
+      ctx.fillStyle="rgba(26,39,68,0.5)";ctx.strokeStyle="#2a3a5c";ctx.lineWidth=1;
+      ctx.beginPath();ctx.roundRect?ctx.roundRect(PAD,y+4,W-PAD*2,MH-8,8):ctx.rect(PAD,y+4,W-PAD*2,MH-8);ctx.fill();ctx.stroke();
+      // Match badge
+      ctx.fillStyle="#1e2f50";const badgeW=52,badgeH=16,badgeX=W/2-badgeW/2;
+      ctx.beginPath();ctx.roundRect?ctx.roundRect(badgeX,y+8,badgeW,badgeH,4):ctx.rect(badgeX,y+8,badgeW,badgeH);ctx.fill();
+      ctx.fillStyle="#8899b4";ctx.font=`700 10px BebasNeue,Arial`;ctx.textAlign="center";
+      ctx.fillText(`M${m.n}`,W/2,y+20);
+      const OFFSET=6;
+      if(result&&result.home!=null&&result.away!=null){
+        ctx.font=`700 30px BebasNeue,Arial`;ctx.fillStyle="#e0dcd4";ctx.textAlign="center";
+        ctx.fillText(`${result.home} – ${result.away}`,W/2,y+MH/2+10+OFFSET);
+        if(result.pens){ctx.font=`400 9px DMSans,Arial`;ctx.fillStyle="#5a6a8a";ctx.fillText(`(${result.pens.a} – ${result.pens.b} pens)`,W/2,y+MH/2+22+OFFSET);}
+      } else if(m.ko){
+        ctx.font=`700 16px BebasNeue,Arial`;ctx.fillStyle="#c9a84c";ctx.textAlign="center";
+        ctx.fillText(fmtKickoff(m.d,m.ko),W/2,y+MH/2+2+OFFSET);
+        ctx.font=`400 9px DMSans,Arial`;ctx.fillStyle="#4a5a7a";ctx.fillText("SGT",W/2,y+MH/2+14+OFFSET);
+      } else {
+        ctx.font=`700 20px BebasNeue,Arial`;ctx.fillStyle="#4a5a7a";ctx.textAlign="center";ctx.fillText("–",W/2,y+MH/2+8+OFFSET);
+      }
+      const drawSide=(name,flag,owner,isHome,isWinner)=>{
+        const isLoser=w&&!isWinner;
+        const col=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):"#8899b4";
+        ctx.globalAlpha=isLoser?0.4:1;
+        if(owner!=null){
+          const chipX=isHome?PAD+6:W-PAD-32;const chipY=y+MH/2-13+OFFSET;
+          ctx.fillStyle=col;ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,chipY,26,26,5):ctx.rect(chipX,chipY,26,26);ctx.fill();
+          ctx.fillStyle="#0a1628";ctx.font=`700 13px BebasNeue,Arial`;ctx.textAlign="center";
+          ctx.fillText(initials[owner.playerIdx]||"?",chipX+13,chipY+18);
+        }
+        const cx=isHome?W/2-72:W/2+72;
+        ctx.font=`400 22px Arial`;ctx.textAlign="center";ctx.fillText(flag||"❓",cx,y+MH/2-6+OFFSET);
+        ctx.fillStyle=isWinner?(col||"#e0dcd4"):"#c8c0b0";ctx.font=`600 10px DMSans,Arial`;
+        ctx.fillText(name?(countryFixture(name,lang)||name):(m.sA&&isHome?m.sA:m.sB&&!isHome?m.sB:"TBD"),cx,y+MH/2+10+OFFSET);
+        ctx.globalAlpha=1;
+      };
+      drawSide(a,ta?.flag,oa?.playerIdx!=null?oa:null,true,w==="A");
+      drawSide(b,tb?.flag,ob?.playerIdx!=null?ob:null,false,w==="B");
+    }
+    ctx.fillStyle="#2a3a5c";ctx.font=`400 11px DMSans,Arial`;ctx.textAlign="center";
+    ctx.fillText("elmundialito.github.io/2026",W/2,HEADER+MH*matches.length+24);
+    canvas.toBlob(async blob=>{
+      setGenerating(false);
+      if(!blob)return;
+      const file=new File([blob],"mundialito-ko.png",{type:"image/png"});
+      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+        try{await navigator.share({files:[file],title:"Mundialito KO"});}catch(e){}
+      } else {const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="mundialito-ko.png";a.click();URL.revokeObjectURL(url);}
+      onClose();
+    },"image/png");
+  };
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",background:"#0a1628",borderRadius:"20px 20px 0 0",border:"1px solid #2a3a5c",padding:"20px 16px 32px"}}>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,color:"#8899b4",marginBottom:6}}>SHARE · {roundLabel.toUpperCase()}</div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",marginBottom:20}}>{matches.length} matches</div>
+        <button onClick={generate} disabled={generating} style={{width:"100%",padding:"14px",borderRadius:10,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:1.5,cursor:"pointer",marginBottom:10}}>
+          {generating?"GENERATING...":"GENERATE & SHARE 📤"}
+        </button>
+        <button onClick={onClose} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// Share full bracket as canvas image
+function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,config}) {
+  const [generating,setGenerating]=useState(false);
+  // Bracket layout: portrait, left half top / right half bottom
+  // Rounds: R32(16 matches), R16(8), QF(4), SF(2), Final(1), 3rd(1)
+  // We draw a simplified bracket: team chips in columns
+  const generate=async()=>{
+    setGenerating(true);
+    try{
+      const bebas=new FontFace("BebasNeue","url(https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9WdhyyTh89ZNpQ.woff2)");
+      const dm=new FontFace("DMSans","url(https://fonts.gstatic.com/s/dmsans/v15/rP2Hp2ywxg089UriCZa4ET-DNl0.woff2)");
+      await Promise.all([bebas.load(),dm.load()]);
+      document.fonts.add(bebas);document.fonts.add(dm);
+    }catch(e){}
+
+    // Canvas: 800 wide × 980 tall — landscape feel but portrait shareable
+    const W=800,H=980,DPR=2;
+    const canvas=document.createElement("canvas");
+    canvas.width=W*DPR;canvas.height=H*DPR;
+    const ctx=canvas.getContext("2d");ctx.scale(DPR,DPR);
+
+    // Background
+    const bg=ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,"#0a1628");bg.addColorStop(0.5,"#0f1e38");bg.addColorStop(1,"#0a1628");
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#c9a84c";ctx.fillRect(0,0,W,4);
+
+    // Header
+    ctx.fillStyle="#c9a84c";ctx.font=`700 28px BebasNeue,Arial`;ctx.textAlign="center";
+    ctx.fillText("⚽ MUNDIALITO 2026 🏆",W/2,38);
+    ctx.fillStyle="#4a5a7a";ctx.font=`400 11px DMSans,Arial`;
+    ctx.fillText("KNOCKOUT BRACKET",W/2,55);
+    ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.2;ctx.fillRect(20,64,W-40,1);ctx.globalAlpha=1;
+
+    // Column headers
+    const cols=["R32","R16","QF","SF","FINAL","SF","QF","R16","R32"];
+    const colW=W/cols.length;
+    cols.forEach((c,i)=>{
+      ctx.fillStyle=c==="FINAL"?"#c9a84c":"#3d5070";
+      ctx.font=`700 10px BebasNeue,Arial`;ctx.textAlign="center";
+      ctx.fillText(c,colW*i+colW/2,80);
+    });
+
+    // Draw a team chip
+    const drawChip=(name,matchId,side,x,y,w,h)=>{
+      const bk=bracket[matchId]||{};
+      const team=side==="a"?bk.a:bk.b;
+      const result=koResults[matchId];
+      const winner=result?koWinner(result):null;
+      const isWinner=winner===side.toUpperCase();
+      const isLoser=winner&&!isWinner;
+      const tm=team?TBN[team]:null;
+      const owner=team?ownership[team]:null;
+      const col=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):"#2a3a5c";
+
+      ctx.globalAlpha=isLoser?0.35:1;
+      // chip background
+      ctx.fillStyle=isWinner?`${col}22`:"rgba(15,30,56,0.8)";
+      ctx.strokeStyle=isWinner?col:"#2a3a5c";ctx.lineWidth=isWinner?1.5:1;
+      ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,w,h,4):ctx.rect(x,y,w,h);ctx.fill();ctx.stroke();
+
+      if(team){
+        // flag
+        ctx.font=`400 13px Arial`;ctx.textAlign="left";ctx.globalAlpha=isLoser?0.35:1;
+        ctx.fillText(tm?.flag||"",x+4,y+h/2+5);
+        // name
+        ctx.fillStyle=isWinner?(col||"#e0dcd4"):"#c8c0b0";
+        ctx.font=`600 9px DMSans,Arial`;ctx.textAlign="left";
+        const short=shortName(team);
+        ctx.fillText(short,x+22,y+h/2+4);
+        // owner chip
+        if(owner!=null){
+          ctx.fillStyle=col;ctx.font=`700 7px BebasNeue,Arial`;
+          ctx.textAlign="right";ctx.fillText(initials[owner.playerIdx]||"?",x+w-3,y+h/2+3);
+        }
+      } else {
+        ctx.fillStyle="#3d5070";ctx.font=`400 8px DMSans,Arial`;ctx.textAlign="center";
+        ctx.fillText("TBD",x+w/2,y+h/2+3);
+      }
+      ctx.globalAlpha=1;
+    };
+
+    // Draw connector lines between rounds
+    const drawLine=(x1,y1,x2,y2)=>{
+      ctx.strokeStyle="#2a3a5c";ctx.lineWidth=1;ctx.globalAlpha=0.6;
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.globalAlpha=1;
+    };
+
+    // Layout: 16 R32 slots on each side, narrowing to final in the middle
+    // Left bracket: K73,K75,K76,K77,K78,K79,K80,K81 (first 8 R32)
+    // Right bracket: K82,K83,K84,K85,K86,K87,K88,K74 (last 8 R32)
+    // This maps to: L-R32 → L-R16 → L-QF → L-SF → FINAL ← R-SF ← R-QF ← R-R16 ← R-R32
+
+    const HEADER_H=88;
+    const USABLE_H=H-HEADER_H-30;
+    const CH=22; // chip height
+    const GAP=4; // gap between chips in a pair
+    const CPAD=2; // chip x padding
+
+    // Left side R32 matches (chronological order, left bracket)
+    // From KM: left bracket pairs for R16:
+    // K89(M89): K75(M74) vs K78(M77)  -> Philadelphia
+    // K90(M90): K73(M73) vs K76(M75)  -> Houston
+    // K91(M91): K74(M76) vs K77(M78)  -> MetLife
+    // K92(M92): K79(M79) vs K80(M80)  -> Mexico City
+    // K93(M93): K84(M83) vs K83(M84)  -> Dallas
+    // K94(M94): K82(M81) vs K81(M82)  -> Seattle
+    // K95(M95): K87(M86) vs K86(M88)  -> Atlanta
+    // K96(M96): K85(M85) vs K88(M87)  -> Vancouver
+    // QF: K97=K89vsK90, K98=K93vsK94, K99=K91vsK92, K100=K95vsK96
+    // SF: K101=K97vsK98, K102=K99vsK100
+    // Final: K104=K101vsK102
+
+    // We draw 4 R32 pairs on the left, 4 on the right
+    // Left: K89,K90,K91,K92 top group; K93,K94,K95,K96... no
+    // Actually let's pair by which R16 they feed:
+    // TOP half: K89(K75,K78), K90(K73,K76), K91(K74,K77), K92(K79,K80) -> K97,K99 -> K101
+    // BOTTOM half: K93(K84,K83), K94(K82,K81), K95(K87,K86), K96(K85,K88) -> K98,K100 -> K102
+
+    const leftR32=[ // pairs of [r32matchA, r32matchB] feeding each R16
+      [["K75","a"],["K75","b"],["K78","a"],["K78","b"]], // feeds K89 sA
+      [["K73","a"],["K73","b"],["K76","a"],["K76","b"]], // feeds K90 sA
+      [["K74","a"],["K74","b"],["K77","a"],["K77","b"]], // feeds K91 sA
+      [["K79","a"],["K79","b"],["K80","a"],["K80","b"]], // feeds K92 sA
+    ];
+
+    // Simpler approach: just draw each round as columns of chips
+    const rounds=[
+      {id:"r32L",matches:["K73","K75","K74","K76","K77","K78","K79","K80"],col:0,side:"left"},
+      {id:"r16L",matches:["K89","K90","K91","K92"],col:1,side:"left"},
+      {id:"qfL",matches:["K97","K99"],col:2,side:"left"},
+      {id:"sfL",matches:["K101"],col:3,side:"left"},
+      {id:"final",matches:["K104"],col:4,side:"center"},
+      {id:"sfR",matches:["K102"],col:5,side:"right"},
+      {id:"qfR",matches:["K98","K100"],col:6,side:"right"},
+      {id:"r16R",matches:["K93","K94","K95","K96"],col:7,side:"right"},
+      {id:"r32R",matches:["K82","K81","K84","K83","K86","K87","K88","K85"],col:8,side:"right"},
+    ];
+
+    const CW=colW-8; // chip width
+    const pairSpacing=USABLE_H/8; // space per R32 pair
+
+    rounds.forEach(({matches,col})=>{
+      const x=col*colW+CPAD;
+      const slots=matches.length*2; // each match has 2 teams
+      const slotH=USABLE_H/slots;
+      matches.forEach((mid,mi)=>{
+        const yA=HEADER_H+mi*slotH*2+slotH*0.3;
+        const yB=yA+CH+GAP;
+        drawChip(null,mid,"a",x,yA,CW,CH);
+        drawChip(null,mid,"b",x,yB,CW,CH);
+        // connector line to next round
+        if(col<4){
+          const midY=(yA+yB+CH)/2;
+          drawLine(x+CW,midY,x+CW+8,midY);
+        }
+        if(col>4){
+          const midY=(yA+yB+CH)/2;
+          drawLine(x-8,midY,x,midY);
+        }
+      });
+    });
+
+    // Final row: BRONZE FINAL
+    const bfY=H-60;
+    ctx.fillStyle="#3d5070";ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="center";ctx.letterSpacing=1;
+    ctx.fillText("BRONZE FINAL",W/2,bfY-4);
+    drawChip(null,"K103","a",W/2-CW-4,bfY,CW,CH);
+    drawChip(null,"K103","b",W/2+4,bfY,CW,CH);
+
+    // Footer
+    ctx.fillStyle="#2a3a5c";ctx.font=`400 10px DMSans,Arial`;ctx.textAlign="center";
+    ctx.fillText("elmundialito.github.io/2026",W/2,H-8);
+
+    canvas.toBlob(async blob=>{
+      setGenerating(false);if(!blob)return;
+      const file=new File([blob],"mundialito-bracket.png",{type:"image/png"});
+      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+        try{await navigator.share({files:[file],title:"Mundialito Bracket"});}catch(e){}
+      } else {const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="mundialito-bracket.png";a.click();URL.revokeObjectURL(url);}
+      onClose();
+    },"image/png");
+  };
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",background:"#0a1628",borderRadius:"20px 20px 0 0",border:"1px solid #2a3a5c",padding:"20px 16px 32px"}}>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,color:"#8899b4",marginBottom:6}}>SHARE · FULL BRACKET</div>
+        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",marginBottom:20}}>Complete knockout bracket with results</div>
+        <button onClick={generate} disabled={generating} style={{width:"100%",padding:"14px",borderRadius:10,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:1.5,cursor:"pointer",marginBottom:10}}>
+          {generating?"GENERATING...":"GENERATE & SHARE 📤"}
+        </button>
+        <button onClick={onClose} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false,playerRankings=[],groupOrderOverride={},poolCode,myPlayerIdx,allPredictions={}}) {
   const lang=useContext(LangContext);
   const [activeRound,setActiveRound]=useState("r32");
@@ -2698,6 +2993,8 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   const [openChatId,setOpenChatId]=useState(null);
   const [openPredictId,setOpenPredictId]=useState(null);
   const [myTeamsOnly,setMyTeamsOnly]=useState(false);
+  const [shareKO,setShareKO]=useState(null);
+  const [shareKODate,setShareKODate]=useState(null);
   // Merge internal predictions (host onSnapshot) with allPredictions prop (spectator top-level onSnapshot)
   const effectivePredictions=useMemo(()=>({...allPredictions,...predictions}),[allPredictions,predictions]);
 
@@ -2729,15 +3026,10 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"var(--accent)",fontWeight:600}}>Host preview — players can't see this tab yet. Bracket fills in as group stage completes.</span>
         </div>
       )}
-      {allGroupsDone&&top8.length>=1&&(
-        <div style={{background:"rgba(26,39,68,0.25)",border:"1px solid #2a3a5c",borderRadius:12,padding:"12px 16px",marginBottom:14}}>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"#8899b4",marginBottom:8}}>3RD PLACE QUALIFIERS</div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:5}}>{top8.map((t,i)=>{const tm=TBN[t.team];const o=ownership[t.team];return(<div key={t.team} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 9px",borderRadius:7,background:o?`${PC[o.playerIdx]}15`:"rgba(26,39,68,0.4)",border:`1px solid ${o?PC[o.playerIdx]+"44":"#2a3a5c"}`}}><span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#5a6a8a",width:10,textAlign:"center"}}>{i+1}</span><span style={{fontSize:13}}>{tm?.flag}</span><span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:o?PC[o.playerIdx]:"#e0dcd4"}}>{shortName(t.team)}</span></div>);})}</div>
-        </div>
-      )}
       <TournamentWinnerWidget ownership={ownership} initials={koInitials} lang={lang} playerNames={config.playerNames||[]}/>
-      <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto"}}>
+      <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto",alignItems:"center"}}>
         {ROUND_ORDER.map(r=>{const active=activeRound===r;const cnt=roundMatches[r]?.length||0;const done=roundMatches[r]?.filter(m=>koResults[m.id]).length||0;return(<button key={r} onClick={()=>setActiveRound(r)} style={{padding:"7px 12px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1.5,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}}>{KO_LABELS[r]}<span style={{fontFamily:"'DM Sans'",fontSize:9,color:active?"#c9a84c88":"#3d5070",marginLeft:5}}>{done}/{cnt}</span></button>);})}
+        <button onClick={()=>setShareKO("menu")} style={{marginLeft:"auto",padding:"7px 10px",borderRadius:8,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer",flexShrink:0}}>📤</button>
       </div>
       <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",textAlign:"center",marginBottom:12}}>Win = <span style={{color:"var(--accent)",fontWeight:700}}>{config.koPoints[activeRound]} pts</span></div>
       {(()=>{
@@ -2764,6 +3056,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
                 <div style={{fontFamily:"'Bebas Neue'",fontSize:isToday?20:16,letterSpacing:3,color:isToday?"var(--accent)":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
                 {isToday&&<div style={{padding:"2px 10px",borderRadius:10,background:"rgba(201,168,76,0.25)",border:"1px solid rgba(201,168,76,0.5)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:2}}>⚡ {t(lang,"today")}</div>}
                 <div style={{flex:1,height:isToday?2:1,background:isToday?"rgba(201,168,76,0.4)":"rgba(138,153,180,0.2)"}}/>
+                <button onClick={()=>{setShareKODate(date);setShareKO("day");}} style={{padding:"3px 7px",borderRadius:6,border:"1px solid rgba(201,168,76,0.2)",background:"rgba(201,168,76,0.04)",color:"var(--accent)",fontSize:11,cursor:"pointer",flexShrink:0,fontFamily:"'Bebas Neue'",letterSpacing:0.5}}>📤</button>
                 <span style={{fontFamily:"'DM Sans'",fontSize:10,color:isToday?"var(--accent)":"#5a6a8a",fontWeight:isToday?600:400}}>{scored}/{matches.length}</span>
               </div>
               {matches.map(m=>{const bk=bracket[m.id];const mTeamA=bk?.a||null;const mTeamB=bk?.b||null;const bothConfirmed=!!(mTeamA&&mTeamB);const isMyKoMatch=myTeams.has(mTeamA)||myTeams.has(mTeamB);if(myTeamsOnly&&!isMyKoMatch)return null;return(<KoMatchCard key={m.id} match={m} teamA={mTeamA} teamB={mTeamB} result={koResults[m.id]} onSetOverride={(mid,side,val)=>setKoOverride(mid,side,val)} onSetResult={(mid,val)=>setKoResults(r=>({...r,[mid]:val}))} ownership={ownership} initials={koInitials} readOnly={readOnly} playerNames={config.playerNames||[]} myTeams={myTeams} onOpenChat={bothConfirmed?()=>setOpenChatId(m.id):null} chatCount={(matchChat[m.id]?.messages||[]).length||0} hasReactions={Object.values(matchChat[m.id]?.reactions||{}).some(a=>a.length>0)} matchPredictions={effectivePredictions[m.id]||{}} myPlayerIdx={myPlayerIdx} poolCode={poolCode} onOpenPredict={bothConfirmed&&KO_ODDS[m.id]?()=>setOpenPredictId(m.id):null}/>);})}
@@ -2797,6 +3090,19 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
       )}
       {openChatId&&(()=>{const m=KM.find(x=>x.id===openChatId);const bk=bracket[openChatId];return m&&bk?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={{...m,t:[bk.a||"TBD",bk.b||"TBD"]}} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={koInitials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
       {openPredictId&&(()=>{const m=KM.find(x=>x.id===openPredictId);const bk=bracket[openPredictId];if(!m||!bk?.a||!bk?.b||!KO_ODDS[openPredictId])return null;const w=koWinner(koResults[openPredictId]);return(<KoPredictModal matchId={openPredictId} teamA={bk.a} teamB={bk.b} koOdds={KO_ODDS[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames||[]} initials={koInitials} matchPredictions={effectivePredictions[openPredictId]||{}} hasResult={!!w} onClose={()=>setOpenPredictId(null)}/>);})()}
+      {shareKO==="menu"&&(
+        <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end"}} onClick={()=>setShareKO(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"100%",background:"#0a1628",borderRadius:"20px 20px 0 0",border:"1px solid #2a3a5c",padding:"20px 16px 32px"}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,color:"#8899b4",marginBottom:16}}>SHARE KO STAGE</div>
+            {[["stage",`📋 All ${KO_LABELS[activeRound]} Fixtures`],["bracket","🏆 Full Bracket"]].map(([key,label])=>(
+              <button key={key} onClick={()=>setShareKO(key)} style={{width:"100%",padding:"14px 16px",borderRadius:10,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.6)",color:"#e0dcd4",fontFamily:"'DM Sans'",fontSize:14,fontWeight:600,cursor:"pointer",textAlign:"left",marginBottom:8,display:"block"}}>{label}</button>
+            ))}
+            <button onClick={()=>setShareKO(null)} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer",marginTop:4}}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {(shareKO==="stage"||shareKO==="day")&&<ShareKOMatchesModal onClose={()=>setShareKO(null)} matches={shareKO==="stage"?roundMatches[activeRound]||[]:KM.filter(m=>{if(!m.d||!m.ko)return false;try{const d=new Date(m.d+"T"+m.ko+":00Z");return d.toLocaleDateString("en-CA")===shareKODate;}catch(e){return false;}})} bracket={bracket} koResults={koResults} ownership={ownership} initials={koInitials} lang={lang} roundLabel={shareKO==="stage"?KO_LABELS[activeRound]:fmtDate(shareKODate,lang)} config={config}/>}
+      {shareKO==="bracket"&&<ShareKOBracketModal onClose={()=>setShareKO(null)} bracket={bracket} koResults={koResults} ownership={ownership} initials={koInitials} lang={lang} config={config}/>}
     </div>
   );
 }

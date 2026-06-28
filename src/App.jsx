@@ -2797,6 +2797,7 @@ function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initia
 function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,config,canShare=true}) {
   const [generating,setGenerating]=useState(false);
   const [imgUrl,setImgUrl]=useState(null);
+  const blobRef=useRef(null);
 
   const buildCanvas=async()=>{
     try{
@@ -2808,7 +2809,7 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
 
     // Content-driven layout — no fixed slot grid, positions calculated from content
     // CH=26 (large readable chips), tight gaps between matches
-    const CH=26,INNER_GAP=4,MATCH_GAP=28;
+    const CH=30,INNER_GAP=5,MATCH_GAP=22;
     const matchH=CH*2+INNER_GAP; // 56px per match pair
     const HEADER=66,FOOTER=26;
     const totalContent=8*matchH+7*MATCH_GAP; // 644px
@@ -2966,22 +2967,22 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
         ctx.fill();ctx.stroke();
         if(team){
           const label=isR32?fullName(team):abbr3(team);
-          const fsize=isR32?(label.length>8?9:11):10;
+          const fsize=isR32?(label.length>8?10:12):11;
           if(isRight){
             // right: owner | name | flag
-            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 8px BebasNeue,Arial`;ctx.textAlign="left";ctx.fillText(initials[owner.playerIdx]||"?",chipX+4,yPos+CH/2+3);}
+            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="left";ctx.fillText(initials[owner.playerIdx]||"?",chipX+4,yPos+CH/2+4);}
             ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#c8c0b0";
             ctx.font=`700 ${fsize}px BebasNeue,Arial`;ctx.textAlign="center";
-            ctx.fillText(label,cx+(owner?3:-5),yPos+CH/2+4);
-            ctx.font=`400 13px Arial`;ctx.textAlign="right";
-            ctx.fillText(tm?.flag||"",chipX+chipW-1,yPos+CH/2+6);
+            ctx.fillText(label,cx+(owner?3:-5),yPos+CH/2+5);
+            ctx.font=`400 16px Arial`;ctx.textAlign="right";
+            ctx.fillText(tm?.flag||"",chipX+chipW-1,yPos+CH/2+7);
           } else {
             // left + final: flag | name | owner
-            ctx.font=`400 13px Arial`;ctx.textAlign="left";ctx.fillText(tm?.flag||"",chipX+2,yPos+CH/2+6);
+            ctx.font=`400 16px Arial`;ctx.textAlign="left";ctx.fillText(tm?.flag||"",chipX+2,yPos+CH/2+7);
             ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#c8c0b0";
             ctx.font=`700 ${fsize}px BebasNeue,Arial`;ctx.textAlign="center";
-            ctx.fillText(label,cx+(owner?-3:5),yPos+CH/2+4);
-            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 8px BebasNeue,Arial`;ctx.textAlign="right";ctx.fillText(initials[owner.playerIdx]||"?",chipX+chipW-3,yPos+CH/2+3);}
+            ctx.fillText(label,cx+(owner?-3:5),yPos+CH/2+5);
+            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="right";ctx.fillText(initials[owner.playerIdx]||"?",chipX+chipW-3,yPos+CH/2+4);}
           }
         } else {
           const km=KM.find(x=>x.id===id);
@@ -3001,18 +3002,19 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
   };
 
   useEffect(()=>{
-    buildCanvas().then(canvas=>{
-      if(canvas)setImgUrl(canvas.toDataURL("image/png"));
+    buildCanvas().then(async canvas=>{
+      if(!canvas)return;
+      const blob=await new Promise(res=>canvas.toBlob(res,"image/png"));
+      if(!blob)return;
+      blobRef.current=blob;
+      setImgUrl(URL.createObjectURL(blob));
     });
   },[]);
 
   const generate=async()=>{
-    setGenerating(true);
-    const canvas=await buildCanvas();
-    setGenerating(false);
-    if(!canvas)return;
-    const blob=await new Promise(res=>canvas.toBlob(res,"image/png"));
+    const blob=blobRef.current;
     if(!blob)return;
+    setGenerating(true);
     const file=new File([blob],"mundialito-bracket.png",{type:"image/png"});
     if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
       try{await navigator.share({files:[file],title:"Mundialito Bracket"});}catch(e){}
@@ -3021,6 +3023,7 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       const a=document.createElement("a");a.href=url;a.download="mundialito-bracket.png";a.click();
       URL.revokeObjectURL(url);
     }
+    setGenerating(false);
   };
   const imgRef=useRef(null);
   const containerRef=useRef(null);

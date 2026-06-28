@@ -3090,7 +3090,7 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     if(ids.length===2){
       const [a,b]=[pts[ids[0]],pts[ids[1]]];
       const dist=Math.hypot(b.x-a.x,b.y-a.y);
-      const mid={(x:(a.x+b.x)/2),(y:(a.y+b.y)/2)};
+      const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
       const z=zoomState.current;
       if(z.lastDist!==null){
         const scaleDelta=dist/z.lastDist;

@@ -3596,6 +3596,9 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                         </div>
                       );
                     })}
+                    <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",textAlign:"right",marginTop:4,paddingRight:2}}>
+                      GD {p.gd>=0?"+":""}{p.gd} · GF {p.gf}
+                    </div>
                   </div>
                   {p.r32>0&&<div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginTop:8,fontStyle:"italic"}}>{lang==="es"?`${p.r32} equipo${p.r32>1?"s":""} pasó a octavos`:`${p.r32} team${p.r32>1?"s":""} reached Round of 16`}</div>}
                 </div>

@@ -3071,12 +3071,77 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       } else {const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="mundialito-bracket.png";a.click();URL.revokeObjectURL(url);}
     },"image/png");
   };
+  const imgRef=useRef(null);
+  const zoomState=useRef({scale:1,tx:0,ty:0,lastDist:null,lastMid:null,pointers:{}});
+  const applyTransform=()=>{
+    if(!imgRef.current)return;
+    const {scale,tx,ty}=zoomState.current;
+    imgRef.current.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;
+  };
+  const onPointerDown=e=>{
+    e.currentTarget.setPointerCapture(e.pointerId);
+    zoomState.current.pointers[e.pointerId]={x:e.clientX,y:e.clientY};
+  };
+  const onPointerMove=e=>{
+    const pts=zoomState.current.pointers;
+    if(!pts[e.pointerId])return;
+    pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    const ids=Object.keys(pts);
+    if(ids.length===2){
+      const [a,b]=[pts[ids[0]],pts[ids[1]]];
+      const dist=Math.hypot(b.x-a.x,b.y-a.y);
+      const mid={(x:(a.x+b.x)/2),(y:(a.y+b.y)/2)};
+      const z=zoomState.current;
+      if(z.lastDist!==null){
+        const scaleDelta=dist/z.lastDist;
+        const newScale=Math.min(Math.max(z.scale*scaleDelta,1),5);
+        // adjust translation so zoom centres on pinch midpoint
+        z.tx=(z.tx-mid.x)*scaleDelta+mid.x+(mid.x-z.lastMid.x);
+        z.ty=(z.ty-mid.y)*scaleDelta+mid.y+(mid.y-z.lastMid.y);
+        z.scale=newScale;
+      }
+      z.lastDist=dist;z.lastMid=mid;
+    } else if(ids.length===1){
+      // single finger pan when zoomed in
+      const z=zoomState.current;
+      if(z.scale>1&&z.lastMid){
+        z.tx+=e.clientX-z.lastMid.x;
+        z.ty+=e.clientY-z.lastMid.y;
+      }
+      z.lastMid={x:e.clientX,y:e.clientY};
+    }
+    applyTransform();
+  };
+  const onPointerUp=e=>{
+    delete zoomState.current.pointers[e.pointerId];
+    const ids=Object.keys(zoomState.current.pointers);
+    if(ids.length<2){zoomState.current.lastDist=null;zoomState.current.lastMid=null;}
+    if(ids.length===0){
+      // reset translation if zoomed back to 1
+      if(zoomState.current.scale<=1){zoomState.current.tx=0;zoomState.current.ty=0;applyTransform();}
+    }
+  };
+  const onDblClick=()=>{
+    const z=zoomState.current;
+    if(z.scale>1){z.scale=1;z.tx=0;z.ty=0;}else{z.scale=2.5;z.tx=0;z.ty=0;}
+    applyTransform();
+  };
+
   return(
-    <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,0.85)",display:"flex",flexDirection:"column"}} onClick={onClose}>
-      <div onClick={e=>e.stopPropagation()} style={{flex:1,overflow:"auto",display:"flex",alignItems:"center",justifyContent:"center",padding:"50px 8px 8px",touchAction:"pinch-zoom"}}>
+    <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,0.92)",display:"flex",flexDirection:"column"}}>
+      {/* tap outside image area to close */}
+      <div style={{position:"absolute",inset:0}} onClick={onClose}/>
+      <div
+        style={{flex:1,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",touchAction:"none",userSelect:"none"}}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
         {imgUrl
-          ?<img src={imgUrl} style={{maxWidth:"100%",height:"auto",objectFit:"contain",borderRadius:8,touchAction:"pinch-zoom"}} onClick={e=>e.stopPropagation()}/>
-          :<div style={{color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14}}>Generating bracket…</div>}
+          ?<img ref={imgRef} src={imgUrl} onDoubleClick={onDblClick} style={{maxWidth:"100%",height:"auto",borderRadius:8,transformOrigin:"center center",willChange:"transform",pointerEvents:"auto",display:"block"}} onClick={e=>e.stopPropagation()}/>
+          :<div style={{color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14,position:"relative",zIndex:1}}>Generating bracket…</div>}
+        {imgUrl&&<div style={{position:"absolute",bottom:72,left:"50%",transform:"translateX(-50%)",fontFamily:"'DM Sans'",fontSize:11,color:"rgba(255,255,255,0.3)",whiteSpace:"nowrap",pointerEvents:"none"}}>Pinch to zoom · double-tap to fit</div>}
       </div>
       <div style={{flexShrink:0,background:"#0a1628",borderTop:"1px solid #1e3060",padding:"12px 16px",display:"flex",gap:8,alignItems:"center"}}>
         {canShare&&<button onClick={generate} disabled={generating} style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>

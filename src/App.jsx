@@ -2844,14 +2844,14 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     // slot = vertical centre in slot units (0=top, 16=bottom)
     // R32 matches: each occupies 2 slots, centre at n+0.5
     const TREE=[
-      // LEFT R32 (col 0) — top to bottom
-      {id:"K75",col:0,slot:0.5},{id:"K78",col:0,slot:2.5},
-      {id:"K73",col:0,slot:4.5},{id:"K76",col:0,slot:6.5},
-      {id:"K84",col:0,slot:8.5},{id:"K83",col:0,slot:10.5},
-      {id:"K82",col:0,slot:12.5},{id:"K81",col:0,slot:14.5},
+      // LEFT R32 (col 0) — top to bottom, matching FIFA bracket order
+      {id:"K73",col:0,slot:0.5},{id:"K76",col:0,slot:2.5},  // RSA/CAN, NED/MAR -> feed K90 top
+      {id:"K75",col:0,slot:4.5},{id:"K78",col:0,slot:6.5},  // GER/PAR, FRA/SWE -> feed K89 below
+      {id:"K82",col:0,slot:8.5},{id:"K81",col:0,slot:10.5}, // USA/BOS, BEL/3rd -> feed K94
+      {id:"K84",col:0,slot:12.5},{id:"K83",col:0,slot:14.5},// RunK/L, ESP/ALG  -> feed K93
       // LEFT R16 (col 1)
-      {id:"K89",col:1,slot:1.5},{id:"K90",col:1,slot:5.5},
-      {id:"K93",col:1,slot:9.5},{id:"K94",col:1,slot:13.5},
+      {id:"K90",col:1,slot:1.5},{id:"K89",col:1,slot:5.5},  // K90 top (RSA+NED), K89 below (GER+FRA)
+      {id:"K94",col:1,slot:9.5},{id:"K93",col:1,slot:13.5}, // K94 (USA+BEL), K93 (RunK+ESP)
       // LEFT QF (col 2)
       {id:"K97",col:2,slot:3.5},{id:"K98",col:2,slot:11.5},
       // LEFT SF (col 3)
@@ -2875,11 +2875,11 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     // Connector lines — draw first (behind chips)
     // Connections: child -> parent (left side goes right, right side goes left)
     const connections=[
-      // left side: from R32 to R16
-      {from:"K75",to:"K89"},{from:"K78",to:"K89"},
-      {from:"K73",to:"K90"},{from:"K76",to:"K90"},
-      {from:"K84",to:"K93"},{from:"K83",to:"K93"},
-      {from:"K82",to:"K94"},{from:"K81",to:"K94"},
+      // left side: from R32 to R16 (matching new slot order)
+      {from:"K73",to:"K90"},{from:"K76",to:"K90"},  // RSA/CAN + NED/MAR -> K90
+      {from:"K75",to:"K89"},{from:"K78",to:"K89"},  // GER/PAR + FRA/SWE -> K89
+      {from:"K82",to:"K94"},{from:"K81",to:"K94"},  // USA/BOS + BEL/3rd -> K94
+      {from:"K84",to:"K93"},{from:"K83",to:"K93"},  // RunK/L + ESP/ALG  -> K93
       // left R16 to QF
       {from:"K89",to:"K97"},{from:"K90",to:"K97"},
       {from:"K93",to:"K98"},{from:"K94",to:"K98"},
@@ -3073,8 +3073,10 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
   };
   return(
     <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,0.85)",display:"flex",flexDirection:"column"}} onClick={onClose}>
-      <div onClick={e=>e.stopPropagation()} style={{flex:1,overflow:"auto",display:"flex",alignItems:"center",justifyContent:"center",padding:"50px 8px 8px"}}>
-        {imgUrl?<img src={imgUrl} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain",borderRadius:8}}/>:<div style={{color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14}}>Generating bracket…</div>}
+      <div onClick={e=>e.stopPropagation()} style={{flex:1,overflow:"auto",display:"flex",alignItems:"center",justifyContent:"center",padding:"50px 8px 8px",touchAction:"pinch-zoom"}}>
+        {imgUrl
+          ?<img src={imgUrl} style={{maxWidth:"100%",height:"auto",objectFit:"contain",borderRadius:8,touchAction:"pinch-zoom"}} onClick={e=>e.stopPropagation()}/>
+          :<div style={{color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14}}>Generating bracket…</div>}
       </div>
       <div style={{flexShrink:0,background:"#0a1628",borderTop:"1px solid #1e3060",padding:"12px 16px",display:"flex",gap:8,alignItems:"center"}}>
         {canShare&&<button onClick={generate} disabled={generating} style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>
@@ -4908,15 +4910,10 @@ export default function Mundialito() {
     const onFirstTouch=()=>{
       const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
       if(code)loadProfilePics(code).then(()=>bumpPics(setPicRefresh));
-      document.removeEventListener("touchstart",onFirstTouch);
-      document.removeEventListener("mousedown",onFirstTouch);
+      window.removeEventListener("pointerdown",onFirstTouch);
     };
-    document.addEventListener("touchstart",onFirstTouch,{once:true,passive:true});
-    document.addEventListener("mousedown",onFirstTouch,{once:true});
-    return()=>{
-      document.removeEventListener("touchstart",onFirstTouch);
-      document.removeEventListener("mousedown",onFirstTouch);
-    };
+    window.addEventListener("pointerdown",onFirstTouch,{once:true,passive:true});
+    return()=>window.removeEventListener("pointerdown",onFirstTouch);
   },[]);
   useEffect(()=>{
     const onScroll=()=>setScrolled(window.scrollY>300);
@@ -4991,7 +4988,7 @@ export default function Mundialito() {
           clearUrlCode();
           if(merged.draftLocked){
             const seen=window.localStorage?.getItem("mundi_intro_seen");
-            if(seen){setAppState("spectator");setActiveTab("group");}
+            if(seen){setAppState("spectator");setActiveTab("knockout");}
             else{setAppState("spectator_intro");}
           }else if(merged.setupLocked){setAppState("spectator");setActiveTab("draft");}
           else{setAppState("spectator");setActiveTab("setup");}
@@ -5001,7 +4998,7 @@ export default function Mundialito() {
     }
     // Fall back to localStorage for host — load local state immediately for speed,
     // then fetch fresh from Firebase in background
-    try{const raw=window.localStorage?.getItem(LOCAL_KEY);if(raw){const saved=JSON.parse(raw);setSt(mergeState(EMPTY,saved.st));setPools(saved.pools||[{id:"default",name:"My Pool"}]);setActivePoolId(saved.activePoolId||"default");setActivePoolName(saved.activePoolName||"My Pool");setIsHost(true);setAppState("host");setActiveTab("group");
+    try{const raw=window.localStorage?.getItem(LOCAL_KEY);if(raw){const saved=JSON.parse(raw);setSt(mergeState(EMPTY,saved.st));setPools(saved.pools||[{id:"default",name:"My Pool"}]);setActivePoolId(saved.activePoolId||"default");setActivePoolName(saved.activePoolName||"My Pool");setIsHost(true);setAppState("host");setActiveTab("knockout");
     setTimeout(()=>requestNotificationPermission(), 2000);
     const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");
     if(code){
@@ -5045,7 +5042,7 @@ export default function Mundialito() {
             setTimeout(()=>requestNotificationPermission(), 2000);
             if(merged.draftLocked){
               const seen=window.localStorage?.getItem("mundi_intro_seen");
-              if(seen){setAppState("spectator");setActiveTab("group");}
+              if(seen){setAppState("spectator");setActiveTab("knockout");}
               else{setAppState("spectator_intro");}
             }else if(merged.setupLocked){setAppState("spectator");setActiveTab("draft");}
             else{setAppState("spectator");setActiveTab("setup");}
@@ -5185,7 +5182,7 @@ export default function Mundialito() {
       }
       if(merged.draftLocked){
         const seen=window.localStorage?.getItem("mundi_intro_seen");
-        if(seen){setAppState("spectator");setActiveTab("group");}
+        if(seen){setAppState("spectator");setActiveTab("knockout");}
         else{setAppState("spectator_intro");}
       }else if(merged.setupLocked){setAppState("spectator");setActiveTab("draft");}
       else{setAppState("spectator");setActiveTab("setup");}

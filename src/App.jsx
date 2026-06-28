@@ -2691,7 +2691,7 @@ function KoPredictModal({matchId,teamA,teamB,koOdds,poolCode,myPlayerIdx,playerN
 }
 
 // Share KO matches (stage or day) as canvas image
-function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initials,lang,roundLabel,config}) {
+function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initials,lang,roundLabel,isStage,shareDate,config}) {
   const [generating,setGenerating]=useState(false);
   const generate=async()=>{
     setGenerating(true);
@@ -2730,7 +2730,9 @@ function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initia
       ctx.fillStyle="#1e2f50";const badgeW=52,badgeH=16,badgeX=W/2-badgeW/2;
       ctx.beginPath();ctx.roundRect?ctx.roundRect(badgeX,y+8,badgeW,badgeH,4):ctx.rect(badgeX,y+8,badgeW,badgeH);ctx.fill();
       ctx.fillStyle="#8899b4";ctx.font=`700 10px BebasNeue,Arial`;ctx.textAlign="center";
-      ctx.fillText(`M${m.n}`,W/2,y+20);
+      // Stage view: show date; Day view: show round label
+      const badgeText=isStage?(()=>{try{const d=new Date(m.d+"T"+(m.ko||"12:00")+":00Z");return d.toLocaleDateString("en-AU",{day:"numeric",month:"short"}).toUpperCase();}catch(e){return m.d;}})():roundLabel.toUpperCase().slice(0,6);
+      ctx.fillText(badgeText,W/2,y+20);
       const OFFSET=6;
       if(result&&result.home!=null&&result.away!=null){
         ctx.font=`700 30px BebasNeue,Arial`;ctx.fillStyle="#e0dcd4";ctx.textAlign="center";
@@ -2789,10 +2791,11 @@ function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initia
 }
 
 // Share full bracket as canvas image — proper tree geometry
-function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,config}) {
+function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,config,canShare=true}) {
   const [generating,setGenerating]=useState(false);
-  const generate=async()=>{
-    setGenerating(true);
+  const [imgUrl,setImgUrl]=useState(null);
+
+  const buildCanvas=async()=>{
     try{
       const bebas=new FontFace("BebasNeue","url(https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9WdhyyTh89ZNpQ.woff2)");
       const dm=new FontFace("DMSans","url(https://fonts.gstatic.com/s/dmsans/v15/rP2Hp2ywxg089UriCZa4ET-DNl0.woff2)");
@@ -2905,15 +2908,19 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     connections.forEach(({from,to})=>{
       const fx=matchCX(from),fy=matchCY(from);
       const tx=matchCX(to),ty=matchCY(to);
-      const isLeft=treeMap[from].col<4;
-      // from match right/left edge to midpoint, then vertical to next column midpoint, then to target
-      const edgeX=isLeft?fx+CW/2:fx-CW/2;
-      const midX=(edgeX+( isLeft?tx-CW/2:tx+CW/2))/2;
+      const fromCol=treeMap[from].col;
+      const toCol=treeMap[to].col;
+      const isLeft=fromCol<4;
+      const fromW=(fromCol===0||fromCol===8)?CW+14:CW;
+      const toW=(toCol===0||toCol===8)?CW+14:CW;
+      const edgeX=isLeft?fx+fromW/2:fx-fromW/2;
+      const targetX=isLeft?tx-toW/2:tx+toW/2;
+      const midX=(edgeX+targetX)/2;
       ctx.beginPath();
       ctx.moveTo(edgeX,fy);
       ctx.lineTo(midX,fy);
       ctx.lineTo(midX,ty);
-      ctx.lineTo(isLeft?tx-CW/2:tx+CW/2,ty);
+      ctx.lineTo(targetX,ty);
       ctx.stroke();
     });
 
@@ -2929,13 +2936,28 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       return n.toUpperCase().replace(/[^A-Z]/g,"").slice(0,3);
     };
 
+    // Full country name (caps, shortened where needed)
+    const fullName=(team)=>{
+      if(!team)return"TBD";
+      const n=(TBN[team]?.name||team).toUpperCase();
+      const MAP={"BOSNIA AND HERZEGOVINA":"BOSNIA","UNITED STATES":"USA",
+        "DR CONGO":"DR CONGO","IVORY COAST":"IVORY COAST","CAPE VERDE":"CAPE VERDE",
+        "SAUDI ARABIA":"SAUDI ARABIA","SOUTH KOREA":"SOUTH KOREA","NEW ZEALAND":"NEW ZEALAND",
+        "CZECH REPUBLIC":"CZECH REP."};
+      return MAP[n]||n;
+    };
+
     // Draw each match as 2 stacked chips
     TREE.forEach(({id,col,slot})=>{
       const bk=bracket[id]||{};
       const cx=colCX(col);
       const cy=slotY(slot);
-      const isLeft=col<4;const isRight=col>4;const isFinal=col===4;
-      const chipX=cx-CW/2;
+      const isR32=(col===0||col===8);
+      const isRightSide=col>=5; // right half of bracket
+      const isFinal=col===4;
+      // R32 chips are wider to fit full name
+      const chipW=isR32?CW+14:CW;
+      const chipX=cx-chipW/2;
       const GAP=isFinal?6:4;
       const aY=cy-CH-GAP/2;
       const bY=cy+GAP/2;
@@ -2947,31 +2969,50 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
         const isLoss=w&&!isWin;
         const tm=team?TBN[team]:null;
         const owner=team?ownership[team]:null;
-        const col=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):"#2a3a5c";
+        const pcol=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):"#2a3a5c";
         ctx.globalAlpha=isLoss?0.3:1;
-        // chip bg
-        ctx.fillStyle=isWin?`${col}30`:isFinal?"rgba(20,35,65,0.95)":"rgba(12,22,45,0.9)";
-        ctx.strokeStyle=isWin?col:isFinal?"#c9a84c44":"#1e3060";
+        ctx.fillStyle=isWin?`${pcol}30`:isFinal?"rgba(20,35,65,0.95)":"rgba(12,22,45,0.9)";
+        ctx.strokeStyle=isWin?pcol:isFinal?"#c9a84c44":"#1e3060";
         ctx.lineWidth=isWin?1.5:1;
-        ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,yPos,CW,CH,3):ctx.rect(chipX,yPos,CW,CH);
+        ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,yPos,chipW,CH,3):ctx.rect(chipX,yPos,chipW,CH);
         ctx.fill();ctx.stroke();
         if(team){
-          // flag
-          ctx.font=`400 12px Arial`;ctx.textAlign="left";
-          ctx.fillText(tm?.flag||"",chipX+3,yPos+CH/2+5);
-          // 3-letter abbr
-          ctx.fillStyle=isWin?(col||"#e0dcd4"):"#b0bbd0";
-          ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="left";
-          ctx.fillText(abbr3(team),chipX+19,yPos+CH/2+4);
-          // owner initials on right
-          if(owner!=null){
-            ctx.fillStyle=col;ctx.font=`700 7px BebasNeue,Arial`;ctx.textAlign="right";
-            ctx.fillText(initials[owner.playerIdx]||"?",chipX+CW-3,yPos+CH/2+3);
+          if(isRightSide){
+            // RIGHT side: owner | name | flag (flipped)
+            if(owner!=null){
+              ctx.fillStyle=pcol;ctx.font=`700 7px BebasNeue,Arial`;ctx.textAlign="left";
+              ctx.fillText(initials[owner.playerIdx]||"?",chipX+3,yPos+CH/2+3);
+            }
+            ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#b0bbd0";
+            if(isR32){
+              ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="center";
+              ctx.fillText(fullName(team),chipX+chipW/2-(owner!=null?4:0),yPos+CH/2+4);
+            } else {
+              ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="left";
+              ctx.fillText(abbr3(team),chipX+(owner!=null?11:3),yPos+CH/2+4);
+            }
+            ctx.font=`400 12px Arial`;ctx.textAlign="right";
+            ctx.fillText(tm?.flag||"",chipX+chipW-2,yPos+CH/2+5);
+          } else {
+            // LEFT side (and Final): flag | name | owner
+            ctx.font=`400 12px Arial`;ctx.textAlign="left";
+            ctx.fillText(tm?.flag||"",chipX+3,yPos+CH/2+5);
+            ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#b0bbd0";
+            if(isR32){
+              ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="center";
+              ctx.fillText(fullName(team),chipX+chipW/2+(owner!=null?-4:0),yPos+CH/2+4);
+            } else {
+              ctx.font=`700 9px BebasNeue,Arial`;ctx.textAlign="left";
+              ctx.fillText(abbr3(team),chipX+19,yPos+CH/2+4);
+            }
+            if(owner!=null){
+              ctx.fillStyle=pcol;ctx.font=`700 7px BebasNeue,Arial`;ctx.textAlign="right";
+              ctx.fillText(initials[owner.playerIdx]||"?",chipX+chipW-3,yPos+CH/2+3);
+            }
           }
         } else {
-          // TBD — show slot label
-          const slotLabel=side==="a"?(treeMap[id]?KM.find(x=>x.id===id)?.sA||"TBD":"TBD"):
-                                      (treeMap[id]?KM.find(x=>x.id===id)?.sB||"TBD":"TBD");
+          const km=KM.find(x=>x.id===id);
+          const slotLabel=side==="a"?(km?.sA||"TBD"):(km?.sB||"TBD");
           ctx.fillStyle="#2a3a5c";ctx.font=`400 7px DMSans,Arial`;ctx.textAlign="center";
           ctx.fillText(slotLabel.replace("Win ",""),cx,yPos+CH/2+3);
         }
@@ -3008,25 +3049,38 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     // Footer
     ctx.fillStyle="#1e2f50";ctx.font=`400 10px DMSans,Arial`;ctx.textAlign="center";
     ctx.fillText("elmundialito.github.io/2026",W/2,H-10);
+    return canvas;
+  };
 
+  useEffect(()=>{
+    buildCanvas().then(canvas=>{
+      if(canvas)setImgUrl(canvas.toDataURL("image/png"));
+    });
+  },[]);
+
+  const generate=async()=>{
+    setGenerating(true);
+    const canvas=await buildCanvas();
+    setGenerating(false);
+    if(!canvas)return;
     canvas.toBlob(async blob=>{
-      setGenerating(false);if(!blob)return;
+      if(!blob)return;
       const file=new File([blob],"mundialito-bracket.png",{type:"image/png"});
       if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
         try{await navigator.share({files:[file],title:"Mundialito Bracket"});}catch(e){}
       } else {const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="mundialito-bracket.png";a.click();URL.revokeObjectURL(url);}
-      onClose();
     },"image/png");
   };
   return(
-    <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end"}} onClick={onClose}>
-      <div onClick={e=>e.stopPropagation()} style={{width:"100%",background:"#0a1628",borderRadius:"20px 20px 0 0",border:"1px solid #2a3a5c",padding:"20px 16px 32px"}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,color:"#8899b4",marginBottom:6}}>SHARE · FULL BRACKET</div>
-        <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",marginBottom:20}}>Complete knockout bracket with results</div>
-        <button onClick={generate} disabled={generating} style={{width:"100%",padding:"14px",borderRadius:10,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:1.5,cursor:"pointer",marginBottom:10}}>
-          {generating?"GENERATING...":"GENERATE & SHARE 📤"}
-        </button>
-        <button onClick={onClose} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"transparent",color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>Cancel</button>
+    <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,0.85)",display:"flex",flexDirection:"column"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{flex:1,overflow:"auto",display:"flex",alignItems:"center",justifyContent:"center",padding:"50px 8px 8px"}}>
+        {imgUrl?<img src={imgUrl} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain",borderRadius:8}}/>:<div style={{color:"#5a6a8a",fontFamily:"'DM Sans'",fontSize:14}}>Generating bracket…</div>}
+      </div>
+      <div style={{flexShrink:0,background:"#0a1628",borderTop:"1px solid #1e3060",padding:"12px 16px",display:"flex",gap:8,alignItems:"center"}}>
+        {canShare&&<button onClick={generate} disabled={generating} style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1.5,cursor:"pointer"}}>
+          {generating?"GENERATING...":"SHARE 📤"}
+        </button>}
+        <button onClick={onClose} style={{flex:canShare?0:1,padding:"12px 20px",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#8899b4",fontFamily:"'DM Sans'",fontSize:13,cursor:"pointer"}}>{canShare?"Close":"Done"}</button>
       </div>
     </div>
   );
@@ -3074,9 +3128,13 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
         </div>
       )}
       <TournamentWinnerWidget ownership={ownership} initials={koInitials} lang={lang} playerNames={config.playerNames||[]}/>
+      {/* Always-visible action bar: bracket viewer + share */}
+      <div style={{display:"flex",gap:8,marginBottom:12}}>
+        <button onClick={()=>setShareKO("bracket_view")} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 12px",borderRadius:8,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#c8c0b0",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer"}}>🏆 BRACKET</button>
+        <button onClick={()=>setShareKO("menu")} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 12px",borderRadius:8,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer"}}>📤 SHARE</button>
+      </div>
       <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto",alignItems:"center"}}>
         {ROUND_ORDER.map(r=>{const active=activeRound===r;const cnt=roundMatches[r]?.length||0;const done=roundMatches[r]?.filter(m=>koResults[m.id]).length||0;return(<button key={r} onClick={()=>setActiveRound(r)} style={{padding:"7px 12px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1.5,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}}>{KO_LABELS[r]}<span style={{fontFamily:"'DM Sans'",fontSize:9,color:active?"#c9a84c88":"#3d5070",marginLeft:5}}>{done}/{cnt}</span></button>);})}
-        <button onClick={()=>setShareKO("menu")} style={{marginLeft:"auto",padding:"7px 10px",borderRadius:8,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer",flexShrink:0}}>📤</button>
       </div>
       <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",textAlign:"center",marginBottom:12}}>Win = <span style={{color:"var(--accent)",fontWeight:700}}>{config.koPoints[activeRound]} pts</span></div>
       {(()=>{
@@ -3148,8 +3206,8 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           </div>
         </div>
       )}
-      {(shareKO==="stage"||shareKO==="day")&&<ShareKOMatchesModal onClose={()=>setShareKO(null)} matches={shareKO==="stage"?roundMatches[activeRound]||[]:KM.filter(m=>{if(!m.d||!m.ko)return false;try{const d=new Date(m.d+"T"+m.ko+":00Z");return d.toLocaleDateString("en-CA")===shareKODate;}catch(e){return false;}})} bracket={bracket} koResults={koResults} ownership={ownership} initials={koInitials} lang={lang} roundLabel={shareKO==="stage"?KO_LABELS[activeRound]:fmtDate(shareKODate,lang)} config={config}/>}
-      {shareKO==="bracket"&&<ShareKOBracketModal onClose={()=>setShareKO(null)} bracket={bracket} koResults={koResults} ownership={ownership} initials={koInitials} lang={lang} config={config}/>}
+      {shareKO==="bracket_view"&&<ShareKOBracketModal onClose={()=>setShareKO(null)} bracket={bracket} koResults={koResults} ownership={ownership} initials={koInitials} lang={lang} config={config} viewOnly={!readOnly===false&&true} canShare={!readOnly}/>}
+      {(shareKO==="stage"||shareKO==="day")&&<ShareKOMatchesModal onClose={()=>setShareKO(null)} matches={shareKO==="stage"?roundMatches[activeRound]||[]:KM.filter(m=>{if(!m.d||!m.ko)return false;try{const d=new Date(m.d+"T"+m.ko+":00Z");return d.toLocaleDateString("en-CA")===shareKODate;}catch(e){return false;}})} bracket={bracket} koResults={koResults} ownership={ownership} initials={koInitials} lang={lang} roundLabel={KO_LABELS[activeRound]} isStage={shareKO==="stage"} shareDate={shareKODate} config={config}/>}
     </div>
   );
 }
@@ -4835,7 +4893,7 @@ export default function Mundialito() {
   const [appState,setAppState]=useState("loading");
   const [isHost,setIsHost]=useState(false);
   const [st,setSt]=useState(EMPTY);
-  const [activeTab,setActiveTab]=useState("group");
+  const [activeTab,setActiveTab]=useState("knockout");
   const [lang,setLang]=useState(detectLang);
   const setLanguage=(l)=>{setLang(l);try{window.localStorage?.setItem("mundi_lang",l);}catch(e){}};
   const [showRules,setShowRules]=useState(false);

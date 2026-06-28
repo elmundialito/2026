@@ -2811,8 +2811,14 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       document.fonts.add(bebas);document.fonts.add(dm);
     }catch(e){}
 
-    // 9 columns: R32|R16|QF|SF|FINAL|SF|QF|R16|R32
-    const W=920,H=1120,DPR=2;
+    // Content-driven layout — no fixed slot grid, positions calculated from content
+    // CH=26 (large readable chips), tight gaps between matches
+    const CH=26,INNER_GAP=4,MATCH_GAP=28;
+    const matchH=CH*2+INNER_GAP; // 56px per match pair
+    const HEADER=66,FOOTER=26;
+    const totalContent=8*matchH+7*MATCH_GAP; // 644px
+    const H=totalContent+HEADER+FOOTER; // 736px
+    const W=960,DPR=2;
     const canvas=document.createElement("canvas");
     canvas.width=W*DPR;canvas.height=H*DPR;
     const ctx=canvas.getContext("2d");ctx.scale(DPR,DPR);
@@ -2827,20 +2833,14 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     ctx.fillText("KNOCKOUT BRACKET",W/2,50);
     ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.15;ctx.fillRect(20,58,W-40,1);ctx.globalAlpha=1;
 
-    const HEADER=66,FOOTER=28;
-    const USABLE=H-HEADER-FOOTER;
-    const SLOTS=16;
-    const SH=USABLE/SLOTS; // ~65px — good breathing room
-    const CH=22,GAP=3;
-
-    // Column widths [R32,R16,QF,SF,FINAL,SF,QF,R16,R32]
-    const CW=[108,84,72,64,72,64,72,84,108];
-    const CGAP=6;
-    const margin=(W-CW.reduce((a,b)=>a+b)-CGAP*8)/2;
+    // Column layout: 9 cols [R32,R16,QF,SF,FINAL,SF,QF,R16,R32]
+    const CW=[112,88,76,68,76,68,76,88,112];
+    const CGAP=5;
+    const totalCW=CW.reduce((a,b)=>a+b)+CGAP*8;
+    const margin=(W-totalCW)/2;
     const colX=[margin];
     for(let i=1;i<9;i++)colX.push(colX[i-1]+CW[i-1]+CGAP);
     const colCX=i=>colX[i]+CW[i]/2;
-    const slotY=s=>HEADER+s*SH+SH/2;
 
     // Column headers
     const colLabels=["R32","R16","QF","SF","FINAL","SF","QF","R16","R32"];
@@ -2850,65 +2850,68 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       ctx.fillText(lbl,colCX(i),63);
     });
 
-    // Full tree — 9 columns (0-8)
-    const TREE=[
-      // Left R32 (col 0)
-      {id:"K73",col:0,slot:0.5},{id:"K76",col:0,slot:2.5},
-      {id:"K75",col:0,slot:4.5},{id:"K78",col:0,slot:6.5},
-      {id:"K82",col:0,slot:8.5},{id:"K81",col:0,slot:10.5},
-      {id:"K84",col:0,slot:12.5},{id:"K83",col:0,slot:14.5},
-      // Left R16 (col 1)
-      {id:"K90",col:1,slot:1.5},{id:"K89",col:1,slot:5.5},
-      {id:"K94",col:1,slot:9.5},{id:"K93",col:1,slot:13.5},
-      // Left QF (col 2)
-      {id:"K97",col:2,slot:3.5},{id:"K98",col:2,slot:11.5},
-      // Left SF (col 3)
-      {id:"K101",col:3,slot:7.5},
-      // Final (col 4)
-      {id:"K104",col:4,slot:7.5},
-      // Right SF (col 5)
-      {id:"K102",col:5,slot:7.5},
-      // Right QF (col 6)
-      {id:"K99",col:6,slot:3.5},{id:"K100",col:6,slot:11.5},
-      // Right R16 (col 7)
-      {id:"K91",col:7,slot:1.5},{id:"K92",col:7,slot:5.5},
-      {id:"K95",col:7,slot:9.5},{id:"K96",col:7,slot:13.5},
-      // Right R32 (col 8)
-      {id:"K74",col:8,slot:0.5},{id:"K77",col:8,slot:2.5},
-      {id:"K79",col:8,slot:4.5},{id:"K80",col:8,slot:6.5},
-      {id:"K87",col:8,slot:8.5},{id:"K86",col:8,slot:10.5},
-      {id:"K85",col:8,slot:12.5},{id:"K88",col:8,slot:14.5},
-    ];
-    const treeMap={};TREE.forEach(m=>{treeMap[m.id]=m;});
-    const matchCX=id=>colCX(treeMap[id].col);
-    const matchCY=id=>slotY(treeMap[id].slot);
+    // Calculate Y centre of each R32 match (0-7, top to bottom)
+    const r32Y=i=>HEADER+i*(matchH+MATCH_GAP)+matchH/2;
 
-    // Connections
+    // Left R32 match order (top→bottom): K73,K76,K75,K78,K82,K81,K84,K83
+    // Right R32 match order (top→bottom): K74,K77,K79,K80,K87,K86,K85,K88
+    const leftR32= ["K73","K76","K75","K78","K82","K81","K84","K83"];
+    const rightR32=["K74","K77","K79","K80","K87","K86","K85","K88"];
+
+    // R16 centres = midpoint between their two R32 feeders
+    // K90=mid(K73,K76), K89=mid(K75,K78), K94=mid(K82,K81), K93=mid(K84,K83)
+    const lR16Y=[
+      (r32Y(0)+r32Y(1))/2, // K90
+      (r32Y(2)+r32Y(3))/2, // K89
+      (r32Y(4)+r32Y(5))/2, // K94
+      (r32Y(6)+r32Y(7))/2, // K93
+    ];
+    const rR16Y=[
+      (r32Y(0)+r32Y(1))/2, // K91
+      (r32Y(2)+r32Y(3))/2, // K92
+      (r32Y(4)+r32Y(5))/2, // K95
+      (r32Y(6)+r32Y(7))/2, // K96
+    ];
+    // QF
+    const lQFY=[(lR16Y[0]+lR16Y[1])/2,(lR16Y[2]+lR16Y[3])/2]; // K97,K98
+    const rQFY=[(rR16Y[0]+rR16Y[1])/2,(rR16Y[2]+rR16Y[3])/2]; // K99,K100
+    // SF
+    const lSFY=(lQFY[0]+lQFY[1])/2; // K101
+    const rSFY=(rQFY[0]+rQFY[1])/2; // K102
+    // Final
+    const finY=(lSFY+rSFY)/2; // K104
+
+    // All match Y positions keyed by ID
+    const matchY={};
+    leftR32.forEach((id,i)=>{matchY[id]=r32Y(i);});
+    rightR32.forEach((id,i)=>{matchY[id]=r32Y(i);});
+    const matchCol={};
+    leftR32.forEach(id=>{matchCol[id]=0;});
+    rightR32.forEach(id=>{matchCol[id]=8;});
+    [["K90",1,lR16Y[0]],["K89",1,lR16Y[1]],["K94",1,lR16Y[2]],["K93",1,lR16Y[3]],
+     ["K91",7,rR16Y[0]],["K92",7,rR16Y[1]],["K95",7,rR16Y[2]],["K96",7,rR16Y[3]],
+     ["K97",2,lQFY[0]],["K98",2,lQFY[1]],["K99",6,rQFY[0]],["K100",6,rQFY[1]],
+     ["K101",3,lSFY],["K102",5,rSFY],["K104",4,finY],
+    ].forEach(([id,col,y])=>{matchCol[id]=col;matchY[id]=y;});
+
+    // Draw connection lines (behind chips)
     const connections=[
-      {from:"K73",to:"K90"},{from:"K76",to:"K90"},
-      {from:"K75",to:"K89"},{from:"K78",to:"K89"},
-      {from:"K82",to:"K94"},{from:"K81",to:"K94"},
-      {from:"K84",to:"K93"},{from:"K83",to:"K93"},
-      {from:"K90",to:"K97"},{from:"K89",to:"K97"},
-      {from:"K94",to:"K98"},{from:"K93",to:"K98"},
-      {from:"K97",to:"K101"},{from:"K98",to:"K101"},
-      {from:"K101",to:"K104"},{from:"K102",to:"K104"},
-      {from:"K74",to:"K91"},{from:"K77",to:"K91"},
-      {from:"K79",to:"K92"},{from:"K80",to:"K92"},
-      {from:"K87",to:"K95"},{from:"K86",to:"K95"},
-      {from:"K85",to:"K96"},{from:"K88",to:"K96"},
-      {from:"K91",to:"K99"},{from:"K92",to:"K99"},
-      {from:"K95",to:"K100"},{from:"K96",to:"K100"},
-      {from:"K99",to:"K102"},{from:"K100",to:"K102"},
+      ["K73","K90"],["K76","K90"],["K75","K89"],["K78","K89"],
+      ["K82","K94"],["K81","K94"],["K84","K93"],["K83","K93"],
+      ["K90","K97"],["K89","K97"],["K94","K98"],["K93","K98"],
+      ["K97","K101"],["K98","K101"],["K101","K104"],["K102","K104"],
+      ["K74","K91"],["K77","K91"],["K79","K92"],["K80","K92"],
+      ["K87","K95"],["K86","K95"],["K85","K96"],["K88","K96"],
+      ["K91","K99"],["K92","K99"],["K95","K100"],["K96","K100"],
+      ["K99","K102"],["K100","K102"],
     ];
-
     ctx.strokeStyle="#1e3060";ctx.lineWidth=1;
-    connections.forEach(({from,to})=>{
-      const fc=treeMap[from].col,tc=treeMap[to].col;
+    connections.forEach(([from,to])=>{
+      const fc=matchCol[from],tc=matchCol[to];
       const isLeft=fc<4;
       const fw=CW[fc],tw=CW[tc];
-      const fx=matchCX(from),fy=matchCY(from);
-      const tx2=matchCX(to),ty2=matchCY(to);
+      const fx=colCX(fc),fy=matchY[from];
+      const tx2=colCX(tc),ty2=matchY[to];
       const edgeX=isLeft?fx+fw/2:fx-fw/2;
       const targetX=isLeft?tx2-tw/2:tx2+tw/2;
       const midX=(edgeX+targetX)/2;
@@ -2916,6 +2919,7 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       ctx.lineTo(midX,ty2);ctx.lineTo(targetX,ty2);ctx.stroke();
     });
 
+    // Helpers
     const abbr3=(team)=>{
       if(!team)return"TBD";
       const n=(TBN[team]?.name||team).toUpperCase();
@@ -2928,22 +2932,28 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       if(!team)return"TBD";
       const n=(TBN[team]?.name||team).toUpperCase();
       const MAP={"BOSNIA AND HERZEGOVINA":"BOSNIA","UNITED STATES":"USA",
-        "DR CONGO":"DR CONGO","IVORY COAST":"IVORY CST","CAPE VERDE":"CAPE VERDE",
+        "DR CONGO":"DR CONGO","IVORY COAST":"IVORY CST","CAPE VERDE":"C. VERDE",
         "SOUTH AFRICA":"S. AFRICA","SAUDI ARABIA":"SAUDI ARB","NEW ZEALAND":"N. ZEALAND"};
       return MAP[n]||n;
     };
 
-    TREE.forEach(({id,col,slot})=>{
+    // Draw all matches
+    const allMatches=[...leftR32,...rightR32,
+      "K90","K89","K94","K93","K91","K92","K95","K96",
+      "K97","K98","K99","K100","K101","K102","K104"];
+
+    allMatches.forEach(id=>{
+      const col=matchCol[id];
+      const cy=matchY[id];
       const bk=bracket[id]||{};
       const cx=colCX(col);
-      const cy=slotY(slot);
       const isR32=(col===0||col===8);
       const isRight=col>=5;
       const isFinal=col===4;
       const chipW=CW[col]-4;
       const chipX=cx-chipW/2;
-      const aY=cy-CH-GAP/2;
-      const bY=cy+GAP/2;
+      const aY=cy-CH-INNER_GAP/2;
+      const bY=cy+INNER_GAP/2;
       const result=koResults[id];
       const w=result?koWinner(result):null;
 
@@ -2955,26 +2965,28 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
         const pcol=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):"#2a3a5c";
         ctx.globalAlpha=isLoss?0.3:1;
         ctx.fillStyle=isWin?`${pcol}30`:isFinal?"rgba(20,35,65,0.95)":"rgba(12,22,45,0.9)";
-        ctx.strokeStyle=isWin?pcol:isFinal?"#c9a84c44":"#1e3060";
+        ctx.strokeStyle=isWin?pcol:isFinal?"#c9a84c55":"#1e3060";
         ctx.lineWidth=isWin?1.5:1;
         ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,yPos,chipW,CH,3):ctx.rect(chipX,yPos,chipW,CH);
         ctx.fill();ctx.stroke();
         if(team){
           const label=isR32?fullName(team):abbr3(team);
-          const fsize=isR32?(label.length>8?8:9):9;
+          const fsize=isR32?(label.length>8?9:11):10;
           if(isRight){
-            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 7px BebasNeue,Arial`;ctx.textAlign="left";ctx.fillText(initials[owner.playerIdx]||"?",chipX+3,yPos+CH/2+3);}
+            // right: owner | name | flag
+            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 8px BebasNeue,Arial`;ctx.textAlign="left";ctx.fillText(initials[owner.playerIdx]||"?",chipX+4,yPos+CH/2+3);}
             ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#c8c0b0";
             ctx.font=`700 ${fsize}px BebasNeue,Arial`;ctx.textAlign="center";
-            ctx.fillText(label,cx+(owner?2:-4),yPos+CH/2+4);
-            ctx.font=`400 12px Arial`;ctx.textAlign="right";
-            ctx.fillText(tm?.flag||"",chipX+chipW-1,yPos+CH/2+5);
+            ctx.fillText(label,cx+(owner?3:-5),yPos+CH/2+4);
+            ctx.font=`400 13px Arial`;ctx.textAlign="right";
+            ctx.fillText(tm?.flag||"",chipX+chipW-1,yPos+CH/2+6);
           } else {
-            ctx.font=`400 12px Arial`;ctx.textAlign="left";ctx.fillText(tm?.flag||"",chipX+2,yPos+CH/2+5);
+            // left + final: flag | name | owner
+            ctx.font=`400 13px Arial`;ctx.textAlign="left";ctx.fillText(tm?.flag||"",chipX+2,yPos+CH/2+6);
             ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#c8c0b0";
             ctx.font=`700 ${fsize}px BebasNeue,Arial`;ctx.textAlign="center";
-            ctx.fillText(label,cx+(owner?-2:4),yPos+CH/2+4);
-            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 7px BebasNeue,Arial`;ctx.textAlign="right";ctx.fillText(initials[owner.playerIdx]||"?",chipX+chipW-2,yPos+CH/2+3);}
+            ctx.fillText(label,cx+(owner?-3:5),yPos+CH/2+4);
+            if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 8px BebasNeue,Arial`;ctx.textAlign="right";ctx.fillText(initials[owner.playerIdx]||"?",chipX+chipW-3,yPos+CH/2+3);}
           }
         } else {
           const km=KM.find(x=>x.id===id);

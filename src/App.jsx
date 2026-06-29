@@ -2384,7 +2384,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
           })()}
           {/* 💬 chat — show when both teams confirmed */}
           {bothConfirmed&&onOpenChat&&<button onClick={onOpenChat} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:10,border:`1px solid ${(chatCount>0||hasReactions)?"rgba(201,168,76,0.3)":"#2a3a5c"}`,background:(chatCount>0||hasReactions)?"rgba(201,168,76,0.08)":"transparent",color:(chatCount>0||hasReactions)?"var(--accent)":"#5a6a8a",cursor:"pointer",fontSize:12}}>💬{chatCount>0&&<span style={{fontFamily:"'DM Sans'",fontSize:10,fontWeight:600}}>{chatCount}</span>}</button>}
-          {/* ✎ override — host only, moved to bottom of card */}
+          {hasResult&&!readOnly&&<button onClick={()=>onSetResult(match.id,undefined)} style={{display:"flex",alignItems:"center",padding:"2px 7px",borderRadius:10,border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",cursor:"pointer",fontSize:10,fontFamily:"'DM Sans'"}}>✎</button>}
         </div>
       </div>
       {editOpen&&overrideMode&&(
@@ -2413,18 +2413,14 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
           {!(teamA||teamB)?(
             <span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",fontStyle:"italic",textAlign:"center"}}>TBD</span>
           ):hasResult?(
-            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
               {hasScore&&(
-                <div style={{display:"flex",alignItems:"center",gap:6,fontFamily:"'Bebas Neue'",fontSize:18,color:"#e0dcd4",letterSpacing:1}}>
-                  <span>{result.home}</span><span style={{color:"#5a6a8a",fontSize:13}}>–</span><span>{result.away}</span>
+                <div style={{display:"flex",alignItems:"center",gap:6,fontFamily:"'Bebas Neue'",fontSize:28,color:"#e0dcd4",letterSpacing:2,lineHeight:1}}>
+                  <span>{result.home}</span><span style={{color:"#5a6a8a",fontSize:18}}>–</span><span>{result.away}</span>
                 </div>
               )}
-              {wasPens&&<span style={{fontFamily:"'DM Sans'",fontSize:8,color:"#8899b4",letterSpacing:0.5,textTransform:"uppercase"}}>{lang==="es"?"penales":"on pens"}</span>}
-              <div style={{display:"flex",alignItems:"center",gap:4,padding:"4px 9px",borderRadius:8,background:winColor?`${winColor}1a`:"rgba(26,39,68,0.4)",border:winColor?`1px solid ${winColor}44`:"1px solid #2a3a5c"}}>
-                <span style={{fontSize:13}}>{TBN[winA?teamA:teamB]?.flag}</span>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:winColor||"#e0dcd4",letterSpacing:1}}>{lang==="es"?"AVANZA":"ADVANCES"}</span>
-              </div>
-              {!readOnly&&<button onClick={()=>onSetResult(match.id,undefined)} style={{fontSize:9,color:"#5a6a8a",background:"transparent",border:"none",cursor:"pointer",textDecoration:"underline"}}>{lang==="es"?"editar":"edit"}</button>}
+              {wasPens&&<span style={{fontFamily:"'DM Sans'",fontSize:8,color:"#8899b4",letterSpacing:0.5,textTransform:"uppercase"}}>{lang==="es"?"penales":"pens"}</span>}
+              <span style={{fontSize:14,marginTop:1}}>{TBN[winA?teamA:teamB]?.flag}</span>
             </div>
           ):(
             <KoScoreEntry matchId={match.id} teamA={teamA} teamB={teamB} result={result} onSetResult={val=>!readOnly&&onSetResult(match.id,val)} readOnly={readOnly}/>
@@ -3420,7 +3416,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           const map={"GROUP":0,"R32":eliminated?1:2,"R16":eliminated?3:4,"QF":eliminated?5:6,"SF":eliminated?7:8,"FINAL":9,"🥉 3RD":10,"4TH":9,"🥈 2ND":11,"🥇 1ST":12};
           return map[stage]??0;
         };
-        return stageOrder(b.team)-stageOrder(a.team)||b.pts-a.pts||b.gd-a.gd||b.gf-a.gf||a.team.localeCompare(b.team);
+        return b.pts-a.pts||stageOrder(b.team)-stageOrder(a.team)||b.gd-a.gd||b.gf-a.gf||a.team.localeCompare(b.team);
       });
       let gd=0,gf=0;
       myTeams.forEach(team=>{

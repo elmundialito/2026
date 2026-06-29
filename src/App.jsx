@@ -4811,20 +4811,47 @@ function ResultOverlay({results, onDone}) {
   const isWin=current.outcome==="W";
   const isLoss=current.outcome==="L";
   const isDraw=current.outcome==="D";
+  const isKO=current.isKO||false;
+  const isFinal=current.isFinal||false;
+  const pens=current.pens||false;
 
-  const bg=isWin?"linear-gradient(165deg,#0a2010,#0f3820)":isLoss?"linear-gradient(165deg,#200a0a,#380f0f)":"linear-gradient(165deg,#0a1020,#0f1a30)";
-  const accent=isWin?"#61a978":isLoss?"#d97757":"#6b9bd1";
-  const emoji=isWin?"🎉":isLoss?"😢":"🤷";
-  const msgEN=isWin?`${countryName(current.team,"en")} WIN!`:isLoss?`${countryName(current.team,"en")} LOSE`:"DRAW";
-  const msgES=isWin?`¡${countryName(current.team,"es")} GANA!`:isLoss?`${countryName(current.team,"es")} PIERDE`:"EMPATE";
+  const bg=isWin
+    ?(isFinal?"linear-gradient(165deg,#1a1200,#2a2000)":"linear-gradient(165deg,#0a2010,#0f3820)")
+    :isLoss?"linear-gradient(165deg,#200a0a,#380f0f)":"linear-gradient(165deg,#0a1020,#0f1a30)";
+  const accent=isWin?(isFinal?"#c9a84c":"#61a978"):isLoss?"#d97757":"#6b9bd1";
+  const emoji=isFinal&&isWin?"🏆":isKO&&isWin?"🎉":isKO&&isLoss?"😭":isWin?"🎉":isLoss?"😢":"🤷";
+
+  // KO messages
+  const roundLabel={r32:"Round of 32",r16:"Round of 16",qf:"Quarter-Final",sf:"Semi-Final",third:"3rd Place",final:"Final"}[current.round]||"";
+  const pensSuffix=pens?" (on penalties)":"";
+  const pensES=pens?" (en penales)":"";
+  const msgEN=isFinal&&isWin
+    ?`🏆 ${countryName(current.team,"en")} ARE WORLD CHAMPIONS!`
+    :isKO&&isWin
+    ?`${countryName(current.team,"en")} PROGRESS!${pensSuffix}`
+    :isKO&&isLoss
+    ?`${countryName(current.team,"en")} ELIMINATED${pensSuffix}`
+    :isWin?`${countryName(current.team,"en")} WIN!`:isLoss?`${countryName(current.team,"en")} LOSE`:"DRAW";
+  const msgES=isFinal&&isWin
+    ?`🏆 ¡${countryName(current.team,"es")} SON CAMPEONES!`
+    :isKO&&isWin
+    ?`¡${countryName(current.team,"es")} AVANZA!${pensES}`
+    :isKO&&isLoss
+    ?`${countryName(current.team,"es")} ELIMINADO${pensES}`
+    :isWin?`¡${countryName(current.team,"es")} GANA!`:isLoss?`${countryName(current.team,"es")} PIERDE`:"EMPATE";
   const msg=lang==="es"?msgES:msgEN;
+
+  // Sub-label for KO round
+  const subLabel=isKO&&!isFinal?roundLabel:"";
+
   const score=`${current.score.home} – ${current.score.away}`;
   const opacity=phase==="in"?0:phase==="hold"?1:0;
   const scale=phase==="in"?0.8:phase==="hold"?1:0.9;
 
-  // Confetti particles for wins
-  const confettiColors=["#61a978","#c9a84c","#6b9bd1","#d97757","#b67ad6","#e0b834"];
-  const confetti=isWin?Array.from({length:28},(_,i)=>({
+  const confettiColors=isWin&&isFinal
+    ?["#c9a84c","#ffd700","#fff0a0","#e0b834","#f5d060","#c9a84c"]
+    :["#61a978","#c9a84c","#6b9bd1","#d97757","#b67ad6","#e0b834"];
+  const confetti=isWin?Array.from({length:isFinal?40:28},(_,i)=>({
     id:i, x:Math.random()*100, delay:Math.random()*0.6,
     color:confettiColors[i%confettiColors.length],
     size:6+Math.random()*8, rotation:Math.random()*360,
@@ -4844,19 +4871,20 @@ function ResultOverlay({results, onDone}) {
         <div key={c.id} style={{position:"absolute",left:`${c.x}%`,top:-20,width:c.size,height:c.size,background:c.color,borderRadius:2,animation:`confettiFall ${1.8+Math.random()*1.2}s ${c.delay}s linear forwards`,transform:`rotate(${c.rotation}deg)`}}/>
       ))}
       {isLoss&&Array.from({length:8},(_,i)=>(
-        <div key={i} style={{position:"absolute",left:`${10+i*11}%`,top:-20,fontSize:28,animation:`sadFall ${2+i*0.15}s ${i*0.15}s linear forwards`}}>😢</div>
+        <div key={i} style={{position:"absolute",left:`${10+i*11}%`,top:-20,fontSize:28,animation:`sadFall ${2+i*0.15}s ${i*0.15}s linear forwards`}}>{isKO?"😭":"😢"}</div>
       ))}
 
       {/* Main content */}
       <div style={{textAlign:"center",animation:"resultPop 0.4s ease-out forwards",padding:"0 32px"}}>
-        <div style={{fontSize:isDraw?64:72,marginBottom:12,animation:isDraw?"shrug 0.8s ease-in-out 0.4s 2":"none"}}>{emoji}</div>
+        {subLabel&&<div style={{fontFamily:"'Bebas Neue'",fontSize:13,color:accent,letterSpacing:3,marginBottom:8,opacity:0.8}}>{subLabel}</div>}
+        <div style={{fontSize:isDraw?64:isFinal&&isWin?88:72,marginBottom:12,animation:isDraw?"shrug 0.8s ease-in-out 0.4s 2":"none"}}>{emoji}</div>
         <div style={{fontSize:20,marginBottom:8,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
           <span style={{fontSize:36}}>{current.flag}</span>
           <span style={{fontSize:24}}>vs</span>
           <span style={{fontSize:36}}>{current.opponentFlag}</span>
         </div>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:52,color:accent,letterSpacing:4,lineHeight:1,marginBottom:8}}>{score}</div>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:24,color:"#e0dcd4",letterSpacing:3}}>{msg}</div>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:isFinal&&isWin?28:24,color:"#e0dcd4",letterSpacing:3,lineHeight:1.3}}>{msg}</div>
         {results.length>1&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",marginTop:12}}>{idx+1} / {results.length}</div>}
       </div>
 
@@ -5243,6 +5271,59 @@ export default function Mundialito() {
       if(recent.length>0) setResultOverlay(recent);
     }
   },[st.matchResults, myPlayerIdx]);
+
+  // KO result overlay — same logic but for knockout matches
+  const seenKOResultsRef=useRef(null);
+  useEffect(()=>{
+    if(myPlayerIdx===null)return;
+    const myTeams=new Set((st.picks||[]).filter(p=>p.playerIdx===myPlayerIdx).map(p=>p.team));
+    if(myTeams.size===0)return;
+    const currentSeen={};
+    KM.forEach(m=>{
+      const r=st.koResults[m.id];
+      if(!r||typeof r==="string")return;
+      const w=koWinner(r);if(!w)return;
+      const bk=resolvedBracket[m.id];if(!bk?.a||!bk?.b)return;
+      if(!myTeams.has(bk.a)&&!myTeams.has(bk.b))return;
+      currentSeen[m.id]=`${r.home}-${r.away}-${r.pens?r.pens.a+"-"+r.pens.b:""}`;
+    });
+    if(seenKOResultsRef.current===null){
+      try{const saved=window.localStorage?.getItem("mundi_seen_ko_results");seenKOResultsRef.current=saved?JSON.parse(saved):{};
+      }catch{seenKOResultsRef.current={};}
+    }
+    const newResults=[];
+    Object.entries(currentSeen).forEach(([matchId,scoreKey])=>{
+      if(seenKOResultsRef.current[matchId]===scoreKey)return;
+      const match=KM.find(m=>m.id===matchId);if(!match)return;
+      const r=st.koResults[matchId];
+      const bk=resolvedBracket[matchId];
+      const w=koWinner(r);
+      const myTeamIsA=myTeams.has(bk.a);
+      const myTeamName=myTeamIsA?bk.a:bk.b;
+      const opponentName=myTeamIsA?bk.b:bk.a;
+      const myScore=myTeamIsA?r.home:r.away;
+      const oppScore=myTeamIsA?r.away:r.home;
+      const won=(myTeamIsA&&w==="A")||(!myTeamIsA&&w==="B");
+      const pens=!!(r.pens);
+      const isFinal=match.round==="final";
+      newResults.push({
+        team:myTeamName, flag:TBN[myTeamName]?.flag||"⚽",
+        opponent:opponentName, opponentFlag:TBN[opponentName]?.flag||"⚽",
+        outcome:won?"W":"L", score:{home:myScore,away:oppScore},
+        matchId, pens, isFinal, isKO:true, round:match.round,
+      });
+    });
+    seenKOResultsRef.current={...seenKOResultsRef.current,...currentSeen};
+    try{window.localStorage?.setItem("mundi_seen_ko_results",JSON.stringify(seenKOResultsRef.current));}catch{}
+    if(newResults.length>0){
+      const cutoff=Date.now()-(48*60*60*1000);
+      const recent=newResults.filter(r=>{
+        const match=KM.find(m=>m.id===r.matchId);if(!match)return false;
+        try{const t=match.ko?new Date(match.d+"T"+match.ko+":00Z").getTime():new Date(match.d+"T12:00:00Z").getTime();return t>=cutoff;}catch{return false;}
+      });
+      if(recent.length>0)setResultOverlay(prev=>prev?[...prev,...recent]:recent);
+    }
+  },[st.koResults, myPlayerIdx, resolvedBracket]);
 
   // Auto-save to Firebase whenever host changes scores — debounced 800ms
   const autoSaveTimerRef=useRef(null);

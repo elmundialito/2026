@@ -3614,7 +3614,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                   </div>
                   <div style={{marginTop:8}}>
                     <span style={{fontFamily:"'DM Sans'",fontSize:8,color:"#3d5070",textTransform:"uppercase",letterSpacing:0.5,fontWeight:600}}>Tiebreakers: </span>
-                    <span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070"}}>{p.r32} in R32 · GD {p.gd>=0?"+":""}{p.gd} · GF {p.gf}</span>
+                    <span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070"}}>{p.pastGroups} in R32 · GD {p.gd>=0?"+":""}{p.gd} · GF {p.gf}</span>
                   </div>
                 </div>
               )}

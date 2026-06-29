@@ -2419,8 +2419,11 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
                   <span>{result.home}</span><span style={{color:"#5a6a8a",fontSize:18}}>–</span><span>{result.away}</span>
                 </div>
               )}
-              {wasPens&&<span style={{fontFamily:"'DM Sans'",fontSize:8,color:"#8899b4",letterSpacing:0.5,textTransform:"uppercase"}}>{lang==="es"?"penales":"pens"}</span>}
-              <span style={{fontSize:14,marginTop:1}}>{TBN[winA?teamA:teamB]?.flag}</span>
+              {wasPens&&<span style={{fontFamily:"'DM Sans'",fontSize:8,color:"#8899b4",letterSpacing:0.5,textTransform:"uppercase"}}>{lang==="es"?"penales":"on pens"}</span>}
+              <div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:8,background:winColor?`${winColor}1a`:"rgba(26,39,68,0.4)",border:winColor?`1px solid ${winColor}44`:"1px solid #2a3a5c",marginTop:2}}>
+                <span style={{fontSize:12}}>{TBN[winA?teamA:teamB]?.flag}</span>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:9,color:winColor||"#e0dcd4",letterSpacing:1}}>{lang==="es"?"AVANZA":"ADVANCES"}</span>
+              </div>
             </div>
           ):(
             <KoScoreEntry matchId={match.id} teamA={teamA} teamB={teamB} result={result} onSetResult={val=>!readOnly&&onSetResult(match.id,val)} readOnly={readOnly}/>
@@ -3437,8 +3440,8 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       // Today's points — compare using SGT kickoff date (UTC+8)
       let todayPts=0;
       myTeams.forEach(team=>{
+        // Group stage today points
         GM.filter(m=>m.t.includes(team)&&m.ko).forEach(m=>{
-          // Convert UTC kickoff to SGT date (UTC+8)
           const kickoffUTC=new Date(m.d+"T"+m.ko+":00Z");
           const sgtDate=new Date(kickoffUTC.getTime()+8*60*60*1000).toISOString().slice(0,10);
           if(sgtDate!==today)return;
@@ -3447,6 +3450,19 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           const isHome=m.t[0]===team;
           if((isHome&&out==="A")||(!isHome&&out==="B"))todayPts+=3;
           else if(out==="D")todayPts+=1;
+        });
+        // KO stage today points
+        KM.filter(m=>m.ko).forEach(m=>{
+          const bk=bracket[m.id]||{};
+          const isA=bk.a===team,isB=bk.b===team;
+          if(!isA&&!isB)return;
+          const kickoffUTC=new Date(m.d+"T"+m.ko+":00Z");
+          const sgtDate=new Date(kickoffUTC.getTime()+8*60*60*1000).toISOString().slice(0,10);
+          if(sgtDate!==today)return;
+          const r=koResults[m.id];
+          const w=koWinner(r);if(!w)return;
+          const won=(isA&&w==="A")||(isB&&w==="B");
+          if(won){const pts=(DEFAULT_KO[m.round]||4);todayPts+=pts;}
         });
       });
       // Count teams currently sitting in any R32 slot — covers group winners/runners-up once

@@ -5034,15 +5034,6 @@ export default function Mundialito() {
   const [spectatorPoolCode,setSpectatorPoolCode]=useState(()=>{try{return window.localStorage?.getItem('mundi_spectator_code')||null;}catch(e){return null;}});
   const [allPredictions,setAllPredictions]=useState({});
 
-  // Keep allPredictions live for host regardless of which tab is active
-  useEffect(()=>{
-    if(!poolCode)return;
-    const unsub=onSnapshot(doc(db,'pools',poolCode),(snap)=>{
-      if(snap.exists())setAllPredictions(snap.data().predictions||{});
-    });
-    return()=>unsub();
-  },[poolCode]);
-
   // Live sync for spectators
   useEffect(()=>{
     if(!spectatorPoolCode||appState!=="spectator")return;
@@ -5075,6 +5066,15 @@ export default function Mundialito() {
   const [activePoolName,setActivePoolName]=useState("My Pool");
   const [poolCode,setPoolCode]=useState(()=>{try{return window.localStorage?.getItem("mundi_pool_code")||null;}catch(e){return null;}});
   const [accentColor,setAccentColor]=useState(()=>{try{return window.localStorage?.getItem("mundi_accent")||"#c9a84c";}catch(e){return "#c9a84c";}});
+
+  // Keep allPredictions live for host regardless of which tab is active
+  useEffect(()=>{
+    if(!poolCode)return;
+    const unsub=onSnapshot(doc(db,'pools',poolCode),(snap)=>{
+      if(snap.exists())setAllPredictions(snap.data().predictions||{});
+    });
+    return()=>unsub();
+  },[poolCode]);
 
   // Inject accent colour as CSS variable
   useEffect(()=>{

@@ -252,7 +252,7 @@ const UI = {
     today:"TODAY", draw:"DRAW", yourTeam:"YOUR TEAM", yourTeams:"YOUR TEAMS",
     leaderboardTitle:"LEADERBOARD", prizePool:"🏆 Prize pool", winnerTakesAll:"winner takes all",
     points:"points", group2:"Group", knockout2:"Knockout", pastR32:"Past R32", total:"Total",
-    teamBreakdown:"TEAM BREAKDOWN", tiebreaker:"Tiebreaker: Most teams in Round of 32 → Goal difference → Goals scored → Head to head record → Draft order",
+    teamBreakdown:"TEAM BREAKDOWN", tiebreaker:"Tiebreaker: Most teams in Round of 32 → Goal difference → Goals for → Head to head record → Draft order",
     changeUser:"👤 Change user", howItWorks:"HOW IT WORKS",
     looksGood:"LOOKS GOOD →", skipForNow:"SKIP FOR NOW →", addPhoto:"📷 ADD YOUR PHOTO",
     changePhoto:"📷 CHANGE PHOTO", yourColour:"YOUR COLOUR", yourProfile:"YOUR PROFILE",
@@ -3611,11 +3611,11 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                         </div>
                       );
                     })}
-                    <div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",textAlign:"right",marginTop:4,paddingRight:2}}>
-                      GD {p.gd>=0?"+":""}{p.gd} · GF {p.gf}
-                    </div>
                   </div>
-                  {p.r32>0&&<div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#5a6a8a",marginTop:8,fontStyle:"italic"}}>{lang==="es"?`${p.r32} equipo${p.r32>1?"s":""} pasó a octavos`:`${p.r32} team${p.r32>1?"s":""} reached Round of 16`}</div>}
+                  <div style={{marginTop:8}}>
+                    <span style={{fontFamily:"'DM Sans'",fontSize:8,color:"#3d5070",textTransform:"uppercase",letterSpacing:0.5,fontWeight:600}}>Tiebreakers: </span>
+                    <span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070"}}>{p.r32} in R32 · GD {p.gd>=0?"+":""}{p.gd} · GF {p.gf}</span>
+                  </div>
                 </div>
               )}
             </div>

@@ -2413,17 +2413,14 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
           {!(teamA||teamB)?(
             <span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#3d5070",fontStyle:"italic",textAlign:"center"}}>TBD</span>
           ):hasResult?(
-            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-              {hasScore&&(
-                <div style={{display:"flex",alignItems:"center",gap:6,fontFamily:"'Bebas Neue'",fontSize:28,color:"#e0dcd4",letterSpacing:2,lineHeight:1}}>
-                  <span>{result.home}</span><span style={{color:"#5a6a8a",fontSize:18}}>–</span><span>{result.away}</span>
-                </div>
-              )}
-              {wasPens&&<span style={{fontFamily:"'DM Sans'",fontSize:8,color:"#8899b4",letterSpacing:0.5,textTransform:"uppercase"}}>{lang==="es"?"penales":"on pens"}</span>}
-              <div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:8,background:winColor?`${winColor}1a`:"rgba(26,39,68,0.4)",border:winColor?`1px solid ${winColor}44`:"1px solid #2a3a5c",marginTop:2}}>
-                <span style={{fontSize:12}}>{TBN[winA?teamA:teamB]?.flag}</span>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:9,color:winColor||"#e0dcd4",letterSpacing:1}}>{lang==="es"?"AVANZA":"ADVANCES"}</span>
+            <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"center",flexShrink:0}}>
+              <div style={{width:40,padding:"6px 0",textAlign:"center",borderRadius:8,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.6)",color:"#e0dcd4",fontFamily:"'Bebas Neue'",fontSize:22,outline:"none",lineHeight:1.2,display:"flex",alignItems:"center",justifyContent:"center"}}>{result.home!=null?result.home:""}</div>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:36}}>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:14,color:"#5a6a8a",letterSpacing:1}}>–</span>
+                {wasPens&&<span style={{fontFamily:"'DM Sans'",fontSize:7,color:"#8899b4",letterSpacing:0.5,textTransform:"uppercase"}}>pens</span>}
+                {(winA||winB)&&(()=>{const wo=winA?oA:oB;return wo!=null?<div style={{width:18,height:18,borderRadius:4,background:getPlayerColor(wo.playerIdx,PC[wo.playerIdx]),color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[wo.playerIdx]}</div>:null;})()}
               </div>
+              <div style={{width:40,padding:"6px 0",textAlign:"center",borderRadius:8,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.6)",color:"#e0dcd4",fontFamily:"'Bebas Neue'",fontSize:22,outline:"none",lineHeight:1.2,display:"flex",alignItems:"center",justifyContent:"center"}}>{result.away!=null?result.away:""}</div>
             </div>
           ):(
             <KoScoreEntry matchId={match.id} teamA={teamA} teamB={teamB} result={result} onSetResult={val=>!readOnly&&onSetResult(match.id,val)} readOnly={readOnly}/>

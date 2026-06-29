@@ -5472,15 +5472,16 @@ export default function Mundialito() {
     });
     seenKOResultsRef.current={...seenKOResultsRef.current,...currentSeen};
     try{window.localStorage?.setItem("mundi_seen_ko_results",JSON.stringify(seenKOResultsRef.current));}catch{}
-    if(newResults.length>0){
-      const cutoff=Date.now()-(48*60*60*1000);
-      const recent=newResults.filter(r=>{
-        const match=KM.find(m=>m.id===r.matchId);if(!match)return false;
-        try{const t=match.ko?new Date(match.d+"T"+match.ko+":00Z").getTime():new Date(match.d+"T12:00:00Z").getTime();return t>=cutoff;}catch{return false;}
-      });
-      if(recent.length>0)setResultOverlay(prev=>prev?[...prev,...recent]:recent);
-    }
-  },[st.koResults, myPlayerIdx, resolvedBracket]);
+      if(newResults.length>0){
+        newResults.sort((a,b)=>KM.findIndex(m=>m.id===a.matchId)-KM.findIndex(m=>m.id===b.matchId));
+        const cutoff=Date.now()-(48*60*60*1000);
+        const recent=newResults.filter(r=>{
+          const match=KM.find(m=>m.id===r.matchId);if(!match)return false;
+          try{const t=match.ko?new Date(match.d+"T"+match.ko+":00Z").getTime():new Date(match.d+"T12:00:00Z").getTime();return t>=cutoff;}catch{return false;}
+        });
+        if(recent.length>0) setResultOverlay(prev=>prev?[...prev,...recent]:recent);
+      }
+  },[st.koResults, myPlayerIdx]);
 
             }} style={{width:28,height:28,borderRadius:"50%",border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>☁️</button>
           )}

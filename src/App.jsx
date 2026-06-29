@@ -5272,58 +5272,8 @@ export default function Mundialito() {
     }
   },[st.matchResults, myPlayerIdx]);
 
-  // KO result overlay — same logic but for knockout matches
-  const seenKOResultsRef=useRef(null);
-  useEffect(()=>{
-    if(myPlayerIdx===null)return;
-    const myTeams=new Set((st.picks||[]).filter(p=>p.playerIdx===myPlayerIdx).map(p=>p.team));
-    if(myTeams.size===0)return;
-    const currentSeen={};
-    KM.forEach(m=>{
-      const r=st.koResults[m.id];
-      if(!r||typeof r==="string")return;
-      const w=koWinner(r);if(!w)return;
-      const bk=resolvedBracket[m.id];if(!bk?.a||!bk?.b)return;
-      if(!myTeams.has(bk.a)&&!myTeams.has(bk.b))return;
-      currentSeen[m.id]=`${r.home}-${r.away}-${r.pens?r.pens.a+"-"+r.pens.b:""}`;
-    });
-    if(seenKOResultsRef.current===null){
-      try{const saved=window.localStorage?.getItem("mundi_seen_ko_results");seenKOResultsRef.current=saved?JSON.parse(saved):{};
-      }catch{seenKOResultsRef.current={};}
-    }
-    const newResults=[];
-    Object.entries(currentSeen).forEach(([matchId,scoreKey])=>{
-      if(seenKOResultsRef.current[matchId]===scoreKey)return;
-      const match=KM.find(m=>m.id===matchId);if(!match)return;
-      const r=st.koResults[matchId];
-      const bk=resolvedBracket[matchId];
-      const w=koWinner(r);
-      const myTeamIsA=myTeams.has(bk.a);
-      const myTeamName=myTeamIsA?bk.a:bk.b;
-      const opponentName=myTeamIsA?bk.b:bk.a;
-      const myScore=myTeamIsA?r.home:r.away;
-      const oppScore=myTeamIsA?r.away:r.home;
-      const won=(myTeamIsA&&w==="A")||(!myTeamIsA&&w==="B");
-      const pens=!!(r.pens);
-      const isFinal=match.round==="final";
-      newResults.push({
-        team:myTeamName, flag:TBN[myTeamName]?.flag||"⚽",
-        opponent:opponentName, opponentFlag:TBN[opponentName]?.flag||"⚽",
-        outcome:won?"W":"L", score:{home:myScore,away:oppScore},
-        matchId, pens, isFinal, isKO:true, round:match.round,
-      });
-    });
-    seenKOResultsRef.current={...seenKOResultsRef.current,...currentSeen};
-    try{window.localStorage?.setItem("mundi_seen_ko_results",JSON.stringify(seenKOResultsRef.current));}catch{}
-    if(newResults.length>0){
-      const cutoff=Date.now()-(48*60*60*1000);
-      const recent=newResults.filter(r=>{
-        const match=KM.find(m=>m.id===r.matchId);if(!match)return false;
-        try{const t=match.ko?new Date(match.d+"T"+match.ko+":00Z").getTime():new Date(match.d+"T12:00:00Z").getTime();return t>=cutoff;}catch{return false;}
-      });
-      if(recent.length>0)setResultOverlay(prev=>prev?[...prev,...recent]:recent);
-    }
-  },[st.koResults, myPlayerIdx, resolvedBracket]);
+
+
 
   // Auto-save to Firebase whenever host changes scores — debounced 800ms
   const autoSaveTimerRef=useRef(null);
@@ -5478,6 +5428,60 @@ export default function Mundialito() {
                 setSaveStatus(ok?"saved":null);
                 if(ok)setTimeout(()=>setSaveStatus(null),2000);
               });
+
+  // KO result overlay — same logic but for knockout matches
+  const seenKOResultsRef=useRef(null);
+  useEffect(()=>{
+    if(myPlayerIdx===null)return;
+    const myTeams=new Set((st.picks||[]).filter(p=>p.playerIdx===myPlayerIdx).map(p=>p.team));
+    if(myTeams.size===0)return;
+    const currentSeen={};
+    KM.forEach(m=>{
+      const r=st.koResults[m.id];
+      if(!r||typeof r==="string")return;
+      const w=koWinner(r);if(!w)return;
+      const bk=resolvedBracket[m.id];if(!bk?.a||!bk?.b)return;
+      if(!myTeams.has(bk.a)&&!myTeams.has(bk.b))return;
+      currentSeen[m.id]=`${r.home}-${r.away}-${r.pens?r.pens.a+"-"+r.pens.b:""}`;
+    });
+    if(seenKOResultsRef.current===null){
+      try{const saved=window.localStorage?.getItem("mundi_seen_ko_results");seenKOResultsRef.current=saved?JSON.parse(saved):{};
+      }catch{seenKOResultsRef.current={};}
+    }
+    const newResults=[];
+    Object.entries(currentSeen).forEach(([matchId,scoreKey])=>{
+      if(seenKOResultsRef.current[matchId]===scoreKey)return;
+      const match=KM.find(m=>m.id===matchId);if(!match)return;
+      const r=st.koResults[matchId];
+      const bk=resolvedBracket[matchId];
+      const w=koWinner(r);
+      const myTeamIsA=myTeams.has(bk.a);
+      const myTeamName=myTeamIsA?bk.a:bk.b;
+      const opponentName=myTeamIsA?bk.b:bk.a;
+      const myScore=myTeamIsA?r.home:r.away;
+      const oppScore=myTeamIsA?r.away:r.home;
+      const won=(myTeamIsA&&w==="A")||(!myTeamIsA&&w==="B");
+      const pens=!!(r.pens);
+      const isFinal=match.round==="final";
+      newResults.push({
+        team:myTeamName, flag:TBN[myTeamName]?.flag||"⚽",
+        opponent:opponentName, opponentFlag:TBN[opponentName]?.flag||"⚽",
+        outcome:won?"W":"L", score:{home:myScore,away:oppScore},
+        matchId, pens, isFinal, isKO:true, round:match.round,
+      });
+    });
+    seenKOResultsRef.current={...seenKOResultsRef.current,...currentSeen};
+    try{window.localStorage?.setItem("mundi_seen_ko_results",JSON.stringify(seenKOResultsRef.current));}catch{}
+    if(newResults.length>0){
+      const cutoff=Date.now()-(48*60*60*1000);
+      const recent=newResults.filter(r=>{
+        const match=KM.find(m=>m.id===r.matchId);if(!match)return false;
+        try{const t=match.ko?new Date(match.d+"T"+match.ko+":00Z").getTime():new Date(match.d+"T12:00:00Z").getTime();return t>=cutoff;}catch{return false;}
+      });
+      if(recent.length>0)setResultOverlay(prev=>prev?[...prev,...recent]:recent);
+    }
+  },[st.koResults, myPlayerIdx, resolvedBracket]);
+
             }} style={{width:28,height:28,borderRadius:"50%",border:"1px solid #2a3a5c",background:"transparent",color:"#5a6a8a",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>☁️</button>
           )}
           {/* Host only: 🔔 Notify */}

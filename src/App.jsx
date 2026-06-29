@@ -2280,7 +2280,7 @@ function KoTeamDisplay({team,slot,owner,initials,isWinner,hasResult,isHome,playe
       {team?(<>
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,width:72,background:isWinner&&color?`${color}15`:"transparent",border:isWinner&&color?`1px solid ${color}44`:"1px solid transparent",borderRadius:6,padding:"3px 5px"}}>
           <span style={{fontSize:15,lineHeight:1,flexShrink:0,display:"block",textAlign:"center"}}>{t?.flag}</span>
-          <span style={{fontFamily:"'DM Sans'",fontSize:fs,fontWeight:600,color:"#e0dcd4",lineHeight:1.2,textAlign:"center",hyphens:"manual",marginTop:2,display:"block",minHeight:24}} dangerouslySetInnerHTML={{__html:fn}}/>
+          <span style={{fontFamily:"'DM Sans'",fontSize:fs,fontWeight:600,color:"#e0dcd4",lineHeight:1.2,textAlign:"center",hyphens:"manual",marginTop:2,display:"block"}} dangerouslySetInnerHTML={{__html:fn}}/>
         </div>
         <div style={{flex:1,minWidth:0}}/>
         {owner!=null
@@ -3570,10 +3570,6 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                     <span style={{fontFamily:"'DM Sans'",fontSize:11,color:`${color}88`,marginLeft:"auto"}}>{expanded?"▲":"▼"}</span>
                   </div>
                   <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-                    {playerData.some(x=>x.koPts>0)&&<>
-                      <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"group2")}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.gsPts} pts</div></div>
-                      <div><div style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",letterSpacing:1,textTransform:"uppercase"}}>{t(lang,"knockout2")}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#e0dcd4",letterSpacing:1}}>{p.koPts} pts</div></div>
-                    </>}
                   </div>
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
@@ -3602,7 +3598,6 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                           {stage&&<span style={{fontFamily:"'Bebas Neue'",fontSize:9,color:stageColor,background:stageBg,border:`1px solid ${stageBorder}`,padding:"1px 5px",borderRadius:4,flexShrink:0,letterSpacing:1,whiteSpace:"nowrap",textDecoration:eliminated?"line-through":"none"}}>{stage}</span>}
                           <div style={{textAlign:"right",flexShrink:0}}>
                             <div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:color,letterSpacing:1,lineHeight:1}}>{tp}<span style={{fontSize:8,opacity:0.7}}>pts</span></div>
-                            {koPts>0&&<div style={{fontFamily:"'DM Sans'",fontSize:9,color:`${color}88`}}>GS {gsPts} + KO {koPts}</div>}
                           </div>
                         </div>
                       );

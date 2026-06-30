@@ -1497,16 +1497,15 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
   const [a,b]=match.t;const ta=TBN[a],tb=TBN[b];const oa=ownership[a],ob=ownership[b];const out=getMatchOutcome(result);
   const isMyMatch=myTeams.has(a)||myTeams.has(b);
   const myHasHome=myTeams.has(a),myHasAway=myTeams.has(b),myBoth=myHasHome&&myHasAway;
-  const myColor=isMyMatch?(myHasHome?PC[oa?.playerIdx??0]:PC[ob?.playerIdx??0]):"transparent";
   const myOutcome=isMyMatch&&out?(()=>{
     const wins=(myHasHome&&out==="A")||(myHasAway&&out==="B");
     const loses=(myHasHome&&out==="B")||(myHasAway&&out==="A");
     if(myBoth)return "D";
     return wins?"W":loses?"L":out==="D"?"D":null;
   })():null;
-  const resultBg=myOutcome==="W"?"rgba(97,169,120,0.08)":myOutcome==="L"?"rgba(217,119,87,0.08)":myOutcome==="D"?"rgba(107,155,209,0.06)":isMyMatch?`${myColor}0d`:"rgba(10,22,40,0.4)";
-  const resultBorder=myOutcome==="W"?`1.5px solid rgba(97,169,120,0.5)`:myOutcome==="L"?`1.5px solid rgba(217,119,87,0.5)`:myOutcome==="D"?`1.5px solid rgba(107,155,209,0.4)`:isMyMatch?`1.5px solid ${myColor}88`:"1px solid #1e2f50";
-  const resultShadow=isMyMatch?(myOutcome==="W"?"0 0 0 1px rgba(97,169,120,0.2), 0 2px 12px rgba(97,169,120,0.22)":myOutcome==="L"?"0 0 0 1px rgba(217,119,87,0.2), 0 2px 12px rgba(217,119,87,0.22)":myOutcome==="D"?"0 0 0 1px rgba(107,155,209,0.2), 0 2px 12px rgba(107,155,209,0.22)":`0 0 0 1px ${myColor}22, 0 2px 12px ${myColor}26`):"none";
+  const resultBg=!isMyMatch?"rgba(10,22,40,0.4)":myOutcome==="W"?"rgba(97,169,120,0.08)":myOutcome==="L"?"rgba(217,119,87,0.08)":myOutcome==="D"?"rgba(107,155,209,0.06)":"rgba(201,168,76,0.07)";
+  const resultBorder=!isMyMatch?"1px solid #1e2f50":myOutcome==="W"?"1.5px solid rgba(97,169,120,0.5)":myOutcome==="L"?"1.5px solid rgba(217,119,87,0.5)":myOutcome==="D"?"1.5px solid rgba(107,155,209,0.4)":"2px solid var(--accent)";
+  const resultShadow=!isMyMatch?"none":myOutcome==="W"?"0 0 0 1px rgba(97,169,120,0.2), 0 2px 12px rgba(97,169,120,0.22)":myOutcome==="L"?"0 0 0 1px rgba(217,119,87,0.2), 0 2px 12px rgba(217,119,87,0.22)":myOutcome==="D"?"0 0 0 1px rgba(107,155,209,0.2), 0 2px 12px rgba(107,155,209,0.22)":"0 0 0 1px rgba(201,168,76,0.25), 0 2px 14px rgba(201,168,76,0.3)";
   const teamRow=(name,flag,owner,isHome)=>{
     const winning=out&&((isHome&&out==="A")||(!isHome&&out==="B"));
     const losing=out&&((isHome&&out==="B")||(!isHome&&out==="A"));
@@ -2361,13 +2360,16 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
   const oA=teamA?ownership[teamA]:null;const oB=teamB?ownership[teamB]:null;
   const [editOpen,setEditOpen]=useState(false);const [editA,setEditA]=useState("");const [editB,setEditB]=useState("");
   useEffect(()=>{if(overrideMode){setEditA(teamA||"");setEditB(teamB||"");setEditOpen(true);}else{setEditOpen(false);};},[overrideMode]);
-  const winColor=winA?(oA?PC[oA.playerIdx]:"#61a978"):winB?(oB?PC[oB.playerIdx]:"#6b9bd1"):null;
+  const winColor=winA?(oA?getPlayerColor(oA.playerIdx):"#61a978"):winB?(oB?getPlayerColor(oB.playerIdx):"#6b9bd1"):null;
   const isMyMatch=teamA&&teamB&&(myTeams.has(teamA)||myTeams.has(teamB));
   const myHasA=myTeams.has(teamA),myHasB=myTeams.has(teamB),myBoth=myHasA&&myHasB;
-  const myColor=isMyMatch?(myHasA?PC[oA?.playerIdx??0]:PC[oB?.playerIdx??0]):"transparent";
-  const cardBg=hasResult&&winColor?`${winColor}08`:isMyMatch?`${myColor}0d`:"rgba(10,22,40,0.4)";
-  const cardBorder=hasResult&&winColor?`1.5px solid ${winColor}66`:isMyMatch?`1.5px solid ${myColor}88`:"1px solid #1e2f50";
-  const cardShadow=isMyMatch?`0 0 0 1px ${myColor}22, 0 2px 12px ${myColor}26`:"none";
+  const myOutcome=isMyMatch&&hasResult?(()=>{
+    const won=(myHasA&&winA)||(myHasB&&winB);
+    return won?"W":"L"; // KO has no draws — someone always advances
+  })():null;
+  const cardBg=!isMyMatch?(hasResult&&winColor?`${winColor}08`:"rgba(10,22,40,0.4)"):myOutcome==="W"?"rgba(97,169,120,0.08)":myOutcome==="L"?"rgba(217,119,87,0.08)":"rgba(201,168,76,0.07)";
+  const cardBorder=!isMyMatch?(hasResult&&winColor?`1px solid ${winColor}44`:"1px solid #1e2f50"):myOutcome==="W"?"1.5px solid rgba(97,169,120,0.5)":myOutcome==="L"?"1.5px solid rgba(217,119,87,0.5)":"2px solid var(--accent)";
+  const cardShadow=!isMyMatch?"none":myOutcome==="W"?"0 0 0 1px rgba(97,169,120,0.2), 0 2px 12px rgba(97,169,120,0.22)":myOutcome==="L"?"0 0 0 1px rgba(217,119,87,0.2), 0 2px 12px rgba(217,119,87,0.22)":"0 0 0 1px rgba(201,168,76,0.25), 0 2px 14px rgba(201,168,76,0.3)";
   const bothConfirmed=!!(teamA&&teamB);
   const predCount=Object.keys(matchPredictions).length;
   return(
@@ -2435,7 +2437,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
       </div>
       {wasPens&&(()=>{const winTeam=winA?teamA:teamB;const winFlag=TBN[winTeam]?.flag||"";return(
         <div style={{textAlign:"center",marginTop:4}}>
-          <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#8899b4"}}>{winFlag} {lang==="es"?"ganó en penales":"won on penalties"}</span>
+          <span style={{fontFamily:"'DM Sans'",fontSize:13,color:"#8899b4",display:"inline-flex",alignItems:"center",gap:5}}><span style={{fontSize:20}}>{winFlag}</span> {lang==="es"?"ganó en penales":"won on penalties"}</span>
         </div>
       );})()}
     </div>

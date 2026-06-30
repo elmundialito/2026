@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, createContext, useContext, createPortal } from "react";
+import { useState, useMemo, useEffect, useRef, createContext, useContext } from "react";
 
 // ── Firebase ──────────────────────────────────────────────────
 import { initializeApp } from "firebase/app";
@@ -2259,8 +2259,8 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
         );
       })()}
       {showShareStandings&&<ShareStandingsModal onClose={()=>setShowShareStandings(false)} matchResults={matchResults} ownership={ownership} initials={initials} config={config} lang={lang} groupOrderOverride={groupOrderOverride}/>}
-      {openChatId&&(()=>{const m=GM.find(x=>x.id===openChatId);return m?createPortal(<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={m} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchChat={matchChat[openChatId]||{}}/>,document.body):null;})()}
-      {openPredictId&&(()=>{const m=GM.find(x=>x.id===openPredictId);return m?createPortal(<PredictModal open={true} onClose={()=>setOpenPredictId(null)} match={m} result={matchResults[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchPredictions={predictions[openPredictId]||{}}/>,document.body):null;})()}
+      {openChatId&&(()=>{const m=GM.find(x=>x.id===openChatId);return m?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={m} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
+      {openPredictId&&(()=>{const m=GM.find(x=>x.id===openPredictId);return m?<PredictModal open={true} onClose={()=>setOpenPredictId(null)} match={m} result={matchResults[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchPredictions={predictions[openPredictId]||{}}/>:null;})()}
     </div>
   );
 }
@@ -3305,14 +3305,11 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
         </div>
       </div>
       {/* MY TEAMS floating filter — only for r32 and r16, rendered via portal so position:fixed works */}
-      {(activeRound==="r32"||activeRound==="r16")&&myTeams.size>0&&createPortal(
-        <button onClick={()=>setMyTeamsOnly(o=>!o)} style={{position:"fixed",bottom:28,left:16,zIndex:100,padding:"8px 14px",borderRadius:20,background:myTeamsOnly?"rgba(201,168,76,0.95)":"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.5)",color:myTeamsOnly?"#0a1628":"var(--accent)",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 16px rgba(0,0,0,0.5)"}}>
+      {(activeRound==="r32"||activeRound==="r16")&&myTeams.size>0&&<button onClick={()=>setMyTeamsOnly(o=>!o)} style={{position:"fixed",bottom:28,left:16,zIndex:100,padding:"8px 14px",borderRadius:20,background:myTeamsOnly?"rgba(201,168,76,0.95)":"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.5)",color:myTeamsOnly?"#0a1628":"var(--accent)",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 16px rgba(0,0,0,0.5)"}}>
           ⭐ {myTeamsOnly?(lang==="es"?"TODOS":"ALL GAMES"):(lang==="es"?"MIS EQUIPOS":"MY TEAMS")}
-        </button>,
-        document.body
-      )}
-      {openChatId&&(()=>{const m=KM.find(x=>x.id===openChatId);const bk=bracket[openChatId];return m&&bk?createPortal(<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={{...m,t:[bk.a||"TBD",bk.b||"TBD"]}} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={koInitials} matchChat={matchChat[openChatId]||{}}/>,document.body):null;})()}
-      {openPredictId&&(()=>{const m=KM.find(x=>x.id===openPredictId);const bk=bracket[openPredictId];if(!m||!bk?.a||!bk?.b||!KO_ODDS[openPredictId])return null;const w=koWinner(koResults[openPredictId]);return createPortal(<KoPredictModal matchId={openPredictId} teamA={bk.a} teamB={bk.b} koOdds={KO_ODDS[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames||[]} initials={koInitials} matchPredictions={effectivePredictions[openPredictId]||{}} hasResult={!!w} koWinnerSide={w} onClose={()=>setOpenPredictId(null)}/>,document.body);})()}
+        </button>}
+      {openChatId&&(()=>{const m=KM.find(x=>x.id===openChatId);const bk=bracket[openChatId];return m&&bk?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={{...m,t:[bk.a||"TBD",bk.b||"TBD"]}} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={koInitials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
+      {openPredictId&&(()=>{const m=KM.find(x=>x.id===openPredictId);const bk=bracket[openPredictId];if(!m||!bk?.a||!bk?.b||!KO_ODDS[openPredictId])return null;const w=koWinner(koResults[openPredictId]);return(<KoPredictModal matchId={openPredictId} teamA={bk.a} teamB={bk.b} koOdds={KO_ODDS[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames||[]} initials={koInitials} matchPredictions={effectivePredictions[openPredictId]||{}} hasResult={!!w} koWinnerSide={w} onClose={()=>setOpenPredictId(null)}/>);})()}
       {shareKO==="menu"&&(
         <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end"}} onClick={()=>setShareKO(null)}>
           <div onClick={e=>e.stopPropagation()} style={{width:"100%",background:"#0a1628",borderRadius:"20px 20px 0 0",border:"1px solid #2a3a5c",padding:"20px 16px 32px"}}>
@@ -5582,7 +5579,7 @@ export default function Mundialito() {
       <PoolMgrModal/>
       {resultOverlay&&<ResultOverlay results={resultOverlay} onDone={()=>setResultOverlay(null)}/>}
       {showSuggestions&&<SuggestionModal open={true} onClose={()=>setShowSuggestions(false)} poolCode={poolCode||window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code")} myPlayerIdx={myPlayerIdx} playerNames={st.config?.playerNames||[]} initials={initials}/>}
-      {scrolled&&createPortal(<button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:28,right:16,zIndex:100,padding:"8px 14px",borderRadius:20,background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.5)",color:"var(--accent)",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 16px rgba(0,0,0,0.5)"}}>↑ TOP</button>,document.body)}
+      {scrolled&&<button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:28,right:16,zIndex:100,padding:"8px 14px",borderRadius:20,background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.5)",color:"var(--accent)",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 16px rgba(0,0,0,0.5)"}}>↑ TOP</button>}
     </div></>{/* end app */}</PicBumpContext.Provider></PicContext.Provider></LangContext.Provider>
   );
 }

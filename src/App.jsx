@@ -1503,9 +1503,9 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
     if(myBoth)return "D";
     return wins?"W":loses?"L":out==="D"?"D":null;
   })():null;
-  const resultBg=!isMyMatch?"rgba(10,22,40,0.4)":myOutcome==="W"?"rgba(97,169,120,0.08)":myOutcome==="L"?"rgba(217,119,87,0.08)":myOutcome==="D"?"rgba(107,155,209,0.06)":"rgba(201,168,76,0.07)";
-  const resultBorder=!isMyMatch?"1px solid #1e2f50":myOutcome==="W"?"1.5px solid rgba(97,169,120,0.5)":myOutcome==="L"?"1.5px solid rgba(217,119,87,0.5)":myOutcome==="D"?"1.5px solid rgba(107,155,209,0.4)":"2px solid var(--accent)";
-  const resultShadow=!isMyMatch?"none":myOutcome==="W"?"0 0 0 1px rgba(97,169,120,0.2), 0 2px 12px rgba(97,169,120,0.22)":myOutcome==="L"?"0 0 0 1px rgba(217,119,87,0.2), 0 2px 12px rgba(217,119,87,0.22)":myOutcome==="D"?"0 0 0 1px rgba(107,155,209,0.2), 0 2px 12px rgba(107,155,209,0.22)":"0 0 0 1px rgba(201,168,76,0.25), 0 2px 14px rgba(201,168,76,0.3)";
+  const resultBg="rgba(10,22,40,0.4)";
+  const resultBorder=!isMyMatch?"1px solid #1e2f50":myOutcome==="W"?"1px solid rgba(97,169,120,0.45)":myOutcome==="L"?"1px solid rgba(217,119,87,0.45)":myOutcome==="D"?"1px solid rgba(107,155,209,0.45)":"1px solid rgba(201,168,76,0.5)";
+  const resultShadow="none";
   const teamRow=(name,flag,owner,isHome)=>{
     const winning=out&&((isHome&&out==="A")||(!isHome&&out==="B"));
     const losing=out&&((isHome&&out==="B")||(!isHome&&out==="A"));
@@ -2367,9 +2367,9 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
     const won=(myHasA&&winA)||(myHasB&&winB);
     return won?"W":"L"; // KO has no draws — someone always advances
   })():null;
-  const cardBg=!isMyMatch?(hasResult&&winColor?`${winColor}08`:"rgba(10,22,40,0.4)"):myOutcome==="W"?"rgba(97,169,120,0.08)":myOutcome==="L"?"rgba(217,119,87,0.08)":"rgba(201,168,76,0.07)";
-  const cardBorder=!isMyMatch?(hasResult&&winColor?`1px solid ${winColor}44`:"1px solid #1e2f50"):myOutcome==="W"?"1.5px solid rgba(97,169,120,0.5)":myOutcome==="L"?"1.5px solid rgba(217,119,87,0.5)":"2px solid var(--accent)";
-  const cardShadow=!isMyMatch?"none":myOutcome==="W"?"0 0 0 1px rgba(97,169,120,0.2), 0 2px 12px rgba(97,169,120,0.22)":myOutcome==="L"?"0 0 0 1px rgba(217,119,87,0.2), 0 2px 12px rgba(217,119,87,0.22)":"0 0 0 1px rgba(201,168,76,0.25), 0 2px 14px rgba(201,168,76,0.3)";
+  const cardBg="rgba(10,22,40,0.4)";
+  const cardBorder=!isMyMatch?"1px solid #1e2f50":myOutcome==="W"?"1px solid rgba(97,169,120,0.45)":myOutcome==="L"?"1px solid rgba(217,119,87,0.45)":"1px solid rgba(201,168,76,0.5)";
+  const cardShadow="none";
   const bothConfirmed=!!(teamA&&teamB);
   const predCount=Object.keys(matchPredictions).length;
   return(

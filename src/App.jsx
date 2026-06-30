@@ -2259,8 +2259,8 @@ function GroupStageScreen({config,picks,matchResults,setMatchResults,readOnly,in
         );
       })()}
       {showShareStandings&&<ShareStandingsModal onClose={()=>setShowShareStandings(false)} matchResults={matchResults} ownership={ownership} initials={initials} config={config} lang={lang} groupOrderOverride={groupOrderOverride}/>}
-      {openChatId&&(()=>{const m=GM.find(x=>x.id===openChatId);return m?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={m} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
-      {openPredictId&&(()=>{const m=GM.find(x=>x.id===openPredictId);return m?<PredictModal open={true} onClose={()=>setOpenPredictId(null)} match={m} result={matchResults[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchPredictions={predictions[openPredictId]||{}}/>:null;})()}
+      {openChatId&&(()=>{const m=GM.find(x=>x.id===openChatId);return m?createPortal(<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={m} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchChat={matchChat[openChatId]||{}}/>,document.body):null;})()}
+      {openPredictId&&(()=>{const m=GM.find(x=>x.id===openPredictId);return m?createPortal(<PredictModal open={true} onClose={()=>setOpenPredictId(null)} match={m} result={matchResults[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={initials} matchPredictions={predictions[openPredictId]||{}}/>,document.body):null;})()}
     </div>
   );
 }
@@ -3311,8 +3311,8 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
         </button>,
         document.body
       )}
-      {openChatId&&(()=>{const m=KM.find(x=>x.id===openChatId);const bk=bracket[openChatId];return m&&bk?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={{...m,t:[bk.a||"TBD",bk.b||"TBD"]}} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={koInitials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
-      {openPredictId&&(()=>{const m=KM.find(x=>x.id===openPredictId);const bk=bracket[openPredictId];if(!m||!bk?.a||!bk?.b||!KO_ODDS[openPredictId])return null;const w=koWinner(koResults[openPredictId]);return(<KoPredictModal matchId={openPredictId} teamA={bk.a} teamB={bk.b} koOdds={KO_ODDS[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames||[]} initials={koInitials} matchPredictions={effectivePredictions[openPredictId]||{}} hasResult={!!w} koWinnerSide={w} onClose={()=>setOpenPredictId(null)}/>);})()}
+      {openChatId&&(()=>{const m=KM.find(x=>x.id===openChatId);const bk=bracket[openChatId];return m&&bk?createPortal(<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={{...m,t:[bk.a||"TBD",bk.b||"TBD"]}} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={koInitials} matchChat={matchChat[openChatId]||{}}/>,document.body):null;})()}
+      {openPredictId&&(()=>{const m=KM.find(x=>x.id===openPredictId);const bk=bracket[openPredictId];if(!m||!bk?.a||!bk?.b||!KO_ODDS[openPredictId])return null;const w=koWinner(koResults[openPredictId]);return createPortal(<KoPredictModal matchId={openPredictId} teamA={bk.a} teamB={bk.b} koOdds={KO_ODDS[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames||[]} initials={koInitials} matchPredictions={effectivePredictions[openPredictId]||{}} hasResult={!!w} koWinnerSide={w} onClose={()=>setOpenPredictId(null)}/>,document.body);})()}
       {shareKO==="menu"&&(
         <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end"}} onClick={()=>setShareKO(null)}>
           <div onClick={e=>e.stopPropagation()} style={{width:"100%",background:"#0a1628",borderRadius:"20px 20px 0 0",border:"1px solid #2a3a5c",padding:"20px 16px 32px"}}>

@@ -2951,6 +2951,7 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
       const bY=cy+INNER_GAP/2;
       const result=koResults[id];
       const w=result?koWinner(result):null;
+      const winCol="#61a978"; // standard green for all winners
 
       const drawChip=(team,side,yPos)=>{
         const isWin=w===side.toUpperCase();
@@ -2958,7 +2959,6 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
         const tm=team?TBN[team]:null;
         const owner=team?ownership[team]:null;
         const pcol=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):"#2a3a5c";
-        const winCol="#61a978"; // standard green for all winners, regardless of owner
         ctx.globalAlpha=isLoss?0.3:1;
         ctx.fillStyle=isWin?`${winCol}26`:isFinal?"rgba(20,35,65,0.95)":"rgba(12,22,45,0.9)";
         ctx.strokeStyle=isWin?winCol:isFinal?"#c9a84c55":"#1e3060";

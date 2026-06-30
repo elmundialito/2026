@@ -1497,14 +1497,8 @@ function GroupMatchCard({match,result,ownership,onSet,readOnly,initials,myTeams=
   const [a,b]=match.t;const ta=TBN[a],tb=TBN[b];const oa=ownership[a],ob=ownership[b];const out=getMatchOutcome(result);
   const isMyMatch=myTeams.has(a)||myTeams.has(b);
   const myHasHome=myTeams.has(a),myHasAway=myTeams.has(b),myBoth=myHasHome&&myHasAway;
-  const myOutcome=isMyMatch&&out?(()=>{
-    const wins=(myHasHome&&out==="A")||(myHasAway&&out==="B");
-    const loses=(myHasHome&&out==="B")||(myHasAway&&out==="A");
-    if(myBoth)return "D";
-    return wins?"W":loses?"L":out==="D"?"D":null;
-  })():null;
   const resultBg="rgba(10,22,40,0.4)";
-  const resultBorder=!isMyMatch?"1px solid #1e2f50":myOutcome==="W"?"1px solid rgba(97,169,120,0.45)":myOutcome==="L"?"1px solid rgba(217,119,87,0.45)":myOutcome==="D"?"1px solid rgba(107,155,209,0.45)":"1px solid rgba(201,168,76,0.5)";
+  const resultBorder=isMyMatch?"1px solid rgba(201,168,76,0.5)":"1px solid #1e2f50";
   const resultShadow="none";
   const teamRow=(name,flag,owner,isHome)=>{
     const winning=out&&((isHome&&out==="A")||(!isHome&&out==="B"));
@@ -2363,12 +2357,8 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
   const winColor=winA?(oA?getPlayerColor(oA.playerIdx):"#61a978"):winB?(oB?getPlayerColor(oB.playerIdx):"#6b9bd1"):null;
   const isMyMatch=teamA&&teamB&&(myTeams.has(teamA)||myTeams.has(teamB));
   const myHasA=myTeams.has(teamA),myHasB=myTeams.has(teamB),myBoth=myHasA&&myHasB;
-  const myOutcome=isMyMatch&&hasResult?(()=>{
-    const won=(myHasA&&winA)||(myHasB&&winB);
-    return won?"W":"L"; // KO has no draws — someone always advances
-  })():null;
   const cardBg="rgba(10,22,40,0.4)";
-  const cardBorder=!isMyMatch?"1px solid #1e2f50":myOutcome==="W"?"1px solid rgba(97,169,120,0.45)":myOutcome==="L"?"1px solid rgba(217,119,87,0.45)":"1px solid rgba(201,168,76,0.5)";
+  const cardBorder=isMyMatch?"1px solid rgba(201,168,76,0.5)":"1px solid #1e2f50";
   const cardShadow="none";
   const bothConfirmed=!!(teamA&&teamB);
   const predCount=Object.keys(matchPredictions).length;

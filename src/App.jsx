@@ -2417,7 +2417,6 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
               <div style={{width:40,padding:"6px 0",textAlign:"center",borderRadius:8,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.6)",color:"#e0dcd4",fontFamily:"'Bebas Neue'",fontSize:22,outline:"none",lineHeight:1.2,display:"flex",alignItems:"center",justifyContent:"center"}}>{result.home!=null?result.home:""}</div>
               <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:36}}>
                 <span style={{fontFamily:"'Bebas Neue'",fontSize:14,color:"#5a6a8a",letterSpacing:1}}>–</span>
-                {wasPens&&<span style={{fontFamily:"'DM Sans'",fontSize:7,color:"#8899b4",letterSpacing:0.5,textTransform:"uppercase"}}>pens</span>}
                 {(winA||winB)&&(()=>{const wo=winA?oA:oB;return wo!=null?<div style={{width:18,height:18,borderRadius:4,background:getPlayerColor(wo.playerIdx,PC[wo.playerIdx]),color:"#0a1628",fontFamily:"'Bebas Neue'",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>{initials[wo.playerIdx]}</div>:null;})()}
               </div>
               <div style={{width:40,padding:"6px 0",textAlign:"center",borderRadius:8,border:"1.5px solid #2a3a5c",background:"rgba(10,22,40,0.6)",color:"#e0dcd4",fontFamily:"'Bebas Neue'",fontSize:22,outline:"none",lineHeight:1.2,display:"flex",alignItems:"center",justifyContent:"center"}}>{result.away!=null?result.away:""}</div>
@@ -2428,6 +2427,11 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
         </div>
         <KoTeamDisplay team={teamB} slot={match.sB} owner={oB} initials={initials} isWinner={winB} hasResult={hasResult} isHome={false} playerNames={playerNames}/>
       </div>
+      {wasPens&&(()=>{const winTeam=winA?teamA:teamB;const winFlag=TBN[winTeam]?.flag||"";return(
+        <div style={{textAlign:"center",marginTop:4}}>
+          <span style={{fontFamily:"'DM Sans'",fontSize:10,color:"#8899b4"}}>({winFlag} {lang==="es"?"ganó en penales":"won on penalties"})</span>
+        </div>
+      );})()}
     </div>
   );
 }
@@ -2735,8 +2739,8 @@ function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initia
         if(result.pens){
           const w=result.winner==="A"?a:b;
           const wName=w?(TBN[w]?.name||w).toUpperCase():"";
-          ctx.font=`400 9px DMSans,Arial`;ctx.fillStyle="#5a6a8a";
-          ctx.fillText(`(${wName} won on pens)`,W/2,y+MH/2+22+OFFSET);
+          ctx.font=`600 9px DMSans,Arial`;ctx.fillStyle="#e0dcd4";
+          ctx.fillText(`(${wName} won on penalties)`,W/2,y+MH/2+22+OFFSET);
         }
       } else if(m.ko){
         ctx.font=`700 16px BebasNeue,Arial`;ctx.fillStyle="#c9a84c";ctx.textAlign="center";
@@ -2757,7 +2761,7 @@ function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initia
         }
         const cx=isHome?W/2-72:W/2+72;
         ctx.font=`400 22px Arial`;ctx.textAlign="center";ctx.fillText(flag||"❓",cx,y+MH/2-6+OFFSET);
-        ctx.fillStyle=isWinner?(col||"#e0dcd4"):"#c8c0b0";ctx.font=`600 10px DMSans,Arial`;
+        ctx.fillStyle="#e0dcd4";ctx.font=`600 10px DMSans,Arial`;
         ctx.fillText(name?(countryFixture(name,lang)||name):(m.sA&&isHome?m.sA:m.sB&&!isHome?m.sB:"TBD"),cx,y+MH/2+10+OFFSET);
         ctx.globalAlpha=1;
       };
@@ -3193,8 +3197,11 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
     if(!targetDate)return;
     setTimeout(()=>{
       const el=document.getElementById(`ko-date-${targetDate}`);
-      if(el)el.scrollIntoView({behavior:"smooth",block:"start"});
-    },100);
+      if(el){
+        const rect=el.getBoundingClientRect();
+        window.scrollTo({top:window.scrollY+rect.top-100,behavior:"smooth"});
+      }
+    },150);
   },[]);
   // Merge internal predictions (host onSnapshot) with allPredictions prop (spectator top-level onSnapshot)
   const effectivePredictions=useMemo(()=>({...allPredictions,...predictions}),[allPredictions,predictions]);

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, createContext, useContext } from "react";
+import { useState, useMemo, useEffect, useRef, createContext, useContext, createPortal } from "react";
 
 // ── Firebase ──────────────────────────────────────────────────
 import { initializeApp } from "firebase/app";
@@ -2958,9 +2958,10 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
         const tm=team?TBN[team]:null;
         const owner=team?ownership[team]:null;
         const pcol=owner!=null?getPlayerColor(owner.playerIdx,PC[owner.playerIdx]):"#2a3a5c";
+        const winCol="#61a978"; // standard green for all winners, regardless of owner
         ctx.globalAlpha=isLoss?0.3:1;
-        ctx.fillStyle=isWin?`${pcol}30`:isFinal?"rgba(20,35,65,0.95)":"rgba(12,22,45,0.9)";
-        ctx.strokeStyle=isWin?pcol:isFinal?"#c9a84c55":"#1e3060";
+        ctx.fillStyle=isWin?`${winCol}26`:isFinal?"rgba(20,35,65,0.95)":"rgba(12,22,45,0.9)";
+        ctx.strokeStyle=isWin?winCol:isFinal?"#c9a84c55":"#1e3060";
         ctx.lineWidth=isWin?1.5:1;
         ctx.beginPath();ctx.roundRect?ctx.roundRect(chipX,yPos,chipW,CH,3):ctx.rect(chipX,yPos,chipW,CH);
         ctx.fill();ctx.stroke();
@@ -2970,7 +2971,7 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
           if(isRight){
             // right: owner | name | flag
             if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 11px BebasNeue,Arial`;ctx.textAlign="left";ctx.fillText(initials[owner.playerIdx]||"?",chipX+4,yPos+CH/2+5);}
-            ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#c8c0b0";
+            ctx.fillStyle=isWin?"#e0dcd4":"#c8c0b0";
             ctx.font=`700 ${fsize}px BebasNeue,Arial`;ctx.textAlign="center";
             ctx.fillText(label,cx+(owner?3:-5),yPos+CH/2+6);
             ctx.font=`400 18px Arial`;ctx.textAlign="right";
@@ -2978,7 +2979,7 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
           } else {
             // left + final: flag | name | owner
             ctx.font=`400 18px Arial`;ctx.textAlign="left";ctx.fillText(tm?.flag||"",chipX+2,yPos+CH/2+8);
-            ctx.fillStyle=isWin?(pcol||"#e0dcd4"):"#c8c0b0";
+            ctx.fillStyle=isWin?"#e0dcd4":"#c8c0b0";
             ctx.font=`700 ${fsize}px BebasNeue,Arial`;ctx.textAlign="center";
             ctx.fillText(label,cx+(owner?-3:5),yPos+CH/2+6);
             if(owner!=null){ctx.fillStyle=pcol;ctx.font=`700 11px BebasNeue,Arial`;ctx.textAlign="right";ctx.fillText(initials[owner.playerIdx]||"?",chipX+chipW-3,yPos+CH/2+5);}
@@ -3008,8 +3009,7 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     const finalBk=bracket["K104"]||{};
     const champion=(()=>{const w=koResults["K104"]?koWinner(koResults["K104"]):null;if(!w)return null;return w==="A"?finalBk.a:finalBk.b;})();
     const champTm=champion?TBN[champion]:null;
-    const champOwner=champion?ownership[champion]:null;
-    const champCol=champOwner!=null?getPlayerColor(champOwner.playerIdx,PC[champOwner.playerIdx]):"#c9a84c";
+    const champCol="#c9a84c";
     // gold glow bg
     ctx.fillStyle=champion?`${champCol}22`:"rgba(20,35,65,0.95)";
     ctx.strokeStyle="#c9a84c";ctx.lineWidth=1.5;
@@ -3304,11 +3304,12 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
         })}
         </div>
       </div>
-      {/* MY TEAMS floating filter — only for r32 and r16 */}
-      {(activeRound==="r32"||activeRound==="r16")&&myTeams.size>0&&(
+      {/* MY TEAMS floating filter — only for r32 and r16, rendered via portal so position:fixed works */}
+      {(activeRound==="r32"||activeRound==="r16")&&myTeams.size>0&&createPortal(
         <button onClick={()=>setMyTeamsOnly(o=>!o)} style={{position:"fixed",bottom:28,left:16,zIndex:100,padding:"8px 14px",borderRadius:20,background:myTeamsOnly?"rgba(201,168,76,0.95)":"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.5)",color:myTeamsOnly?"#0a1628":"var(--accent)",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 16px rgba(0,0,0,0.5)"}}>
           ⭐ {myTeamsOnly?(lang==="es"?"TODOS":"ALL GAMES"):(lang==="es"?"MIS EQUIPOS":"MY TEAMS")}
-        </button>
+        </button>,
+        document.body
       )}
       {openChatId&&(()=>{const m=KM.find(x=>x.id===openChatId);const bk=bracket[openChatId];return m&&bk?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={{...m,t:[bk.a||"TBD",bk.b||"TBD"]}} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={koInitials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
       {openPredictId&&(()=>{const m=KM.find(x=>x.id===openPredictId);const bk=bracket[openPredictId];if(!m||!bk?.a||!bk?.b||!KO_ODDS[openPredictId])return null;const w=koWinner(koResults[openPredictId]);return(<KoPredictModal matchId={openPredictId} teamA={bk.a} teamB={bk.b} koOdds={KO_ODDS[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames||[]} initials={koInitials} matchPredictions={effectivePredictions[openPredictId]||{}} hasResult={!!w} koWinnerSide={w} onClose={()=>setOpenPredictId(null)}/>);})()}
@@ -5331,32 +5332,27 @@ export default function Mundialito() {
   const anyGroupDone=useMemo(()=>Object.keys(GROUPS).some(g=>GM.filter(m=>m.g===g).every(m=>st.matchResults[m.id]!=null)),[st.matchResults]);
   const resolvedBracket=useMemo(()=>resolveKOBracket(st.matchResults,st.koResults,st.koOverrides,st.groupOrderOverride||{}),[st.matchResults,st.koResults,st.koOverrides,st.groupOrderOverride]);
 
-  // KO result overlay — same logic but for knockout matches
-  const seenKOResultsRef=useRef(null);
+  // KO result overlay — fires every time the app opens, for any of my team's KO results
+  // within 12 hours after kickoff. No "seen" tracking — always show while within the window.
+  const shownKOThisSessionRef=useRef(new Set());
   useEffect(()=>{
     if(myPlayerIdx===null)return;
     const myTeams=new Set((st.picks||[]).filter(p=>p.playerIdx===myPlayerIdx).map(p=>p.team));
     if(myTeams.size===0)return;
-    const currentSeen={};
+    const newResults=[];
     KM.forEach(m=>{
       const r=st.koResults[m.id];
       if(!r||typeof r==="string")return;
       const w=koWinner(r);if(!w)return;
       const bk=resolvedBracket[m.id];if(!bk?.a||!bk?.b)return;
       if(!myTeams.has(bk.a)&&!myTeams.has(bk.b))return;
-      currentSeen[m.id]=`${r.home}-${r.away}-${r.pens?r.winner||"":""}`;
-    });
-    if(seenKOResultsRef.current===null){
-      try{const saved=window.localStorage?.getItem("mundi_seen_ko_results");seenKOResultsRef.current=saved?JSON.parse(saved):{};
-      }catch{seenKOResultsRef.current={};}
-    }
-    const newResults=[];
-    Object.entries(currentSeen).forEach(([matchId,scoreKey])=>{
-      if(seenKOResultsRef.current[matchId]===scoreKey)return;
-      const match=KM.find(m=>m.id===matchId);if(!match)return;
-      const r=st.koResults[matchId];
-      const bk=resolvedBracket[matchId];
-      const w=koWinner(r);
+      if(shownKOThisSessionRef.current.has(m.id))return; // already shown this session
+      // Only show within 12h after kickoff
+      try{
+        const kickoff=m.ko?new Date(m.d+"T"+m.ko+":00Z").getTime():new Date(m.d+"T12:00:00Z").getTime();
+        const windowEnd=kickoff+(12*60*60*1000);
+        if(Date.now()>windowEnd)return;
+      }catch{return;}
       const myTeamIsA=myTeams.has(bk.a);
       const myTeamName=myTeamIsA?bk.a:bk.b;
       const opponentName=myTeamIsA?bk.b:bk.a;
@@ -5364,26 +5360,20 @@ export default function Mundialito() {
       const oppScore=myTeamIsA?r.away:r.home;
       const won=(myTeamIsA&&w==="A")||(!myTeamIsA&&w==="B");
       const pens=!!(r.pens);
-      const isFinal=match.round==="final";
+      const isFinal=m.round==="final";
       newResults.push({
         team:myTeamName, flag:TBN[myTeamName]?.flag||"⚽",
         opponent:opponentName, opponentFlag:TBN[opponentName]?.flag||"⚽",
         outcome:won?"W":"L", score:{home:myScore,away:oppScore},
-        matchId, pens, isFinal, isKO:true, round:match.round,
+        matchId:m.id, pens, isFinal, isKO:true, round:m.round,
       });
+      shownKOThisSessionRef.current.add(m.id);
     });
-    seenKOResultsRef.current={...seenKOResultsRef.current,...currentSeen};
-    try{window.localStorage?.setItem("mundi_seen_ko_results",JSON.stringify(seenKOResultsRef.current));}catch{}
-      if(newResults.length>0){
-        newResults.sort((a,b)=>KM.findIndex(m=>m.id===a.matchId)-KM.findIndex(m=>m.id===b.matchId));
-        const cutoff=Date.now()-(48*60*60*1000);
-        const recent=newResults.filter(r=>{
-          const match=KM.find(m=>m.id===r.matchId);if(!match)return false;
-          try{const t=match.ko?new Date(match.d+"T"+match.ko+":00Z").getTime():new Date(match.d+"T12:00:00Z").getTime();return t>=cutoff;}catch{return false;}
-        });
-        if(recent.length>0) setResultOverlay(prev=>prev?[...prev,...recent]:recent);
-      }
-  },[st.koResults, myPlayerIdx]);
+    if(newResults.length>0){
+      newResults.sort((a,b)=>KM.findIndex(m=>m.id===a.matchId)-KM.findIndex(m=>m.id===b.matchId));
+      setResultOverlay(prev=>prev?[...prev,...newResults]:newResults);
+    }
+  },[st.koResults, myPlayerIdx, resolvedBracket]);
   const playerRankings=useMemo(()=>{return Array.from({length:st.config.playerCount},(_,i)=>{const gsPts=playerGSPts(i,st.picks||[],st.matchResults);const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);let gd=0,gf=0;myTeams.forEach(team=>{GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]===team,isAway=m.t[1]===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const isHome=bk.a===team,isAway=bk.b===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});});const pastGroups=myTeams.filter(team=>isInR32Bracket(team,resolvedBracket)).length;const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(st.koResults[m.id]);if(!w0)return false;const bk=resolvedBracket[m.id];if(!bk)return false;const w=w0==="A"?bk.a:bk.b;return w&&myTeams.includes(w);}).length;return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,pastGroups,r32,gd,gf,myTeams};}).sort((a,b)=>{if(b.total!==a.total)return b.total-a.total;if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;if(b.gd!==a.gd)return b.gd-a.gd;if(b.gf!==a.gf)return b.gf-a.gf;let aWins=0,bWins=0,aGD=0,bGD=0,aGF=0,bGF=0;GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const aH=a.myTeams.includes(m.t[0]),aA=a.myTeams.includes(m.t[1]),bH=b.myTeams.includes(m.t[0]),bA=b.myTeams.includes(m.t[1]);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const aH=a.myTeams.includes(bk.a),aA=a.myTeams.includes(bk.b),bH=b.myTeams.includes(bk.a),bA=b.myTeams.includes(bk.b);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});if(aWins!==bWins)return bWins-aWins;if(aGD!==bGD)return bGD-aGD;if(aGF!==bGF)return bGF-aGF;const draftOrd=st.draftOrder||[];const aPick=draftOrd.indexOf(a.idx);const bPick=draftOrd.indexOf(b.idx);if(aPick!==-1&&bPick!==-1)return aPick-bPick;return a.idx-b.idx;});},[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
   const syncCode=useMemo(()=>encode(st),[st]);
   const readOnly=!isHost;
@@ -5592,7 +5582,7 @@ export default function Mundialito() {
       <PoolMgrModal/>
       {resultOverlay&&<ResultOverlay results={resultOverlay} onDone={()=>setResultOverlay(null)}/>}
       {showSuggestions&&<SuggestionModal open={true} onClose={()=>setShowSuggestions(false)} poolCode={poolCode||window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code")} myPlayerIdx={myPlayerIdx} playerNames={st.config?.playerNames||[]} initials={initials}/>}
-      {scrolled&&<button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:28,right:16,zIndex:100,padding:"8px 14px",borderRadius:20,background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.5)",color:"var(--accent)",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 16px rgba(0,0,0,0.5)"}}>↑ TOP</button>}
+      {scrolled&&createPortal(<button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:28,right:16,zIndex:100,padding:"8px 14px",borderRadius:20,background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.5)",color:"var(--accent)",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 16px rgba(0,0,0,0.5)"}}>↑ TOP</button>,document.body)}
     </div></>{/* end app */}</PicBumpContext.Provider></PicContext.Provider></LangContext.Provider>
   );
 }

@@ -2563,20 +2563,15 @@ function KoOddsPopup({matchId,teamA,teamB,lang,hasResult,myPlayerIdx,playerNames
   );
 }
 
-function KoPredictModal({matchId,teamA,teamB,koOdds,poolCode,myPlayerIdx,playerNames=[],initials,matchPredictions={},hasResult,onClose}) {
+function KoPredictModal({matchId,teamA,teamB,koOdds,poolCode,myPlayerIdx,playerNames=[],initials,matchPredictions={},hasResult,koWinnerSide=null,onClose}) {
   const lang=useContext(LangContext);
   const picVersion=useContext(PicContext);
   const ta=TBN[teamA],tb=TBN[teamB];
   const [homeP,awayP]=koOdds;
   const myPick=myPlayerIdx!=null?matchPredictions[String(myPlayerIdx)]:null;
-
-  // KO result winner: koResults use "A"/"B" winner key stored in matchPredictions context
-  // hasResult is passed in — use it to lock picks
   const isLocked=hasResult;
-
-  // Map "A"/"B" winner to "home"/"away" for colouring — but koResults aren't passed here,
-  // so we just use hasResult to lock; winner highlighting handled by parent if needed
-  const winKey=null; // no post-match colouring for now — can be added when koResults wired in
+  // Map A/B winner to home/away for button colouring
+  const winKey=koWinnerSide==="A"?"home":koWinnerSide==="B"?"away":null;
 
   const getColor=(key)=>{
     if(winKey&&winKey===key)return "#61a978";
@@ -2737,7 +2732,12 @@ function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initia
       if(result&&result.home!=null&&result.away!=null){
         ctx.font=`700 30px BebasNeue,Arial`;ctx.fillStyle="#e0dcd4";ctx.textAlign="center";
         ctx.fillText(`${result.home} – ${result.away}`,W/2,y+MH/2+10+OFFSET);
-        if(result.pens){ctx.font=`400 9px DMSans,Arial`;ctx.fillStyle="#5a6a8a";ctx.fillText(`(${result.pens.a} – ${result.pens.b} pens)`,W/2,y+MH/2+22+OFFSET);}
+        if(result.pens){
+          const w=result.winner==="A"?a:b;
+          const wName=w?(TBN[w]?.name||w).toUpperCase():"";
+          ctx.font=`400 9px DMSans,Arial`;ctx.fillStyle="#5a6a8a";
+          ctx.fillText(`(${wName} won on pens)`,W/2,y+MH/2+22+OFFSET);
+        }
       } else if(m.ko){
         ctx.font=`700 16px BebasNeue,Arial`;ctx.fillStyle="#c9a84c";ctx.textAlign="center";
         ctx.fillText(fmtKickoff(m.d,m.ko),W/2,y+MH/2+2+OFFSET);
@@ -3162,7 +3162,12 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
 
 function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false,playerRankings=[],groupOrderOverride={},poolCode,myPlayerIdx,allPredictions={}}) {
   const lang=useContext(LangContext);
-  const [activeRound,setActiveRound]=useState("r32");
+  const [activeRound,setActiveRound]=useState(()=>{
+    for(const r of [...ROUND_ORDER].reverse()){
+      if(KM.filter(m=>m.round===r).some(m=>koResults[m.id]))return r;
+    }
+    return"r32";
+  });
   const [matchChat,setMatchChat]=useState({});
   const [predictions,setPredictions]=useState({});
   const [openChatId,setOpenChatId]=useState(null);
@@ -3171,6 +3176,26 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   const [shareKO,setShareKO]=useState(null);
   const [shareKODate,setShareKODate]=useState(null);
   const [overrideMode,setOverrideMode]=useState(false);
+
+  // On mount, scroll to the latest date with at least 1 result (or today if no results yet)
+  useEffect(()=>{
+    const allDates=[...new Set(KM.filter(m=>m.d).map(m=>{
+      try{const d=new Date(m.d+"T"+(m.ko||"12:00")+":00Z");return new Date(d.getTime()+8*60*60*1000).toISOString().slice(0,10);}catch{return m.d;}
+    }))].sort();
+    // Find latest date with at least 1 result
+    let targetDate=null;
+    for(const d of [...allDates].reverse()){
+      const hasResult=KM.filter(m=>{
+        try{const dt=new Date(m.d+"T"+(m.ko||"12:00")+":00Z");return new Date(dt.getTime()+8*60*60*1000).toISOString().slice(0,10)===d;}catch{return false;}
+      }).some(m=>koResults[m.id]);
+      if(hasResult){targetDate=d;break;}
+    }
+    if(!targetDate)return;
+    setTimeout(()=>{
+      const el=document.getElementById(`ko-date-${targetDate}`);
+      if(el)el.scrollIntoView({behavior:"smooth",block:"start"});
+    },100);
+  },[]);
   // Merge internal predictions (host onSnapshot) with allPredictions prop (spectator top-level onSnapshot)
   const effectivePredictions=useMemo(()=>({...allPredictions,...predictions}),[allPredictions,predictions]);
 
@@ -3235,7 +3260,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           const isTomorrow=date===tomorrow;
           const scored=matches.filter(m=>koResults[m.id]).length;
           return(
-            <div key={date} style={{marginBottom:18,marginTop:8,borderRadius:isToday?10:0,border:isToday?"1px solid rgba(201,168,76,0.2)":"none",background:isToday?"rgba(201,168,76,0.03)":"transparent",padding:isToday?"10px":"0"}}>
+            <div key={date} id={`ko-date-${date}`} style={{marginBottom:18,marginTop:8,borderRadius:isToday?10:0,border:isToday?"1px solid rgba(201,168,76,0.2)":"none",background:isToday?"rgba(201,168,76,0.03)":"transparent",padding:isToday?"10px":"0"}}>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingTop:4}}>
                 <div style={{fontFamily:"'Bebas Neue'",fontSize:isToday?22:18,letterSpacing:3,color:isToday?"var(--accent)":isYesterday?"#8899b4":"#c8c0b0"}}>{fmtDate(date,lang)}</div>
                 {isToday&&<div style={{padding:"2px 10px",borderRadius:10,background:"rgba(201,168,76,0.25)",border:"1px solid rgba(201,168,76,0.5)",fontFamily:"'Bebas Neue'",fontSize:11,color:"var(--accent)",letterSpacing:2}}>⚡ {t(lang,"today")}</div>}
@@ -3281,7 +3306,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
         </button>
       )}
       {openChatId&&(()=>{const m=KM.find(x=>x.id===openChatId);const bk=bracket[openChatId];return m&&bk?<MatchChatModal open={true} onClose={()=>setOpenChatId(null)} match={{...m,t:[bk.a||"TBD",bk.b||"TBD"]}} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames} initials={koInitials} matchChat={matchChat[openChatId]||{}}/>:null;})()}
-      {openPredictId&&(()=>{const m=KM.find(x=>x.id===openPredictId);const bk=bracket[openPredictId];if(!m||!bk?.a||!bk?.b||!KO_ODDS[openPredictId])return null;const w=koWinner(koResults[openPredictId]);return(<KoPredictModal matchId={openPredictId} teamA={bk.a} teamB={bk.b} koOdds={KO_ODDS[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames||[]} initials={koInitials} matchPredictions={effectivePredictions[openPredictId]||{}} hasResult={!!w} onClose={()=>setOpenPredictId(null)}/>);})()}
+      {openPredictId&&(()=>{const m=KM.find(x=>x.id===openPredictId);const bk=bracket[openPredictId];if(!m||!bk?.a||!bk?.b||!KO_ODDS[openPredictId])return null;const w=koWinner(koResults[openPredictId]);return(<KoPredictModal matchId={openPredictId} teamA={bk.a} teamB={bk.b} koOdds={KO_ODDS[openPredictId]} poolCode={poolCode} myPlayerIdx={myPlayerIdx} playerNames={config.playerNames||[]} initials={koInitials} matchPredictions={effectivePredictions[openPredictId]||{}} hasResult={!!w} koWinnerSide={w} onClose={()=>setOpenPredictId(null)}/>);})()}
       {shareKO==="menu"&&(
         <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end"}} onClick={()=>setShareKO(null)}>
           <div onClick={e=>e.stopPropagation()} style={{width:"100%",background:"#0a1628",borderRadius:"20px 20px 0 0",border:"1px solid #2a3a5c",padding:"20px 16px 32px"}}>
@@ -5442,7 +5467,7 @@ export default function Mundialito() {
       const w=koWinner(r);if(!w)return;
       const bk=resolvedBracket[m.id];if(!bk?.a||!bk?.b)return;
       if(!myTeams.has(bk.a)&&!myTeams.has(bk.b))return;
-      currentSeen[m.id]=`${r.home}-${r.away}-${r.pens?r.pens.a+"-"+r.pens.b:""}`;
+      currentSeen[m.id]=`${r.home}-${r.away}-${r.pens?r.winner||"":""}`;
     });
     if(seenKOResultsRef.current===null){
       try{const saved=window.localStorage?.getItem("mundi_seen_ko_results");seenKOResultsRef.current=saved?JSON.parse(saved):{};

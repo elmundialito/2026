@@ -2273,7 +2273,7 @@ function KoTeamDisplay({team,slot,owner,initials,isWinner,hasResult,isHome,playe
   return(
     <div style={{flex:1,display:"flex",alignItems:"center",minWidth:0,opacity:faded?0.5:1,flexDirection:isHome?"row-reverse":"row",gap:4}}>
       {team?(<>
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,width:72,background:isWinner&&color?`${color}15`:"transparent",border:isWinner&&color?`1px solid ${color}44`:"1px solid transparent",borderRadius:6,padding:"3px 5px"}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,width:72,background:isWinner?"rgba(97,169,120,0.15)":"transparent",border:isWinner?"1px solid rgba(97,169,120,0.5)":"1px solid transparent",borderRadius:6,padding:"3px 5px"}}>
           <span style={{fontSize:15,lineHeight:1,flexShrink:0,display:"block",textAlign:"center"}}>{t?.flag}</span>
           <span style={{fontFamily:"'DM Sans'",fontSize:fs,fontWeight:600,color:"#e0dcd4",lineHeight:1.2,textAlign:"center",hyphens:"manual",marginTop:2,display:"block"}} dangerouslySetInnerHTML={{__html:fn}}/>
         </div>

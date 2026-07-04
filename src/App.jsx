@@ -5589,10 +5589,10 @@ export default function Mundialito() {
           </div>
         );})()}
       </div>
-      <div style={{position:"fixed",top:0,left:0,right:0,zIndex:50,background:"rgba(10,22,40,0.99)",borderBottom:"1px solid rgba(201,168,76,0.12)",display:"flex",justifyContent:"center",gap:2,padding:"10px 12px 0",marginBottom:0}}>
+      <div style={{position:"sticky",top:0,zIndex:50,background:"rgba(10,22,40,0.99)",borderBottom:"1px solid rgba(201,168,76,0.12)",display:"flex",justifyContent:"center",gap:2,padding:"10px 12px 0",marginBottom:0}}>
         {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);const tabLabel=t(lang,tab.id==="standings"?"leaderboard":tab.id);return(<button key={tab.id} onClick={()=>{if(open){setActiveTab(tab.id);if(tab.id!=="group")setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);if(tab.id==="standings"){const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");if(code)loadProfilePics(code).then(()=>bumpPics(setPicRefresh));}}}} style={{padding:"7px 6px 10px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tabLabel}</div></button>);})}
       </div>
-      <div style={{paddingBottom:48,paddingTop:72}}>{tabContent()}
+      <div style={{paddingBottom:48,paddingTop:20}}>{tabContent()}
         <div style={{maxWidth:720,margin:"0 auto",padding:"24px 16px 0"}}>
           <button onClick={()=>setShowSuggestions(true)} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid rgba(107,155,209,0.3)",background:"rgba(107,155,209,0.06)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
             💡 {lang==="es"?"Sugerir una función":"Suggest a feature"}

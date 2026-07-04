@@ -3331,6 +3331,22 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           );
         });
       })()}
+      {(()=>{
+        // Show "Next Stage" button when all current round matches have results
+        const currentMatches=roundMatches[activeRound]||[];
+        const allDone=currentMatches.length>0&&currentMatches.every(m=>koResults[m.id]);
+        const nextRoundIdx=ROUND_ORDER.indexOf(activeRound)+1;
+        const nextRound=nextRoundIdx<ROUND_ORDER.length?ROUND_ORDER[nextRoundIdx]:null;
+        const nextLabel=nextRound?KO_LABELS[nextRound]:null;
+        if(!allDone||!nextRound)return null;
+        return(
+          <div style={{textAlign:"center",marginTop:8,marginBottom:20}}>
+            <button onClick={()=>{setActiveRound(nextRound);window.scrollTo({top:0,behavior:"smooth"});}} style={{padding:"12px 28px",borderRadius:10,border:"1px solid var(--accent)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8}}>
+              {nextLabel} →
+            </button>
+          </div>
+        );
+      })()}
       {!readOnly&&(
         <div style={{textAlign:"center",marginBottom:12,marginTop:4}}>
           <button onClick={()=>setOverrideMode(o=>!o)} style={{padding:"6px 16px",borderRadius:8,border:`1px solid ${overrideMode?"rgba(217,119,87,0.5)":"#2a3a5c"}`,background:overrideMode?"rgba(217,119,87,0.1)":"transparent",color:overrideMode?"#d97757":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:1,cursor:"pointer"}}>

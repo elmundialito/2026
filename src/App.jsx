@@ -2470,17 +2470,26 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket=
     'South Africa':'SOUTH AFRICA',
   };
 
-  // Get the 16 teams currently in the R32 bracket
+  // Get the 16 remaining teams — check R16 bracket slots (winners of R32 are now in R16 slots)
   const r32Teams=useMemo(()=>{
     const teams=new Set();
-    KM.filter(m=>m.round==="r32").forEach(m=>{
+    // Primary: winners already placed in R16 bracket slots
+    KM.filter(m=>m.round==="r16").forEach(m=>{
       const bk=bracket[m.id];
       if(bk?.a)teams.add(bk.a);
       if(bk?.b)teams.add(bk.b);
     });
+    // Fallback: R32 bracket winners if R16 slots not yet filled
+    if(teams.size<16){
+      KM.filter(m=>m.round==="r32").forEach(m=>{
+        const bk=bracket[m.id];
+        if(bk?.a)teams.add(bk.a);
+        if(bk?.b)teams.add(bk.b);
+      });
+    }
     return teams;
   },[bracket]);
-  const allR32Done=r32Teams.size===16;
+  const allR32Done=r32Teams.size>=16;
 
   const fetchOdds=async()=>{
     setLoading(true);setErr(null);
@@ -2495,7 +2504,7 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket=
         return{name,pct:Math.round(price*100),rawPct:price*100};
       }).filter(t=>t.name);
 
-      if(allR32Done&&r32Teams.size===16){
+      if(allR32Done){
         // Show all 16 R32 teams, <1% for those below threshold
         const teamsArr=[...r32Teams].map(internalName=>{
           const polyName=Object.entries(POLY_TO_TEAM).find(([,v])=>v===internalName)?.[0];
@@ -2579,7 +2588,7 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket=
                       <div style={{flex:1,height:6,borderRadius:3,background:"rgba(26,39,68,0.8)",overflow:"hidden"}}>
                         <div style={{height:"100%",width:barW+"%",borderRadius:3,background:barColor,transition:"width 0.4s"}}/>
                       </div>
-                      <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:team.pct!=null?pcolor:"#3d5070",width:32,textAlign:"right",flexShrink:0}}>{displayPct}</span>
+                      <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,width:32,textAlign:"right",flexShrink:0}}>{displayPct}</span>
                     </div>
                   );
                 })}

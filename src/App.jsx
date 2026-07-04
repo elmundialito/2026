@@ -418,6 +418,7 @@ const MATCH_ODDS = {
 // KO stage odds (to qualify, no draw) — [home%, away%] summing to 100
 // Source: bet365 decimal odds, vig-normalised. Home team = sA side of the match.
 const KO_ODDS = {
+  // R32
   K73:[28,72],  // South Africa vs Canada (3.50/1.30)
   K74:[72,28],  // Brazil vs Japan (1.33/3.40)
   K75:[79,21],  // Germany vs Paraguay (1.20/4.50)
@@ -434,6 +435,15 @@ const KO_ODDS = {
   K86:[43,57],  // Australia vs Egypt (2.20/1.66)
   K87:[89,11],  // Argentina vs Cape Verde (1.071/9.00)
   K88:[75,25],  // Colombia vs Ghana (1.28/3.75)
+  // R16
+  K89:[11,89],  // Paraguay vs France (9.00/1.071) — Polymarket: PAR 8% FRA 92%
+  K90:[32,68],  // Canada vs Morocco (3.00/1.40) — Polymarket: CAN 28% MAR 72%
+  K91:[68,32],  // Brazil vs Norway (1.40/3.00) — Polymarket: BRA 69% NOR 31%
+  K92:[43,57],  // Mexico vs England (2.20/1.66)
+  K93:[34,66],  // Portugal vs Spain (2.75/1.44)
+  K94:[50,50],  // USA vs Belgium (1.90/1.90)
+  K95:[83,17],  // Argentina vs Egypt (1.14/5.50)
+  K96:[41,59],  // Switzerland vs Colombia (2.30/1.61)
 };
 
 const fmtKickoff = (dateStr, timeUTC) => {
@@ -2434,7 +2444,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
   );
 }
 
-function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
+function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket={}}) {
   const [open,setOpen]=useState(false);
   const [odds,setOdds]=useState(null);
   const [loading,setLoading]=useState(false);
@@ -2460,25 +2470,58 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
     'South Africa':'SOUTH AFRICA',
   };
 
+  // Get the 16 teams currently in the R32 bracket
+  const r32Teams=useMemo(()=>{
+    const teams=new Set();
+    KM.filter(m=>m.round==="r32").forEach(m=>{
+      const bk=bracket[m.id];
+      if(bk?.a)teams.add(bk.a);
+      if(bk?.b)teams.add(bk.b);
+    });
+    return teams;
+  },[bracket]);
+  const allR32Done=r32Teams.size===16;
+
   const fetchOdds=async()=>{
     setLoading(true);setErr(null);
     try{
       const res=await fetch('https://gamma-api.polymarket.com/events?slug=world-cup-winner');
       const data=await res.json();
       const markets=data[0]?.markets||[];
-      const teams=markets.map(m=>{
+      const allTeams=markets.map(m=>{
         let price=0;
         try{const prices=JSON.parse(m.outcomePrices||'[]');price=parseFloat(prices[0])||0;}catch(e){}
         const name=(m.groupItemTitle||m.question||'').replace(/Will (.+) win.*/i,'$1').trim();
-        return{name,pct:Math.round(price*100)};
-      }).filter(t=>t.pct>=1).sort((a,b)=>b.pct-a.pct);
-      setOdds(teams);setLastFetched(new Date());
+        return{name,pct:Math.round(price*100),rawPct:price*100};
+      }).filter(t=>t.name);
+
+      if(allR32Done&&r32Teams.size===16){
+        // Show all 16 R32 teams, <1% for those below threshold
+        const teamsArr=[...r32Teams].map(internalName=>{
+          const polyName=Object.entries(POLY_TO_TEAM).find(([,v])=>v===internalName)?.[0];
+          const found=allTeams.find(t=>t.name===polyName||POLY_TO_TEAM[t.name]===internalName);
+          return{
+            name:polyName||internalName,
+            internalName,
+            pct:found?.rawPct>=1?Math.round(found.rawPct):null,
+            rawPct:found?.rawPct||0,
+          };
+        }).sort((a,b)=>b.rawPct-a.rawPct);
+        setOdds({teams:teamsArr,showAll16:true});
+      } else {
+        // Old behaviour: only show ≥1%
+        const teams=allTeams.filter(t=>t.pct>=1).sort((a,b)=>b.pct-a.pct);
+        setOdds({teams,showAll16:false});
+      }
+      setLastFetched(new Date());
     }catch(e){setErr(lang==="es"?"No se pudieron cargar. Intenta de nuevo.":"Could not load odds. Try again.");}
     setLoading(false);
   };
 
   const handleOpen=()=>{setOpen(true);fetchOdds();};
   const fmtTime=d=>d?d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):null;
+  const teamsToShow=odds?.teams||[];
+  const maxPct=teamsToShow[0]?.rawPct||1;
 
   return(<>
     {/* Tappable banner */}
@@ -2519,15 +2562,16 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
             {loading&&!odds&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",padding:"20px 0"}}>Loading...</div>}
             {odds&&(
               <div style={{display:"flex",flexDirection:"column",gap:7}}>
-                {odds.map((team,i)=>{
-                  const internalName=POLY_TO_TEAM[team.name]||team.name.toUpperCase();
+                {teamsToShow.map((team,i)=>{
+                  const internalName=team.internalName||(POLY_TO_TEAM[team.name]||team.name.toUpperCase());
                   const tm=TBN[internalName];
                   const o=ownership[internalName];
                   const pcolor=o?getPlayerColor(o.playerIdx,PC[o.playerIdx]):"#8899b4";
                   const barColor=o?pcolor:"rgba(201,168,76,0.5)";
-                  const barW=Math.round(team.pct/odds[0].pct*100);
+                  const barW=Math.round((team.rawPct||0)/maxPct*100);
+                  const displayPct=team.pct!=null?`${team.pct}%`:"<1%";
                   return(
-                    <div key={team.name} style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div key={team.name||internalName} style={{display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#5a6a8a",width:16,textAlign:"right",flexShrink:0}}>{i+1}</span>
                       <span style={{fontSize:14,flexShrink:0}}>{tm?.flag||"🏳️"}</span>
                       <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:pcolor,width:95,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tm?countryName(internalName,lang):team.name}</span>
@@ -2535,11 +2579,10 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
                       <div style={{flex:1,height:6,borderRadius:3,background:"rgba(26,39,68,0.8)",overflow:"hidden"}}>
                         <div style={{height:"100%",width:barW+"%",borderRadius:3,background:barColor,transition:"width 0.4s"}}/>
                       </div>
-                      <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,width:32,textAlign:"right",flexShrink:0}}>{team.pct}%</span>
+                      <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:team.pct!=null?pcolor:"#3d5070",width:32,textAlign:"right",flexShrink:0}}>{displayPct}</span>
                     </div>
                   );
                 })}
-                <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#c8c0b0",marginTop:6}}>{lang==="es"?"Todos los demás <1%":"All others <1%"}</div>
               </div>
             )}
           </div>
@@ -2548,7 +2591,6 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
     )}
   </>);
 }
-
 // KO prediction button — opens full-screen modal matching group stage design
 function KoOddsPopup({matchId,teamA,teamB,lang,hasResult,myPlayerIdx,playerNames=[],initials,matchPredictions={},poolCode,koOdds=null}) {
   const [open,setOpen]=useState(false);
@@ -3242,7 +3284,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"var(--accent)",fontWeight:600}}>Host preview — players can't see this tab yet. Bracket fills in as group stage completes.</span>
         </div>
       )}
-      <TournamentWinnerWidget ownership={ownership} initials={koInitials} lang={lang} playerNames={config.playerNames||[]}/>
+      <TournamentWinnerWidget ownership={ownership} initials={koInitials} lang={lang} playerNames={config.playerNames||[]} bracket={bracket}/>
       {/* Always-visible action bar: bracket viewer + share */}
       <div style={{display:"flex",gap:8,marginBottom:12}}>
         <button onClick={()=>setShareKO("bracket_view")} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 12px",borderRadius:8,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#c8c0b0",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer"}}>🏆 BRACKET</button>
@@ -5531,10 +5573,10 @@ export default function Mundialito() {
           </div>
         );})()}
       </div>
-      <div style={{position:"sticky",top:0,zIndex:50,background:"rgba(10,22,40,0.99)",borderBottom:"1px solid rgba(201,168,76,0.12)",display:"flex",justifyContent:"center",gap:2,padding:"10px 12px 0",marginBottom:0}}>
+      <div style={{position:"fixed",top:0,left:0,right:0,zIndex:50,background:"rgba(10,22,40,0.99)",borderBottom:"1px solid rgba(201,168,76,0.12)",display:"flex",justifyContent:"center",gap:2,padding:"10px 12px 0",marginBottom:0}}>
         {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);const tabLabel=t(lang,tab.id==="standings"?"leaderboard":tab.id);return(<button key={tab.id} onClick={()=>{if(open){setActiveTab(tab.id);if(tab.id!=="group")setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);if(tab.id==="standings"){const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");if(code)loadProfilePics(code).then(()=>bumpPics(setPicRefresh));}}}} style={{padding:"7px 6px 10px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tabLabel}</div></button>);})}
       </div>
-      <div style={{paddingBottom:48,paddingTop:20}}>{tabContent()}
+      <div style={{paddingBottom:48,paddingTop:72}}>{tabContent()}
         <div style={{maxWidth:720,margin:"0 auto",padding:"24px 16px 0"}}>
           <button onClick={()=>setShowSuggestions(true)} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid rgba(107,155,209,0.3)",background:"rgba(107,155,209,0.06)",color:"#6b9bd1",fontFamily:"'DM Sans'",fontSize:12,cursor:"pointer"}}>
             💡 {lang==="es"?"Sugerir una función":"Suggest a feature"}

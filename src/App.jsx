@@ -2918,9 +2918,19 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     const abbr3=(team)=>{
       if(!team)return"TBD";
       const n=(TBN[team]?.name||team).toUpperCase();
-      const MAP={"UNITED STATES":"USA","BOSNIA AND HERZEGOVINA":"B&H","IVORY COAST":"CIV",
-        "SOUTH AFRICA":"RSA","CAPE VERDE":"CPV","DR CONGO":"COD","SOUTH KOREA":"KOR",
-        "SAUDI ARABIA":"KSA","NEW ZEALAND":"NZL","CZECH REPUBLIC":"CZE"};
+      const MAP={
+        "SPAIN":"ESP","FRANCE":"FRA","ENGLAND":"ENG","BRAZIL":"BRA","PORTUGAL":"POR",
+        "ARGENTINA":"ARG","GERMANY":"GER","NETHERLANDS":"NED","NORWAY":"NOR","BELGIUM":"BEL",
+        "COLOMBIA":"COL","JAPAN":"JPN","MOROCCO":"MAR","MEXICO":"MEX","URUGUAY":"URU",
+        "USA":"USA","UNITED STATES":"USA","CROATIA":"CRO","SWITZERLAND":"SUI","ECUADOR":"ECU",
+        "CANADA":"CAN","SENEGAL":"SEN","SWEDEN":"SWE","AUSTRIA":"AUT","PARAGUAY":"PAR",
+        "SCOTLAND":"SCO","CZECHIA":"CZE","EGYPT":"EGY","IVORY COAST":"CIV",
+        "BOSNIA AND HERZEGOVINA":"BIH","ALGERIA":"ALG","GHANA":"GHA","SOUTH KOREA":"KOR",
+        "AUSTRALIA":"AUS","IRAN":"IRN","TUNISIA":"TUN","DR CONGO":"COD","SAUDI ARABIA":"KSA",
+        "SOUTH AFRICA":"RSA","IRAQ":"IRQ","PANAMA":"PAN","UZBEKISTAN":"UZB","CAPE VERDE":"CPV",
+        "QATAR":"QAT","HAITI":"HAI","JORDAN":"JOR","NEW ZEALAND":"NZL","TURKEY":"TUR",
+        "TÜRKIYE":"TUR","CZECHREPUBLIC":"CZE","NEWZEALAND":"NZL",
+      };
       return MAP[n]||n.replace(/[^A-Z]/g,"").slice(0,3);
     };
     const fullName=(team)=>{

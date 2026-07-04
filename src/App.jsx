@@ -4896,7 +4896,7 @@ function ResultOverlay({results, onDone}) {
   })):[];
 
   return(
-    <div style={{position:"fixed",inset:0,zIndex:999,background:bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"opacity 0.4s, transform 0.4s",opacity,transform:`scale(${scale})`}}>
+    <div style={{position:"fixed",inset:0,zIndex:999,background:bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"opacity 0.4s",opacity}}>
       <style>{`
         @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
         @keyframes sadFall{0%{transform:translateY(-20px);opacity:0}20%{opacity:1}100%{transform:translateY(110vh);opacity:0}}
@@ -4912,8 +4912,9 @@ function ResultOverlay({results, onDone}) {
         <div key={i} style={{position:"absolute",left:`${10+i*11}%`,top:-20,fontSize:28,animation:`sadFall ${2+i*0.15}s ${i*0.15}s linear forwards`}}>{isKO?"😭":"😢"}</div>
       ))}
 
-      {/* Main content */}
-      <div style={{textAlign:"center",animation:"resultPop 0.4s ease-out forwards",padding:"0 32px"}}>
+      {/* Main content — scale animation on inner div, not outer fixed div */}
+      <div style={{textAlign:"center",padding:"0 32px",transition:"transform 0.4s",transform:`scale(${scale})`}}>
+        <div style={{animation:"resultPop 0.4s ease-out forwards"}}>
         {subLabel&&<div style={{fontFamily:"'Bebas Neue'",fontSize:13,color:accent,letterSpacing:3,marginBottom:8,opacity:0.8}}>{subLabel}</div>}
         <div style={{fontSize:isDraw?64:isFinal&&isWin?88:72,marginBottom:12,animation:isDraw?"shrug 0.8s ease-in-out 0.4s 2":"none"}}>{emoji}</div>
         <div style={{fontSize:20,marginBottom:8,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
@@ -4924,6 +4925,7 @@ function ResultOverlay({results, onDone}) {
         <div style={{fontFamily:"'Bebas Neue'",fontSize:52,color:accent,letterSpacing:4,lineHeight:1,marginBottom:8}}>{score}</div>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:isFinal&&isWin?28:24,color:"#e0dcd4",letterSpacing:3,lineHeight:1.3}}>{msg}</div>
         {results.length>1&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",marginTop:12}}>{idx+1} / {results.length}</div>}
+        </div>
       </div>
 
       <div style={{position:"absolute",bottom:40,fontFamily:"'DM Sans'",fontSize:12,color:"#3a4a6a"}}>{t(lang,"tapToContinue")}</div>

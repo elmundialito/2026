@@ -2738,7 +2738,7 @@ function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initia
           const w=result.winner==="A"?a:b;
           const wName=w?(TBN[w]?.name||w).toUpperCase():"";
           ctx.font=`600 9px DMSans,Arial`;ctx.fillStyle="#e0dcd4";
-          ctx.fillText(`${wName} won on penalties`,W/2,y+MH/2+22+OFFSET);
+          ctx.fillText(`${wName} won on penalties`,W/2,y+MH/2+32+OFFSET);
         }
       } else if(m.ko){
         ctx.font=`700 16px BebasNeue,Arial`;ctx.fillStyle="#c9a84c";ctx.textAlign="center";

@@ -418,7 +418,6 @@ const MATCH_ODDS = {
 // KO stage odds (to qualify, no draw) — [home%, away%] summing to 100
 // Source: bet365 decimal odds, vig-normalised. Home team = sA side of the match.
 const KO_ODDS = {
-  // R32
   K73:[28,72],  // South Africa vs Canada (3.50/1.30)
   K74:[72,28],  // Brazil vs Japan (1.33/3.40)
   K75:[79,21],  // Germany vs Paraguay (1.20/4.50)
@@ -436,14 +435,14 @@ const KO_ODDS = {
   K87:[89,11],  // Argentina vs Cape Verde (1.071/9.00)
   K88:[75,25],  // Colombia vs Ghana (1.28/3.75)
   // R16
-  K89:[11,89],  // Paraguay vs France (9.00/1.071) — Polymarket: PAR 8% FRA 92%
-  K90:[32,68],  // Canada vs Morocco (3.00/1.40) — Polymarket: CAN 28% MAR 72%
-  K91:[68,32],  // Brazil vs Norway (1.40/3.00) — Polymarket: BRA 69% NOR 31%
-  K92:[43,57],  // Mexico vs England (2.20/1.66)
-  K93:[34,66],  // Portugal vs Spain (2.75/1.44)
-  K94:[50,50],  // USA vs Belgium (1.90/1.90)
-  K95:[83,17],  // Argentina vs Egypt (1.14/5.50)
-  K96:[41,59],  // Switzerland vs Colombia (2.30/1.61)
+  K89:[11,89],  // Paraguay vs France
+  K90:[32,68],  // Canada vs Morocco
+  K91:[68,32],  // Brazil vs Norway
+  K92:[43,57],  // Mexico vs England
+  K93:[34,66],  // Portugal vs Spain
+  K94:[50,50],  // USA vs Belgium
+  K95:[83,17],  // Argentina vs Egypt
+  K96:[41,59],  // Switzerland vs Colombia
 };
 
 const fmtKickoff = (dateStr, timeUTC) => {
@@ -2283,7 +2282,7 @@ function KoTeamDisplay({team,slot,owner,initials,isWinner,hasResult,isHome,playe
   return(
     <div style={{flex:1,display:"flex",alignItems:"center",minWidth:0,opacity:faded?0.5:1,flexDirection:isHome?"row-reverse":"row",gap:4}}>
       {team?(<>
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,width:72,background:isWinner?"rgba(97,169,120,0.15)":"transparent",border:isWinner?"1px solid rgba(97,169,120,0.5)":"1px solid transparent",borderRadius:6,padding:"3px 5px"}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,width:72,background:isWinner&&color?`${color}15`:"transparent",border:isWinner&&color?`1px solid ${color}44`:"1px solid transparent",borderRadius:6,padding:"3px 5px"}}>
           <span style={{fontSize:15,lineHeight:1,flexShrink:0,display:"block",textAlign:"center"}}>{t?.flag}</span>
           <span style={{fontFamily:"'DM Sans'",fontSize:fs,fontWeight:600,color:"#e0dcd4",lineHeight:1.2,textAlign:"center",hyphens:"manual",marginTop:2,display:"block"}} dangerouslySetInnerHTML={{__html:fn}}/>
         </div>
@@ -2470,42 +2469,6 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket=
     'South Africa':'SOUTH AFRICA',
   };
 
-  // Get only surviving teams — won their last match or haven't played yet
-  const r32Teams=useMemo(()=>{
-    const teams=new Set();
-    // Find the furthest round that has any results
-    const roundsWithResults=['final','third','sf','qf','r16','r32'].filter(r=>
-      KM.filter(m=>m.round===r).some(m=>bracket[m.id]&&koResults[m.id])
-    );
-    const latestRound=roundsWithResults[0]||'r16';
-    // Add winners of completed matches in the latest round
-    KM.filter(m=>m.round===latestRound).forEach(m=>{
-      const bk=bracket[m.id];
-      const result=koResults[m.id];
-      if(!bk?.a||!bk?.b)return;
-      if(result){
-        const w=koWinner(result);
-        if(w==="A")teams.add(bk.a);
-        else if(w==="B")teams.add(bk.b);
-      } else {
-        // Match not played yet — both teams still alive
-        teams.add(bk.a);
-        teams.add(bk.b);
-      }
-    });
-    // Also add teams from next rounds if some have already advanced
-    ['r16','qf','sf','final'].forEach(r=>{
-      if(r===latestRound)return;
-      KM.filter(m=>m.round===r).forEach(m=>{
-        const bk=bracket[m.id];
-        if(bk?.a)teams.add(bk.a);
-        if(bk?.b)teams.add(bk.b);
-      });
-    });
-    return teams;
-  },[bracket,koResults]);
-  const allR32Done=r32Teams.size>0;
-
   const fetchOdds=async()=>{
     setLoading(true);setErr(null);
     try{
@@ -2517,35 +2480,37 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket=
         try{const prices=JSON.parse(m.outcomePrices||'[]');price=parseFloat(prices[0])||0;}catch(e){}
         const name=(m.groupItemTitle||m.question||'').replace(/Will (.+) win.*/i,'$1').trim();
         return{name,pct:Math.round(price*100),rawPct:price*100};
-      }).filter(t=>t.name);
-
-      if(allR32Done){
-        // Show all 16 R32 teams, <1% for those below threshold
-        const teamsArr=[...r32Teams].map(internalName=>{
-          const polyName=Object.entries(POLY_TO_TEAM).find(([,v])=>v===internalName)?.[0];
-          const found=allTeams.find(t=>t.name===polyName||POLY_TO_TEAM[t.name]===internalName);
-          return{
-            name:polyName||internalName,
-            internalName,
-            pct:found?.rawPct>=1?Math.round(found.rawPct):null,
-            rawPct:found?.rawPct||0,
-          };
+      });
+      // Get surviving teams from bracket
+      const surviving=new Set();
+      ['r16','qf','sf','third','final'].forEach(r=>{
+        KM.filter(m=>m.round===r).forEach(m=>{
+          const bk=bracket[m.id];
+          if(!bk?.a&&!bk?.b)return;
+          const result=koResults[m.id];
+          if(result){const w=koWinner(result);if(w==="A"&&bk.a)surviving.add(bk.a);else if(w==="B"&&bk.b)surviving.add(bk.b);}
+          else{if(bk.a)surviving.add(bk.a);if(bk.b)surviving.add(bk.b);}
+        });
+      });
+      const POLY_MAP={'France':'FRANCE','Spain':'SPAIN','Argentina':'ARGENTINA','England':'ENGLAND','Portugal':'PORTUGAL','Germany':'GERMANY','Brazil':'BRAZIL','Netherlands':'NETHERLANDS','USA':'USA','United States':'USA','Norway':'NORWAY','Japan':'JAPAN','Morocco':'MOROCCO','Colombia':'COLOMBIA','Mexico':'MEXICO','Belgium':'BELGIUM','Switzerland':'SWITZERLAND','Canada':'CANADA','Egypt':'EGYPT','Paraguay':'PARAGUAY','Australia':'AUSTRALIA','South Korea':'SOUTH KOREA','Sweden':'SWEDEN','Croatia':'CROATIA','Senegal':'SENEGAL','Ecuador':'ECUADOR','Austria':'AUSTRIA','Ivory Coast':'IVORY COAST',"Côte d'Ivoire":'IVORY COAST','DR Congo':'DR CONGO','Cape Verde':'CAPE VERDE','Saudi Arabia':'SAUDI ARABIA','South Africa':'SOUTH AFRICA','Ghana':'GHANA','Bosnia-Herzegovina':'BOSNIA AND HERZEGOVINA','Uruguay':'URUGUAY'};
+      let teams;
+      if(surviving.size>0){
+        // Show all surviving teams with <1% for those not found
+        teams=[...surviving].map(internalName=>{
+          const polyName=Object.entries(POLY_MAP).find(([,v])=>v===internalName)?.[0];
+          const found=allTeams.find(t=>t.name===polyName||POLY_MAP[t.name]===internalName);
+          return{name:internalName,pct:found?.rawPct>=1?Math.round(found.rawPct):null,rawPct:found?.rawPct||0};
         }).sort((a,b)=>b.rawPct-a.rawPct);
-        setOdds({teams:teamsArr,showAll16:true});
       } else {
-        // Old behaviour: only show ≥1%
-        const teams=allTeams.filter(t=>t.pct>=1).sort((a,b)=>b.pct-a.pct);
-        setOdds({teams,showAll16:false});
+        teams=allTeams.filter(t=>t.pct>=1).sort((a,b)=>b.pct-a.pct);
       }
-      setLastFetched(new Date());
+      setOdds(teams);setLastFetched(new Date());
     }catch(e){setErr(lang==="es"?"No se pudieron cargar. Intenta de nuevo.":"Could not load odds. Try again.");}
     setLoading(false);
   };
 
   const handleOpen=()=>{setOpen(true);fetchOdds();};
   const fmtTime=d=>d?d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):null;
-  const teamsToShow=odds?.teams||[];
-  const maxPct=teamsToShow[0]?.rawPct||1;
 
   return(<>
     {/* Tappable banner */}
@@ -2586,16 +2551,17 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket=
             {loading&&!odds&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",textAlign:"center",padding:"20px 0"}}>Loading...</div>}
             {odds&&(
               <div style={{display:"flex",flexDirection:"column",gap:7}}>
-                {teamsToShow.map((team,i)=>{
-                  const internalName=team.internalName||(POLY_TO_TEAM[team.name]||team.name.toUpperCase());
+                {odds.map((team,i)=>{
+                  const internalName=POLY_TO_TEAM[team.name]||team.name.toUpperCase();
                   const tm=TBN[internalName];
                   const o=ownership[internalName];
                   const pcolor=o?getPlayerColor(o.playerIdx,PC[o.playerIdx]):"#8899b4";
                   const barColor=o?pcolor:"rgba(201,168,76,0.5)";
-                  const barW=Math.round((team.rawPct||0)/maxPct*100);
+                  const maxPct=odds[0]?.rawPct||odds[0]?.pct||1;
+                  const barW=Math.round((team.rawPct||team.pct||0)/maxPct*100);
                   const displayPct=team.pct!=null?`${team.pct}%`:"<1%";
                   return(
-                    <div key={team.name||internalName} style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div key={team.name} style={{display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#5a6a8a",width:16,textAlign:"right",flexShrink:0}}>{i+1}</span>
                       <span style={{fontSize:14,flexShrink:0}}>{tm?.flag||"🏳️"}</span>
                       <span style={{fontFamily:"'DM Sans'",fontSize:12,fontWeight:600,color:pcolor,width:95,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tm?countryName(internalName,lang):team.name}</span>
@@ -2615,6 +2581,7 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket=
     )}
   </>);
 }
+
 // KO prediction button — opens full-screen modal matching group stage design
 function KoOddsPopup({matchId,teamA,teamB,lang,hasResult,myPlayerIdx,playerNames=[],initials,matchPredictions={},poolCode,koOdds=null}) {
   const [open,setOpen]=useState(false);
@@ -2804,7 +2771,7 @@ function ShareKOMatchesModal({onClose,matches,bracket,koResults,ownership,initia
           const w=result.winner==="A"?a:b;
           const wName=w?(TBN[w]?.name||w).toUpperCase():"";
           ctx.font=`600 9px DMSans,Arial`;ctx.fillStyle="#e0dcd4";
-          ctx.fillText(`${wName} won on penalties`,W/2,y+MH/2+32+OFFSET);
+          ctx.fillText(`${wName} won on penalties`,W/2,y+MH/2+22+OFFSET);
         }
       } else if(m.ko){
         ctx.font=`700 16px BebasNeue,Arial`;ctx.fillStyle="#c9a84c";ctx.textAlign="center";
@@ -2984,19 +2951,9 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     const abbr3=(team)=>{
       if(!team)return"TBD";
       const n=(TBN[team]?.name||team).toUpperCase();
-      const MAP={
-        "SPAIN":"ESP","FRANCE":"FRA","ENGLAND":"ENG","BRAZIL":"BRA","PORTUGAL":"POR",
-        "ARGENTINA":"ARG","GERMANY":"GER","NETHERLANDS":"NED","NORWAY":"NOR","BELGIUM":"BEL",
-        "COLOMBIA":"COL","JAPAN":"JPN","MOROCCO":"MAR","MEXICO":"MEX","URUGUAY":"URU",
-        "USA":"USA","UNITED STATES":"USA","CROATIA":"CRO","SWITZERLAND":"SUI","ECUADOR":"ECU",
-        "CANADA":"CAN","SENEGAL":"SEN","SWEDEN":"SWE","AUSTRIA":"AUT","PARAGUAY":"PAR",
-        "SCOTLAND":"SCO","CZECHIA":"CZE","EGYPT":"EGY","IVORY COAST":"CIV",
-        "BOSNIA AND HERZEGOVINA":"BIH","ALGERIA":"ALG","GHANA":"GHA","SOUTH KOREA":"KOR",
-        "AUSTRALIA":"AUS","IRAN":"IRN","TUNISIA":"TUN","DR CONGO":"COD","SAUDI ARABIA":"KSA",
-        "SOUTH AFRICA":"RSA","IRAQ":"IRQ","PANAMA":"PAN","UZBEKISTAN":"UZB","CAPE VERDE":"CPV",
-        "QATAR":"QAT","HAITI":"HAI","JORDAN":"JOR","NEW ZEALAND":"NZL","TURKEY":"TUR",
-        "TÜRKIYE":"TUR","CZECHREPUBLIC":"CZE","NEWZEALAND":"NZL",
-      };
+      const MAP={"UNITED STATES":"USA","BOSNIA AND HERZEGOVINA":"B&H","IVORY COAST":"CIV",
+        "SOUTH AFRICA":"RSA","CAPE VERDE":"CPV","DR CONGO":"COD","SOUTH KOREA":"KOR",
+        "SAUDI ARABIA":"KSA","NEW ZEALAND":"NZL","CZECH REPUBLIC":"CZE"};
       return MAP[n]||n.replace(/[^A-Z]/g,"").slice(0,3);
     };
     const fullName=(team)=>{
@@ -3308,7 +3265,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"var(--accent)",fontWeight:600}}>Host preview — players can't see this tab yet. Bracket fills in as group stage completes.</span>
         </div>
       )}
-      <TournamentWinnerWidget ownership={ownership} initials={koInitials} lang={lang} playerNames={config.playerNames||[]} bracket={bracket} koResults={koResults}/>
+      <TournamentWinnerWidget ownership={ownership} initials={koInitials} lang={lang} playerNames={config.playerNames||[]}/>
       {/* Always-visible action bar: bracket viewer + share */}
       <div style={{display:"flex",gap:8,marginBottom:12}}>
         <button onClick={()=>setShareKO("bracket_view")} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 12px",borderRadius:8,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#c8c0b0",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer"}}>🏆 BRACKET</button>
@@ -3356,7 +3313,6 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
         });
       })()}
       {(()=>{
-        // Show "Next Stage" button when all current round matches have results
         const currentMatches=roundMatches[activeRound]||[];
         const allDone=currentMatches.length>0&&currentMatches.every(m=>koResults[m.id]);
         const nextRoundIdx=ROUND_ORDER.indexOf(activeRound)+1;
@@ -4978,7 +4934,7 @@ function ResultOverlay({results, onDone}) {
   })):[];
 
   return(
-    <div style={{position:"fixed",inset:0,zIndex:999,background:bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"opacity 0.4s",opacity}}>
+    <div style={{position:"fixed",inset:0,zIndex:999,background:bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"opacity 0.4s, transform 0.4s",opacity,transform:`scale(${scale})`}}>
       <style>{`
         @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
         @keyframes sadFall{0%{transform:translateY(-20px);opacity:0}20%{opacity:1}100%{transform:translateY(110vh);opacity:0}}
@@ -4994,9 +4950,8 @@ function ResultOverlay({results, onDone}) {
         <div key={i} style={{position:"absolute",left:`${10+i*11}%`,top:-20,fontSize:28,animation:`sadFall ${2+i*0.15}s ${i*0.15}s linear forwards`}}>{isKO?"😭":"😢"}</div>
       ))}
 
-      {/* Main content — scale animation on inner div, not outer fixed div */}
-      <div style={{textAlign:"center",padding:"0 32px",transition:"transform 0.4s",transform:`scale(${scale})`}}>
-        <div style={{animation:"resultPop 0.4s ease-out forwards"}}>
+      {/* Main content */}
+      <div style={{textAlign:"center",animation:"resultPop 0.4s ease-out forwards",padding:"0 32px"}}>
         {subLabel&&<div style={{fontFamily:"'Bebas Neue'",fontSize:13,color:accent,letterSpacing:3,marginBottom:8,opacity:0.8}}>{subLabel}</div>}
         <div style={{fontSize:isDraw?64:isFinal&&isWin?88:72,marginBottom:12,animation:isDraw?"shrug 0.8s ease-in-out 0.4s 2":"none"}}>{emoji}</div>
         <div style={{fontSize:20,marginBottom:8,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
@@ -5007,7 +4962,6 @@ function ResultOverlay({results, onDone}) {
         <div style={{fontFamily:"'Bebas Neue'",fontSize:52,color:accent,letterSpacing:4,lineHeight:1,marginBottom:8}}>{score}</div>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:isFinal&&isWin?28:24,color:"#e0dcd4",letterSpacing:3,lineHeight:1.3}}>{msg}</div>
         {results.length>1&&<div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#5a6a8a",marginTop:12}}>{idx+1} / {results.length}</div>}
-        </div>
       </div>
 
       <div style={{position:"absolute",bottom:40,fontFamily:"'DM Sans'",fontSize:12,color:"#3a4a6a"}}>{t(lang,"tapToContinue")}</div>
@@ -5613,7 +5567,7 @@ export default function Mundialito() {
           </div>
         );})()}
       </div>
-      <div style={{position:"sticky",top:0,zIndex:50,background:"rgba(10,22,40,0.99)",borderBottom:"1px solid rgba(201,168,76,0.12)",display:"flex",justifyContent:"center",gap:2,padding:"10px 12px 0",marginBottom:0}}>
+      <div style={{position:"sticky",top:0,zIndex:50,background:"linear-gradient(180deg,rgba(10,22,40,0.97) 0%,rgba(15,30,56,0.97) 100%)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderBottom:"1px solid rgba(201,168,76,0.12)",display:"flex",justifyContent:"center",gap:2,padding:"10px 12px 0",marginBottom:0}}>
         {TABS.map(tab=>{const active=activeTab===tab.id;const open=isUnlocked(tab.id);const tabLabel=t(lang,tab.id==="standings"?"leaderboard":tab.id);return(<button key={tab.id} onClick={()=>{if(open){setActiveTab(tab.id);if(tab.id!=="group")setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);if(tab.id==="standings"){const code=window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code");if(code)loadProfilePics(code).then(()=>bumpPics(setPicRefresh));}}}} style={{padding:"7px 6px 10px",flex:1,maxWidth:110,border:"none",borderBottom:active?"2px solid var(--accent)":"2px solid transparent",background:"transparent",cursor:open?"pointer":"default",opacity:active?1:open?0.5:0.25,filter:open?"none":"grayscale(1)",transition:"all 0.2s"}}><div style={{fontSize:18,marginBottom:3}}>{tab.icon}</div><div style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:active?600:400,color:active?"var(--accent)":open?"#5a6a8a":"#3d5070",letterSpacing:0.5}}>{tabLabel}</div></button>);})}
       </div>
       <div style={{paddingBottom:48,paddingTop:20}}>{tabContent()}

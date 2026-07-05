@@ -2282,7 +2282,7 @@ function KoTeamDisplay({team,slot,owner,initials,isWinner,hasResult,isHome,playe
   return(
     <div style={{flex:1,display:"flex",alignItems:"center",minWidth:0,opacity:faded?0.5:1,flexDirection:isHome?"row-reverse":"row",gap:4}}>
       {team?(<>
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,width:72,background:isWinner&&color?`${color}15`:"transparent",border:isWinner&&color?`1px solid ${color}44`:"1px solid transparent",borderRadius:6,padding:"3px 5px"}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,width:72,background:isWinner?"rgba(97,169,120,0.15)":"transparent",border:isWinner?"1px solid rgba(97,169,120,0.45)":"1px solid transparent",borderRadius:6,padding:"3px 5px"}}>
           <span style={{fontSize:15,lineHeight:1,flexShrink:0,display:"block",textAlign:"center"}}>{t?.flag}</span>
           <span style={{fontFamily:"'DM Sans'",fontSize:fs,fontWeight:600,color:"#e0dcd4",lineHeight:1.2,textAlign:"center",hyphens:"manual",marginTop:2,display:"block"}} dangerouslySetInnerHTML={{__html:fn}}/>
         </div>
@@ -2443,7 +2443,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
   );
 }
 
-function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
+function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket={},koResults={}}) {
   const [open,setOpen]=useState(false);
   const [odds,setOdds]=useState(null);
   const [loading,setLoading]=useState(false);
@@ -2475,12 +2475,33 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
       const res=await fetch('https://gamma-api.polymarket.com/events?slug=world-cup-winner');
       const data=await res.json();
       const markets=data[0]?.markets||[];
-      const teams=markets.map(m=>{
+      const allTeams=markets.map(m=>{
         let price=0;
         try{const prices=JSON.parse(m.outcomePrices||'[]');price=parseFloat(prices[0])||0;}catch(e){}
         const name=(m.groupItemTitle||m.question||'').replace(/Will (.+) win.*/i,'$1').trim();
-        return{name,pct:Math.round(price*100)};
-      }).filter(t=>t.pct>=1).sort((a,b)=>b.pct-a.pct);
+        return{name,pct:Math.round(price*100),rawPct:price*100};
+      });
+      const POLY_MAP={'France':'FRANCE','Spain':'SPAIN','Argentina':'ARGENTINA','England':'ENGLAND','Portugal':'PORTUGAL','Germany':'GERMANY','Brazil':'BRAZIL','Netherlands':'NETHERLANDS','USA':'USA','United States':'USA','Norway':'NORWAY','Japan':'JAPAN','Morocco':'MOROCCO','Colombia':'COLOMBIA','Mexico':'MEXICO','Belgium':'BELGIUM','Switzerland':'SWITZERLAND','Canada':'CANADA','Egypt':'EGYPT','Paraguay':'PARAGUAY','Australia':'AUSTRALIA','South Korea':'SOUTH KOREA','Sweden':'SWEDEN','Croatia':'CROATIA','Senegal':'SENEGAL','Ecuador':'ECUADOR','Austria':'AUSTRIA','Ivory Coast':'IVORY COAST',"Côte d'Ivoire":'IVORY COAST','DR Congo':'DR CONGO','Cape Verde':'CAPE VERDE','Saudi Arabia':'SAUDI ARABIA','South Africa':'SOUTH AFRICA','Ghana':'GHANA','Bosnia-Herzegovina':'BOSNIA AND HERZEGOVINA','Uruguay':'URUGUAY'};
+      const surviving=new Set();
+      ['r16','qf','sf','third','final'].forEach(r=>{
+        KM.filter(m=>m.round===r).forEach(m=>{
+          const bk=bracket[m.id];
+          if(!bk?.a&&!bk?.b)return;
+          const result=koResults[m.id];
+          if(result){const w=koWinner(result);if(w==='A'&&bk.a)surviving.add(bk.a);else if(w==='B'&&bk.b)surviving.add(bk.b);}
+          else{if(bk.a)surviving.add(bk.a);if(bk.b)surviving.add(bk.b);}
+        });
+      });
+      let teams;
+      if(surviving.size>0){
+        teams=[...surviving].map(internalName=>{
+          const polyName=Object.entries(POLY_MAP).find(([,v])=>v===internalName)?.[0];
+          const found=allTeams.find(t=>t.name===polyName||POLY_MAP[t.name]===internalName);
+          return{name:internalName,pct:found?.rawPct>=1?Math.round(found.rawPct):null,rawPct:found?.rawPct||0};
+        }).sort((a,b)=>b.rawPct-a.rawPct);
+      } else {
+        teams=allTeams.filter(t=>t.pct>=1).sort((a,b)=>b.pct-a.pct);
+      }
       setOdds(teams);setLastFetched(new Date());
     }catch(e){setErr(lang==="es"?"No se pudieron cargar. Intenta de nuevo.":"Could not load odds. Try again.");}
     setLoading(false);
@@ -2534,7 +2555,8 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
                   const o=ownership[internalName];
                   const pcolor=o?getPlayerColor(o.playerIdx,PC[o.playerIdx]):"#8899b4";
                   const barColor=o?pcolor:"rgba(201,168,76,0.5)";
-                  const barW=Math.round(team.pct/odds[0].pct*100);
+                  const barW=Math.round((team.rawPct||team.pct||0)/(odds[0]?.rawPct||odds[0]?.pct||1)*100);
+                  const displayPct=team.pct!=null?`${team.pct}%`:"<1%";
                   return(
                     <div key={team.name} style={{display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#5a6a8a",width:16,textAlign:"right",flexShrink:0}}>{i+1}</span>
@@ -2544,11 +2566,11 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
                       <div style={{flex:1,height:6,borderRadius:3,background:"rgba(26,39,68,0.8)",overflow:"hidden"}}>
                         <div style={{height:"100%",width:barW+"%",borderRadius:3,background:barColor,transition:"width 0.4s"}}/>
                       </div>
-                      <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,width:32,textAlign:"right",flexShrink:0}}>{team.pct}%</span>
+                      <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,width:32,textAlign:"right",flexShrink:0}}>{displayPct}</span>
                     </div>
                   );
                 })}
-                <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#c8c0b0",marginTop:6}}>{lang==="es"?"Todos los demás <1%":"All others <1%"}</div>
+
               </div>
             )}
           </div>
@@ -3250,7 +3272,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"var(--accent)",fontWeight:600}}>Host preview — players can't see this tab yet. Bracket fills in as group stage completes.</span>
         </div>
       )}
-      <TournamentWinnerWidget ownership={ownership} initials={koInitials} lang={lang} playerNames={config.playerNames||[]}/>
+      <TournamentWinnerWidget ownership={ownership} initials={koInitials} lang={lang} playerNames={config.playerNames||[]} bracket={bracket} koResults={koResults}/>
       {/* Always-visible action bar: bracket viewer + share */}
       <div style={{display:"flex",gap:8,marginBottom:12}}>
         <button onClick={()=>setShareKO("bracket_view")} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 12px",borderRadius:8,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#c8c0b0",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer"}}>🏆 BRACKET</button>
@@ -3296,6 +3318,21 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
             </div>
           );
         });
+      })()}
+      {(()=>{
+        const currentMatches=roundMatches[activeRound]||[];
+        const allDone=currentMatches.length>0&&currentMatches.every(m=>koResults[m.id]);
+        const nextRoundIdx=ROUND_ORDER.indexOf(activeRound)+1;
+        const nextRound=nextRoundIdx<ROUND_ORDER.length?ROUND_ORDER[nextRoundIdx]:null;
+        const nextLabel=nextRound?KO_LABELS[nextRound]:null;
+        if(!allDone||!nextRound)return null;
+        return(
+          <div style={{textAlign:"center",marginTop:8,marginBottom:20}}>
+            <button onClick={()=>{setActiveRound(nextRound);setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);}} style={{padding:"12px 28px",borderRadius:10,border:"1px solid var(--accent)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8}}>
+              NEXT STAGE: {nextLabel} →
+            </button>
+          </div>
+        );
       })()}
       {!readOnly&&(
         <div style={{textAlign:"center",marginBottom:12,marginTop:4}}>

@@ -2444,7 +2444,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
   );
 }
 
-function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket={}}) {
+function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket={},koResults={}}) {
   const [open,setOpen]=useState(false);
   const [odds,setOdds]=useState(null);
   const [loading,setLoading]=useState(false);
@@ -3308,7 +3308,7 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"var(--accent)",fontWeight:600}}>Host preview — players can't see this tab yet. Bracket fills in as group stage completes.</span>
         </div>
       )}
-      <TournamentWinnerWidget ownership={ownership} initials={koInitials} lang={lang} playerNames={config.playerNames||[]} bracket={bracket}/>
+      <TournamentWinnerWidget ownership={ownership} initials={koInitials} lang={lang} playerNames={config.playerNames||[]} bracket={bracket} koResults={koResults}/>
       {/* Always-visible action bar: bracket viewer + share */}
       <div style={{display:"flex",gap:8,marginBottom:12}}>
         <button onClick={()=>setShareKO("bracket_view")} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 12px",borderRadius:8,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#c8c0b0",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer"}}>🏆 BRACKET</button>

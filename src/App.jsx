@@ -474,7 +474,7 @@ const KM = [
   // R32 — n values match FIFA official match numbers (chronological order differs from FIFA numbering)
   {id:"K73",round:"r32",n:73,sA:"2nd A",sB:"2nd B",v:"Los Angeles",ko:"19:00",d:"2026-06-28"},{id:"K74",round:"r32",n:76,sA:"1st C",sB:"2nd F",v:"Houston",ko:"17:00",d:"2026-06-29"},{id:"K75",round:"r32",n:74,sA:"1st E",sB:"3rd A/B/C/D/F",v:"Boston",ko:"20:30",d:"2026-06-29"},{id:"K76",round:"r32",n:75,sA:"1st F",sB:"2nd C",v:"Monterrey",ko:"01:00",d:"2026-06-30"},{id:"K77",round:"r32",n:78,sA:"2nd E",sB:"2nd I",v:"Dallas",ko:"17:00",d:"2026-06-30"},{id:"K78",round:"r32",n:77,sA:"1st I",sB:"3rd C/D/F/G/H",v:"New York/NJ",ko:"21:00",d:"2026-06-30"},{id:"K79",round:"r32",n:79,sA:"1st A",sB:"3rd C/E/F/H/I",v:"Mexico City",ko:"01:00",d:"2026-07-01"},{id:"K80",round:"r32",n:80,sA:"1st L",sB:"3rd E/H/I/J/K",v:"Atlanta",ko:"16:00",d:"2026-07-01"},{id:"K81",round:"r32",n:82,sA:"1st G",sB:"3rd A/E/H/I/J",v:"Seattle",ko:"20:00",d:"2026-07-01"},{id:"K82",round:"r32",n:81,sA:"1st D",sB:"3rd B/E/F/I/J",v:"San Francisco",ko:"00:00",d:"2026-07-02"},{id:"K83",round:"r32",n:84,sA:"1st H",sB:"2nd J",v:"Los Angeles",ko:"19:00",d:"2026-07-02"},{id:"K84",round:"r32",n:83,sA:"2nd K",sB:"2nd L",v:"Toronto",ko:"23:00",d:"2026-07-02"},{id:"K85",round:"r32",n:85,sA:"1st B",sB:"3rd D/E/I/J/L",v:"Vancouver",ko:"03:00",d:"2026-07-03"},{id:"K86",round:"r32",n:88,sA:"2nd D",sB:"2nd G",v:"Dallas",ko:"18:00",d:"2026-07-03"},{id:"K87",round:"r32",n:86,sA:"1st J",sB:"2nd H",v:"Miami",ko:"22:00",d:"2026-07-03"},{id:"K88",round:"r32",n:87,sA:"1st K",sB:"3rd D/E/I/J/L",v:"Kansas City",ko:"01:30",d:"2026-07-04"},
   // R16 — slot labels use FIFA official match numbers; resolver looks up by n value
-  {id:"K89",round:"r16",n:89,sA:"Win M74",sB:"Win M77",v:"Houston",ko:"17:00",d:"2026-07-04"},{id:"K90",round:"r16",n:90,sA:"Win M73",sB:"Win M75",v:"Philadelphia",ko:"21:00",d:"2026-07-04"},{id:"K91",round:"r16",n:91,sA:"Win M76",sB:"Win M78",v:"New York/NJ",ko:"20:00",d:"2026-07-05"},{id:"K92",round:"r16",n:92,sA:"Win M79",sB:"Win M80",v:"Mexico City",ko:"00:00",d:"2026-07-06"},{id:"K93",round:"r16",n:93,sA:"Win M83",sB:"Win M84",v:"Dallas",ko:"19:00",d:"2026-07-06"},{id:"K94",round:"r16",n:94,sA:"Win M81",sB:"Win M82",v:"Seattle",ko:"00:00",d:"2026-07-07"},{id:"K95",round:"r16",n:95,sA:"Win M86",sB:"Win M88",v:"Atlanta",ko:"16:00",d:"2026-07-07"},{id:"K96",round:"r16",n:96,sA:"Win M85",sB:"Win M87",v:"Vancouver",ko:"20:00",d:"2026-07-07"},
+  {id:"K89",round:"r16",n:89,sA:"Win M74",sB:"Win M77",v:"Philadelphia",ko:"21:00",d:"2026-07-04"},{id:"K90",round:"r16",n:90,sA:"Win M73",sB:"Win M75",v:"Houston",ko:"17:00",d:"2026-07-04"},{id:"K91",round:"r16",n:91,sA:"Win M76",sB:"Win M78",v:"New York/NJ",ko:"20:00",d:"2026-07-05"},{id:"K92",round:"r16",n:92,sA:"Win M79",sB:"Win M80",v:"Mexico City",ko:"00:00",d:"2026-07-06"},{id:"K93",round:"r16",n:93,sA:"Win M83",sB:"Win M84",v:"Dallas",ko:"19:00",d:"2026-07-06"},{id:"K94",round:"r16",n:94,sA:"Win M81",sB:"Win M82",v:"Seattle",ko:"00:00",d:"2026-07-07"},{id:"K95",round:"r16",n:95,sA:"Win M86",sB:"Win M88",v:"Atlanta",ko:"16:00",d:"2026-07-07"},{id:"K96",round:"r16",n:96,sA:"Win M85",sB:"Win M87",v:"Vancouver",ko:"20:00",d:"2026-07-07"},
   // QF — dates/times verified via Al Jazeera direct GMT + CBS/ESPN/Yahoo ET cross-checks. Slot labels unchanged.
   {id:"K97",round:"qf",n:97,sA:"Win M89",sB:"Win M90",v:"Boston",ko:"20:00",d:"2026-07-09"},{id:"K98",round:"qf",n:98,sA:"Win M93",sB:"Win M94",v:"Los Angeles",ko:"19:00",d:"2026-07-10"},{id:"K99",round:"qf",n:99,sA:"Win M91",sB:"Win M92",v:"Miami",ko:"21:00",d:"2026-07-11"},{id:"K100",round:"qf",n:100,sA:"Win M95",sB:"Win M96",v:"Kansas City",ko:"01:00",d:"2026-07-12"},
   // SF / Third / Final — dates/times verified via ESPN/CBS/Yahoo ET cross-checks. Slot labels unchanged.
@@ -2470,26 +2470,41 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket=
     'South Africa':'SOUTH AFRICA',
   };
 
-  // Get the 16 remaining teams — check R16 bracket slots (winners of R32 are now in R16 slots)
+  // Get only surviving teams — won their last match or haven't played yet
   const r32Teams=useMemo(()=>{
     const teams=new Set();
-    // Primary: winners already placed in R16 bracket slots
-    KM.filter(m=>m.round==="r16").forEach(m=>{
+    // Find the furthest round that has any results
+    const roundsWithResults=['final','third','sf','qf','r16','r32'].filter(r=>
+      KM.filter(m=>m.round===r).some(m=>bracket[m.id]&&koResults[m.id])
+    );
+    const latestRound=roundsWithResults[0]||'r16';
+    // Add winners of completed matches in the latest round
+    KM.filter(m=>m.round===latestRound).forEach(m=>{
       const bk=bracket[m.id];
-      if(bk?.a)teams.add(bk.a);
-      if(bk?.b)teams.add(bk.b);
+      const result=koResults[m.id];
+      if(!bk?.a||!bk?.b)return;
+      if(result){
+        const w=koWinner(result);
+        if(w==="A")teams.add(bk.a);
+        else if(w==="B")teams.add(bk.b);
+      } else {
+        // Match not played yet — both teams still alive
+        teams.add(bk.a);
+        teams.add(bk.b);
+      }
     });
-    // Fallback: R32 bracket winners if R16 slots not yet filled
-    if(teams.size<16){
-      KM.filter(m=>m.round==="r32").forEach(m=>{
+    // Also add teams from next rounds if some have already advanced
+    ['r16','qf','sf','final'].forEach(r=>{
+      if(r===latestRound)return;
+      KM.filter(m=>m.round===r).forEach(m=>{
         const bk=bracket[m.id];
         if(bk?.a)teams.add(bk.a);
         if(bk?.b)teams.add(bk.b);
       });
-    }
+    });
     return teams;
-  },[bracket]);
-  const allR32Done=r32Teams.size>=16;
+  },[bracket,koResults]);
+  const allR32Done=r32Teams.size>0;
 
   const fetchOdds=async()=>{
     setLoading(true);setErr(null);

@@ -2443,7 +2443,7 @@ function KoMatchCard({match,teamA,teamB,result,onSetOverride,onSetResult,ownersh
   );
 }
 
-function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket={},koResults={}}) {
+function TournamentWinnerWidget({ownership,initials,lang,playerNames=[]}) {
   const [open,setOpen]=useState(false);
   const [odds,setOdds]=useState(null);
   const [loading,setLoading]=useState(false);
@@ -2475,35 +2475,12 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket=
       const res=await fetch('https://gamma-api.polymarket.com/events?slug=world-cup-winner');
       const data=await res.json();
       const markets=data[0]?.markets||[];
-      const allTeams=markets.map(m=>{
+      const teams=markets.map(m=>{
         let price=0;
         try{const prices=JSON.parse(m.outcomePrices||'[]');price=parseFloat(prices[0])||0;}catch(e){}
         const name=(m.groupItemTitle||m.question||'').replace(/Will (.+) win.*/i,'$1').trim();
-        return{name,pct:Math.round(price*100),rawPct:price*100};
-      });
-      // Get surviving teams from bracket
-      const surviving=new Set();
-      ['r16','qf','sf','third','final'].forEach(r=>{
-        KM.filter(m=>m.round===r).forEach(m=>{
-          const bk=bracket[m.id];
-          if(!bk?.a&&!bk?.b)return;
-          const result=koResults[m.id];
-          if(result){const w=koWinner(result);if(w==="A"&&bk.a)surviving.add(bk.a);else if(w==="B"&&bk.b)surviving.add(bk.b);}
-          else{if(bk.a)surviving.add(bk.a);if(bk.b)surviving.add(bk.b);}
-        });
-      });
-      const POLY_MAP={'France':'FRANCE','Spain':'SPAIN','Argentina':'ARGENTINA','England':'ENGLAND','Portugal':'PORTUGAL','Germany':'GERMANY','Brazil':'BRAZIL','Netherlands':'NETHERLANDS','USA':'USA','United States':'USA','Norway':'NORWAY','Japan':'JAPAN','Morocco':'MOROCCO','Colombia':'COLOMBIA','Mexico':'MEXICO','Belgium':'BELGIUM','Switzerland':'SWITZERLAND','Canada':'CANADA','Egypt':'EGYPT','Paraguay':'PARAGUAY','Australia':'AUSTRALIA','South Korea':'SOUTH KOREA','Sweden':'SWEDEN','Croatia':'CROATIA','Senegal':'SENEGAL','Ecuador':'ECUADOR','Austria':'AUSTRIA','Ivory Coast':'IVORY COAST',"Côte d'Ivoire":'IVORY COAST','DR Congo':'DR CONGO','Cape Verde':'CAPE VERDE','Saudi Arabia':'SAUDI ARABIA','South Africa':'SOUTH AFRICA','Ghana':'GHANA','Bosnia-Herzegovina':'BOSNIA AND HERZEGOVINA','Uruguay':'URUGUAY'};
-      let teams;
-      if(surviving.size>0){
-        // Show all surviving teams with <1% for those not found
-        teams=[...surviving].map(internalName=>{
-          const polyName=Object.entries(POLY_MAP).find(([,v])=>v===internalName)?.[0];
-          const found=allTeams.find(t=>t.name===polyName||POLY_MAP[t.name]===internalName);
-          return{name:internalName,pct:found?.rawPct>=1?Math.round(found.rawPct):null,rawPct:found?.rawPct||0};
-        }).sort((a,b)=>b.rawPct-a.rawPct);
-      } else {
-        teams=allTeams.filter(t=>t.pct>=1).sort((a,b)=>b.pct-a.pct);
-      }
+        return{name,pct:Math.round(price*100)};
+      }).filter(t=>t.pct>=1).sort((a,b)=>b.pct-a.pct);
       setOdds(teams);setLastFetched(new Date());
     }catch(e){setErr(lang==="es"?"No se pudieron cargar. Intenta de nuevo.":"Could not load odds. Try again.");}
     setLoading(false);
@@ -2557,9 +2534,7 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket=
                   const o=ownership[internalName];
                   const pcolor=o?getPlayerColor(o.playerIdx,PC[o.playerIdx]):"#8899b4";
                   const barColor=o?pcolor:"rgba(201,168,76,0.5)";
-                  const maxPct=odds[0]?.rawPct||odds[0]?.pct||1;
-                  const barW=Math.round((team.rawPct||team.pct||0)/maxPct*100);
-                  const displayPct=team.pct!=null?`${team.pct}%`:"<1%";
+                  const barW=Math.round(team.pct/odds[0].pct*100);
                   return(
                     <div key={team.name} style={{display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#5a6a8a",width:16,textAlign:"right",flexShrink:0}}>{i+1}</span>
@@ -2569,10 +2544,11 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket=
                       <div style={{flex:1,height:6,borderRadius:3,background:"rgba(26,39,68,0.8)",overflow:"hidden"}}>
                         <div style={{height:"100%",width:barW+"%",borderRadius:3,background:barColor,transition:"width 0.4s"}}/>
                       </div>
-                      <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,width:32,textAlign:"right",flexShrink:0}}>{displayPct}</span>
+                      <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pcolor,width:32,textAlign:"right",flexShrink:0}}>{team.pct}%</span>
                     </div>
                   );
                 })}
+                <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#c8c0b0",marginTop:6}}>{lang==="es"?"Todos los demás <1%":"All others <1%"}</div>
               </div>
             )}
           </div>
@@ -2951,9 +2927,18 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
     const abbr3=(team)=>{
       if(!team)return"TBD";
       const n=(TBN[team]?.name||team).toUpperCase();
-      const MAP={"UNITED STATES":"USA","BOSNIA AND HERZEGOVINA":"B&H","IVORY COAST":"CIV",
-        "SOUTH AFRICA":"RSA","CAPE VERDE":"CPV","DR CONGO":"COD","SOUTH KOREA":"KOR",
-        "SAUDI ARABIA":"KSA","NEW ZEALAND":"NZL","CZECH REPUBLIC":"CZE"};
+      const MAP={
+        "SPAIN":"ESP","FRANCE":"FRA","ENGLAND":"ENG","BRAZIL":"BRA","PORTUGAL":"POR",
+        "ARGENTINA":"ARG","GERMANY":"GER","NETHERLANDS":"NED","NORWAY":"NOR","BELGIUM":"BEL",
+        "COLOMBIA":"COL","JAPAN":"JPN","MOROCCO":"MAR","MEXICO":"MEX","CANADA":"CAN",
+        "SENEGAL":"SEN","SWEDEN":"SWE","AUSTRIA":"AUT","PARAGUAY":"PAR","EGYPT":"EGY",
+        "IVORY COAST":"CIV","BOSNIA AND HERZEGOVINA":"BIH","ALGERIA":"ALG","GHANA":"GHA",
+        "AUSTRALIA":"AUS","SOUTH KOREA":"KOR","DR CONGO":"COD","SAUDI ARABIA":"KSA",
+        "SOUTH AFRICA":"RSA","CAPE VERDE":"CPV","NEW ZEALAND":"NZL","SWITZERLAND":"SUI",
+        "UNITED STATES":"USA","CROATIA":"CRO","ECUADOR":"ECU","SCOTLAND":"SCO",
+        "URUGUAY":"URU","IRAN":"IRN","TURKEY":"TUR","TÜRKIYE":"TUR","QATAR":"QAT",
+        "IRAQ":"IRQ","PANAMA":"PAN","UZBEKISTAN":"UZB","JORDAN":"JOR","HAITI":"HAI",
+      };
       return MAP[n]||n.replace(/[^A-Z]/g,"").slice(0,3);
     };
     const fullName=(team)=>{
@@ -3312,21 +3297,6 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
           );
         });
       })()}
-      {(()=>{
-        const currentMatches=roundMatches[activeRound]||[];
-        const allDone=currentMatches.length>0&&currentMatches.every(m=>koResults[m.id]);
-        const nextRoundIdx=ROUND_ORDER.indexOf(activeRound)+1;
-        const nextRound=nextRoundIdx<ROUND_ORDER.length?ROUND_ORDER[nextRoundIdx]:null;
-        const nextLabel=nextRound?KO_LABELS[nextRound]:null;
-        if(!allDone||!nextRound)return null;
-        return(
-          <div style={{textAlign:"center",marginTop:8,marginBottom:20}}>
-            <button onClick={()=>{setActiveRound(nextRound);setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);}} style={{padding:"12px 28px",borderRadius:10,border:"1px solid var(--accent)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8}}>
-              NEXT STAGE: {nextLabel} →
-            </button>
-          </div>
-        );
-      })()}
       {!readOnly&&(
         <div style={{textAlign:"center",marginBottom:12,marginTop:4}}>
           <button onClick={()=>setOverrideMode(o=>!o)} style={{padding:"6px 16px",borderRadius:8,border:`1px solid ${overrideMode?"rgba(217,119,87,0.5)":"#2a3a5c"}`,background:overrideMode?"rgba(217,119,87,0.1)":"transparent",color:overrideMode?"#d97757":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:1,cursor:"pointer"}}>
@@ -3599,10 +3569,19 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       const sgtDate=new Date(kickoffUTC.getTime()+8*60*60*1000).toISOString().slice(0,10);
       if(sgtDate!==todaySGT) yesterdayResults[id]=r;
     });
+    // Build koResults excluding today's SGT games
+    const yesterdayKoResults={};
+    Object.entries(koResults).forEach(([id,r])=>{
+      const m=KM.find(x=>x.id===id);
+      if(!m||!m.ko)return;
+      const kickoffUTC=new Date(m.d+"T"+m.ko+":00Z");
+      const sgtDate=new Date(kickoffUTC.getTime()+8*60*60*1000).toISOString().slice(0,10);
+      if(sgtDate!==todaySGT) yesterdayKoResults[id]=r;
+    });
     // Calculate yesterday's ranking
     const yesterdayRanks=Array.from({length:config.playerCount},(_,i)=>{
       const gs=playerGSPts(i,picks||[],yesterdayResults);
-      const ko=playerKOPts(i,picks||[],bracket,koResults,config.koPoints);
+      const ko=playerKOPts(i,picks||[],bracket,yesterdayKoResults,config.koPoints);
       const myTeams=(picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);
       let gd=0,gf=0;
       myTeams.forEach(team=>{

@@ -443,6 +443,10 @@ const KO_ODDS = {
   K94:[50,50],  // USA vs Belgium
   K95:[83,17],  // Argentina vs Egypt
   K96:[41,59],  // Switzerland vs Colombia
+  // QF
+  K97:[75,25],  // France vs Morocco (1.28/3.75)
+  K98:[73,27],  // Spain vs Belgium (1.30/3.50)
+  K99:[34,66],  // Norway vs England (2.75/1.44)
 };
 
 const fmtKickoff = (dateStr, timeUTC) => {

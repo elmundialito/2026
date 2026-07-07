@@ -3324,12 +3324,10 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
         });
       })()}
       {(()=>{
-        const currentMatches=roundMatches[activeRound]||[];
-        const allDone=currentMatches.length>0&&currentMatches.every(m=>koResults[m.id]);
         const nextRoundIdx=ROUND_ORDER.indexOf(activeRound)+1;
         const nextRound=nextRoundIdx<ROUND_ORDER.length?ROUND_ORDER[nextRoundIdx]:null;
         const nextLabel=nextRound?KO_LABELS[nextRound]:null;
-        if(!allDone||!nextRound)return null;
+        if(!nextRound)return null;
         return(
           <div style={{textAlign:"center",marginTop:8,marginBottom:20}}>
             <button onClick={()=>{setActiveRound(nextRound);setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);}} style={{padding:"12px 28px",borderRadius:10,border:"1px solid var(--accent)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8}}>

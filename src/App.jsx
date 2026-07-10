@@ -2487,16 +2487,29 @@ function TournamentWinnerWidget({ownership,initials,lang,playerNames=[],bracket=
         return{name,pct:Math.round(price*100),rawPct:price*100};
       });
       const POLY_MAP={'France':'FRANCE','Spain':'SPAIN','Argentina':'ARGENTINA','England':'ENGLAND','Portugal':'PORTUGAL','Germany':'GERMANY','Brazil':'BRAZIL','Netherlands':'NETHERLANDS','USA':'USA','United States':'USA','Norway':'NORWAY','Japan':'JAPAN','Morocco':'MOROCCO','Colombia':'COLOMBIA','Mexico':'MEXICO','Belgium':'BELGIUM','Switzerland':'SWITZERLAND','Canada':'CANADA','Egypt':'EGYPT','Paraguay':'PARAGUAY','Australia':'AUSTRALIA','South Korea':'SOUTH KOREA','Sweden':'SWEDEN','Croatia':'CROATIA','Senegal':'SENEGAL','Ecuador':'ECUADOR','Austria':'AUSTRIA','Ivory Coast':'IVORY COAST',"Côte d'Ivoire":'IVORY COAST','DR Congo':'DR CONGO','Cape Verde':'CAPE VERDE','Saudi Arabia':'SAUDI ARABIA','South Africa':'SOUTH AFRICA','Ghana':'GHANA','Bosnia-Herzegovina':'BOSNIA AND HERZEGOVINA','Uruguay':'URUGUAY'};
+      // Build surviving teams: start with all R16 entrants, remove losers from each round
+      const eliminated=new Set();
       const surviving=new Set();
+      // First, add all R16 teams
+      KM.filter(m=>m.round==='r16').forEach(m=>{
+        const bk=bracket[m.id];
+        if(bk?.a)surviving.add(bk.a);
+        if(bk?.b)surviving.add(bk.b);
+      });
+      // Then remove losers from each subsequent round
       ['r16','qf','sf','third','final'].forEach(r=>{
         KM.filter(m=>m.round===r).forEach(m=>{
           const bk=bracket[m.id];
           if(!bk?.a&&!bk?.b)return;
           const result=koResults[m.id];
-          if(result){const w=koWinner(result);if(w==='A'&&bk.a)surviving.add(bk.a);else if(w==='B'&&bk.b)surviving.add(bk.b);}
-          else{if(bk.a)surviving.add(bk.a);if(bk.b)surviving.add(bk.b);}
+          if(result){
+            const w=koWinner(result);
+            if(w==='A'){eliminated.add(bk.b);}
+            else if(w==='B'){eliminated.add(bk.a);}
+          }
         });
       });
+      eliminated.forEach(t=>surviving.delete(t));
       let teams;
       if(surviving.size>0){
         teams=[...surviving].map(internalName=>{
@@ -3210,10 +3223,26 @@ function ShareKOBracketModal({onClose,bracket,koResults,ownership,initials,lang,
 function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides,setKoOverride,setKoResults,readOnly,isPreview=false,playerRankings=[],groupOrderOverride={},poolCode,myPlayerIdx,allPredictions={}}) {
   const lang=useContext(LangContext);
   const [activeRound,setActiveRound]=useState(()=>{
+    const now=Date.now();
+    const ADVANCE_MS=14*60*60*1000;
+    // Priority 1: latest round that already has at least one result entered
     for(const r of [...ROUND_ORDER].reverse()){
       if(KM.filter(m=>m.round===r).some(m=>koResults[m.id]))return r;
     }
-    return"r32";
+    // Priority 2: if 14h has passed since last kickoff of a round, auto-advance to next
+    let defaultRound="r32";
+    for(const r of ROUND_ORDER){
+      const matches=KM.filter(m=>m.round===r);
+      if(!matches.length)continue;
+      const lastKickoff=Math.max(...matches.map(m=>{
+        try{return new Date(m.d+"T"+(m.ko||"12:00")+":00Z").getTime();}catch{return 0;}
+      }));
+      const nextIdx=ROUND_ORDER.indexOf(r)+1;
+      if(nextIdx<ROUND_ORDER.length&&now>lastKickoff+ADVANCE_MS){
+        defaultRound=ROUND_ORDER[nextIdx];
+      }
+    }
+    return defaultRound;
   });
   const [matchChat,setMatchChat]=useState({});
   const [predictions,setPredictions]=useState({});
@@ -3224,18 +3253,24 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   const [shareKODate,setShareKODate]=useState(null);
   const [overrideMode,setOverrideMode]=useState(false);
 
-  // On mount, scroll to the latest date with at least 1 result (or today if no results yet)
+  // On mount, scroll to today's date if it has a result, otherwise latest date with a result
   useEffect(()=>{
+    const todaySGT=new Date(Date.now()+8*60*60*1000).toISOString().slice(0,10);
     const allDates=[...new Set(KM.filter(m=>m.d).map(m=>{
       try{const d=new Date(m.d+"T"+(m.ko||"12:00")+":00Z");return new Date(d.getTime()+8*60*60*1000).toISOString().slice(0,10);}catch{return m.d;}
     }))].sort();
-    // Find latest date with at least 1 result
+    const dateHasResult=(d)=>KM.filter(m=>{
+      try{const dt=new Date(m.d+"T"+(m.ko||"12:00")+":00Z");return new Date(dt.getTime()+8*60*60*1000).toISOString().slice(0,10)===d;}catch{return false;}
+    }).some(m=>koResults[m.id]);
+    // Prefer today if it has a result
     let targetDate=null;
-    for(const d of [...allDates].reverse()){
-      const hasResult=KM.filter(m=>{
-        try{const dt=new Date(m.d+"T"+(m.ko||"12:00")+":00Z");return new Date(dt.getTime()+8*60*60*1000).toISOString().slice(0,10)===d;}catch{return false;}
-      }).some(m=>koResults[m.id]);
-      if(hasResult){targetDate=d;break;}
+    if(dateHasResult(todaySGT)){
+      targetDate=todaySGT;
+    } else {
+      // Fall back to latest date with a result
+      for(const d of [...allDates].reverse()){
+        if(dateHasResult(d)){targetDate=d;break;}
+      }
     }
     if(!targetDate)return;
     setTimeout(()=>{
@@ -3475,7 +3510,7 @@ function PredictionRecap({allPredictions,matchResults,koResults={},playerNames,p
 function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,myPlayerIdx,onChangeUser,onEditProfile,onSuggestions,picRefresh=0,allPredictions={},draftOrder=[],groupOrderOverride={}}) {
   const lang=useContext(LangContext);
   const [expandedIdx,setExpandedIdx]=useState(null);
-  const today=new Date().toLocaleDateString("en-CA");
+  const today=new Date(Date.now()+8*60*60*1000).toISOString().slice(0,10);
   const playerData=useMemo(()=>{
     return Array.from({length:config.playerCount},(_,i)=>{
       const gsPts=playerGSPts(i,picks||[],matchResults);
@@ -5516,7 +5551,7 @@ export default function Mundialito() {
     <PicContext.Provider value={picRefresh}>
     <PicBumpContext.Provider value={()=>bumpPics(setPicRefresh)}>
     <><style>{FONTS}</style>
-    <div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628 0%,#0f1e38 40%,#0a1628 100%)",color:"#e0dcd4",fontFamily:"'DM Sans',sans-serif"}}>
+    <div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628 0%,#0f1e38 40%,#0a1628 100%)",color:"#e0dcd4",fontFamily:"'DM Sans',sans-serif",isolation:"isolate"}}>
       <div style={{position:"relative",textAlign:"center",padding:"26px 20px 4px"}}>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"var(--accent)",lineHeight:1}}>MUNDIALITO</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>{lang==="es"?"Copa Mundial 2026":"World Cup 2026"} · 🇨🇦 🇺🇸 🇲🇽</div>

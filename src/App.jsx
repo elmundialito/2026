@@ -3587,7 +3587,13 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       // their group is complete, 3rd-place qualifiers, AND host-overridden teams placed early
       const pastGroups=myTeams.filter(team=>isInR32Bracket(team,bracket)).length;
       const color=getPlayerColor(i,PC[i]);
-      return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,pastGroups,teamBreakdown,color,gd,gf,todayPts,myTeams};
+      // Check if all teams are eliminated from KO stage
+      const koTeams=myTeams.filter(team=>isInR32Bracket(team,bracket));
+      const allEliminated=koTeams.length>0&&koTeams.every(team=>{
+        const status=teamStatus(team,bracket,koResults);
+        return status?.eliminated===true;
+      });
+      return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,pastGroups,teamBreakdown,color,gd,gf,todayPts,myTeams,allEliminated};
     }).sort((a,b)=>{
       if(b.total!==a.total)return b.total-a.total;
       if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;
@@ -3697,15 +3703,16 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {playerData.map((p,rank)=>{
           const color=p.color;const isFirst=rank===0;const expanded=expandedIdx===p.idx;
+          const dead=p.allEliminated;
           return(
-            <div key={p.idx} style={{background:isFirst?`linear-gradient(135deg,${color}18,rgba(26,39,68,0.5))`:"rgba(26,39,68,0.3)",borderRadius:14,padding:"16px 20px",border:`1px solid ${color}${isFirst?"66":"33"}`,position:"relative",overflow:"hidden"}}>
+            <div key={p.idx} style={{background:isFirst?`linear-gradient(135deg,${color}18,rgba(26,39,68,0.5))`:"rgba(26,39,68,0.3)",borderRadius:14,padding:"16px 20px",border:`1px solid ${color}${isFirst?"66":"33"}`,position:"relative",overflow:"hidden",opacity:dead?0.55:1}}>
               {isFirst&&<div style={{position:"absolute",top:0,right:0,fontFamily:"'Bebas Neue'",fontSize:70,color:`${color}08`,letterSpacing:-2,lineHeight:1,padding:"0 10px"}}>1ST</div>}
               <div style={{display:"flex",alignItems:"center",gap:16,position:"relative",zIndex:1,cursor:"pointer"}} onClick={()=>setExpandedIdx(expanded?null:p.idx)}>
                 <div style={{fontFamily:"'Bebas Neue'",fontSize:38,color,letterSpacing:1,width:36,textAlign:"center",flexShrink:0}}>#{rank+1}</div>
                 <div style={{flex:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                     <PlayerAvatar idx={p.idx} name={p.name} size={44} style={{borderRadius:"50%",flexShrink:0}} refresh={picRefresh}/>
-                    <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color,display:"flex",alignItems:"center",gap:6}}>{p.name}{isFirst&&<span style={{fontSize:14}}>🏆</span>}{myPlayerIdx===p.idx&&<span style={{fontSize:10,color:"var(--accent)",background:"rgba(201,168,76,0.15)",padding:"1px 7px",borderRadius:8,fontFamily:"'DM Sans'",fontWeight:600}}>{lang==="es"?"yo":"you"}</span>}</div>
+                    <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color,display:"flex",alignItems:"center",gap:6}}>{dead&&<span style={{fontSize:14}}>💀</span>}{p.name}{isFirst&&<span style={{fontSize:14}}>🏆</span>}{myPlayerIdx===p.idx&&<span style={{fontSize:10,color:"var(--accent)",background:"rgba(201,168,76,0.15)",padding:"1px 7px",borderRadius:8,fontFamily:"'DM Sans'",fontWeight:600}}>{lang==="es"?"yo":"you"}</span>}</div>
                     <span style={{fontFamily:"'DM Sans'",fontSize:11,color:`${color}88`,marginLeft:"auto"}}>{expanded?"▲":"▼"}</span>
                   </div>
                   <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
@@ -3803,6 +3810,8 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           const color=p.color||"#c9a84c";
           const isFirst=ri===0;
           const isTop3=ri<3;
+          const dead=p.allEliminated;
+          ctx.globalAlpha=dead?0.55:1;
 
           // Row background — subtle tint for 1st, transparent for rest
           if(isFirst){
@@ -3880,7 +3889,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           while(ctx.measureText(name).width>maxNameW&&name.length>3) name=name.slice(0,-1)+"…";
           const blockCenterY=y+ROW/2;
           const nameY=p.todayPts>0?blockCenterY-5:blockCenterY+6;
-          ctx.fillText(name,nameX,nameY);
+          ctx.fillText((dead?"💀 ":"")+name,nameX,nameY);
           if(p.todayPts>0){
             ctx.font=`600 9px DMSans,Arial`;
             ctx.fillStyle=`${color}99`;
@@ -3896,6 +3905,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           ctx.font=`400 9px DMSans,Arial`;
           ctx.fillStyle=`${color}77`;
           ctx.fillText(lang==="es"?(p.total===1?"punto":"puntos"):(p.total===1?"pt":"pts"),W-PAD-8,y+ROW/2+19);
+          ctx.globalAlpha=1;
         }
 
         // Footer

@@ -3590,7 +3590,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       // Check if all teams are eliminated from KO stage
       const koTeams=myTeams.filter(team=>isInR32Bracket(team,bracket));
       const allEliminated=koTeams.length>0&&koTeams.every(team=>{
-        const status=teamStatus(team,bracket,koResults);
+        const status=getTeamStage(team,bracket,koResults,matchResults);
         return status?.eliminated===true;
       });
       return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,pastGroups,teamBreakdown,color,gd,gf,todayPts,myTeams,allEliminated};
@@ -5561,7 +5561,7 @@ export default function Mundialito() {
     <PicContext.Provider value={picRefresh}>
     <PicBumpContext.Provider value={()=>bumpPics(setPicRefresh)}>
     <><style>{FONTS}</style>
-    <div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628 0%,#0f1e38 40%,#0a1628 100%)",color:"#e0dcd4",fontFamily:"'DM Sans',sans-serif",isolation:"isolate"}}>
+    <div style={{minHeight:"100vh",background:"linear-gradient(165deg,#0a1628 0%,#0f1e38 40%,#0a1628 100%)",color:"#e0dcd4",fontFamily:"'DM Sans',sans-serif"}}>
       <div style={{position:"relative",textAlign:"center",padding:"26px 20px 4px"}}>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:42,letterSpacing:10,color:"var(--accent)",lineHeight:1}}>MUNDIALITO</div>
         <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#4a5a7a",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>{lang==="es"?"Copa Mundial 2026":"World Cup 2026"} · 🇨🇦 🇺🇸 🇲🇽</div>

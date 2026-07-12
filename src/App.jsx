@@ -448,6 +448,9 @@ const KO_ODDS = {
   K98:[73,27],  // Spain vs Belgium (1.30/3.50)
   K99:[34,66],  // Norway vs England (2.75/1.44)
   K100:[72,28], // Argentina vs Switzerland (1.33/3.40)
+  // SF
+  K101:[59,41],  // France vs Spain (1.61/2.30)
+  K102:[55,45],  // England vs Argentina (1.72/2.10)
 };
 
 const fmtKickoff = (dateStr, timeUTC) => {
@@ -3225,12 +3228,8 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
   const [activeRound,setActiveRound]=useState(()=>{
     const now=Date.now();
     const ADVANCE_MS=14*60*60*1000;
-    // Priority 1: latest round that already has at least one result entered
-    for(const r of [...ROUND_ORDER].reverse()){
-      if(KM.filter(m=>m.round===r).some(m=>koResults[m.id]))return r;
-    }
-    // Priority 2: if 14h has passed since last kickoff of a round, auto-advance to next
-    let defaultRound="r32";
+    // First check: has 14h passed since the last kickoff of any round? If so, advance to next.
+    let timeBasedRound="r32";
     for(const r of ROUND_ORDER){
       const matches=KM.filter(m=>m.round===r);
       if(!matches.length)continue;
@@ -3239,10 +3238,18 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
       }));
       const nextIdx=ROUND_ORDER.indexOf(r)+1;
       if(nextIdx<ROUND_ORDER.length&&now>lastKickoff+ADVANCE_MS){
-        defaultRound=ROUND_ORDER[nextIdx];
+        timeBasedRound=ROUND_ORDER[nextIdx];
       }
     }
-    return defaultRound;
+    // If time-based rule says we should be in a later round than where results exist, use it
+    const latestWithResults=ROUND_ORDER.reduce((found,r)=>{
+      if(KM.filter(m=>m.round===r).some(m=>koResults[m.id]))return r;
+      return found;
+    },"r32");
+    // Use whichever is further along
+    const timeIdx=ROUND_ORDER.indexOf(timeBasedRound);
+    const resultsIdx=ROUND_ORDER.indexOf(latestWithResults);
+    return ROUND_ORDER[Math.max(timeIdx,resultsIdx)];
   });
   const [matchChat,setMatchChat]=useState({});
   const [predictions,setPredictions]=useState({});

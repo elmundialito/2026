@@ -3712,7 +3712,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                 <div style={{flex:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                     <PlayerAvatar idx={p.idx} name={p.name} size={44} style={{borderRadius:"50%",flexShrink:0}} refresh={picRefresh}/>
-                    <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color,display:"flex",alignItems:"center",gap:6}}>{dead&&<span style={{fontSize:14}}>💀</span>}{p.name}{isFirst&&<span style={{fontSize:14}}>🏆</span>}{myPlayerIdx===p.idx&&<span style={{fontSize:10,color:"var(--accent)",background:"rgba(201,168,76,0.15)",padding:"1px 7px",borderRadius:8,fontFamily:"'DM Sans'",fontWeight:600}}>{lang==="es"?"yo":"you"}</span>}</div>
+                    <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color,display:"flex",alignItems:"center",gap:6}}>{p.name}{dead&&<span style={{fontSize:14}}>❌</span>}{isFirst&&<span style={{fontSize:14}}>🏆</span>}{myPlayerIdx===p.idx&&<span style={{fontSize:10,color:"var(--accent)",background:"rgba(201,168,76,0.15)",padding:"1px 7px",borderRadius:8,fontFamily:"'DM Sans'",fontWeight:600}}>{lang==="es"?"yo":"you"}</span>}</div>
                     <span style={{fontFamily:"'DM Sans'",fontSize:11,color:`${color}88`,marginLeft:"auto"}}>{expanded?"▲":"▼"}</span>
                   </div>
                   <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
@@ -3889,7 +3889,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           while(ctx.measureText(name).width>maxNameW&&name.length>3) name=name.slice(0,-1)+"…";
           const blockCenterY=y+ROW/2;
           const nameY=p.todayPts>0?blockCenterY-5:blockCenterY+6;
-          ctx.fillText((dead?"💀 ":"")+name,nameX,nameY);
+          ctx.fillText(name+(dead?" ❌":""),nameX,nameY);
           if(p.todayPts>0){
             ctx.font=`600 9px DMSans,Arial`;
             ctx.fillStyle=`${color}99`;

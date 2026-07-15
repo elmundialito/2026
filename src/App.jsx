@@ -152,7 +152,7 @@ const getShareUrl = (code) => {
 
 
 const PLAYER_COUNTS = [2,3,4,6,8];
-const DEFAULT_KO = { r32:4, r16:6, qf:8, sf:10, third:6, final:12 };
+const DEFAULT_KO = { r32:4, r16:6, qf:8, sf:10, third:5, final:12 };
 const KO_LABELS = { r32:"Round of 32", r16:"Round of 16", qf:"Quarterfinals", sf:"Semifinals", final:"Final", third:"3rd Place" };
 const ROUND_ORDER = ["r32","r16","qf","sf","third","final"];
 const PC = ["var(--accent)","#d97757","#61a978","#6b9bd1","#b67ad6","#d65b87","#e0b834","#5fb3b3"];

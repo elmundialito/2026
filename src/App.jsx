@@ -741,7 +741,11 @@ function getTeamStage(team, bracket, koResults, matchResults) {
       const w=koWinner(koResults?.[m.id]);
       if(!w)return{stage:LABELS[round],eliminated:false};
       const won=(w==="A"&&bk.a===team)||(w==="B"&&bk.b===team);
-      if(!won)return{stage:LABELS[round],eliminated:true};
+      if(!won){
+        // SF losers go to 3rd place match — not eliminated yet
+        if(round==='sf')return{stage:'3v4',eliminated:false};
+        return{stage:LABELS[round],eliminated:true};
+      }
     }
   }
   const third=KM.find(m=>m.round==="third");
@@ -3325,8 +3329,8 @@ function KnockoutScreen({config,picks,matchResults,bracket,koResults,koOverrides
         <button onClick={()=>setShareKO("bracket_view")} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 12px",borderRadius:8,border:"1px solid #2a3a5c",background:"rgba(26,39,68,0.5)",color:"#c8c0b0",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer"}}>🏆 BRACKET</button>
         <button onClick={()=>setShareKO("menu")} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 12px",borderRadius:8,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.06)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,cursor:"pointer"}}>📤 SHARE</button>
       </div>
-      <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto",alignItems:"center"}}>
-        {ROUND_ORDER.map(r=>{const active=activeRound===r;const cnt=roundMatches[r]?.length||0;const done=roundMatches[r]?.filter(m=>koResults[m.id]).length||0;return(<button key={r} onClick={()=>setActiveRound(r)} style={{padding:"7px 12px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1.5,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}}>{KO_LABELS[r]}<span style={{fontFamily:"'DM Sans'",fontSize:9,color:active?"#c9a84c88":"#3d5070",marginLeft:5}}>{done}/{cnt}</span></button>);})}
+      <div ref={el=>{if(el){const active=el.querySelector('[data-active="true"]');if(active){const left=active.offsetLeft-el.clientWidth/2+active.clientWidth/2;el.scrollTo({left,behavior:'smooth'}); }}}} style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto",alignItems:"center",scrollbarWidth:"none"}}>
+        {ROUND_ORDER.map(r=>{const active=activeRound===r;const cnt=roundMatches[r]?.length||0;const done=roundMatches[r]?.filter(m=>koResults[m.id]).length||0;return(<button data-active={active} key={r} onClick={()=>setActiveRound(r)} style={{padding:"7px 12px",borderRadius:8,border:active?"2px solid var(--accent)":"2px solid #2a3a5c",background:active?"rgba(201,168,76,0.1)":"rgba(26,39,68,0.4)",color:active?"var(--accent)":"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1.5,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}}>{KO_LABELS[r]}<span style={{fontFamily:"'DM Sans'",fontSize:9,color:active?"#c9a84c88":"#3d5070",marginLeft:5}}>{done}/{cnt}</span></button>);})}
       </div>
       <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a",textAlign:"center",marginBottom:12}}>Win = <span style={{color:"var(--accent)",fontWeight:700}}>{config.koPoints[activeRound]} pts</span></div>
       {(()=>{

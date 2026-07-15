@@ -278,7 +278,7 @@ const UI = {
     rulesTitle1:"The Goal", rulesBody1:"Draft a roster of World Cup teams. Score points based on how your teams perform. Highest total takes the pot.",
     rulesTitle2:"The Draft", rulesBody2:"Take turns picking teams in a snake draft — direction reverses each round. Everyone ends up with the same number of teams (48 ÷ players).",
     rulesTitle3:"Group Stage", rulesBody3:"Your teams play 3 group games each. You earn 3 pts per win, 1 pt per draw. Losses = 0.",
-    rulesTitle4:"Knockout Stage", rulesBody4:"Bonus points every time one of your teams wins a KO match. Stakes rise each round: R32=4, R16=6, QF=8, SF=10, 3rd Place=6, Final=12.",
+    rulesTitle4:"Knockout Stage", rulesBody4:"Bonus points every time one of your teams wins a KO match. Stakes rise each round: R32=4, R16=6, QF=8, SF=10, 3rd Place=5, Final=12.",
     rulesTitle5:"Winning", rulesBody5:"Highest TOTAL (Group + Knockout) takes the pot. Tiebreaks: most teams in Round of 32 → goal difference → goals scored → Head to head record → draft order.",
     tapToContinue:"Tap to continue",
     hostAccess:"HOST ACCESS", hostPwPlaceholder:"Host password",
@@ -324,7 +324,7 @@ const UI = {
     rulesTitle1:"El Objetivo", rulesBody1:"Elige un equipo de selecciones del Mundial. Ganas puntos según su rendimiento. El que más tenga se lleva el premio.",
     rulesTitle2:"El Sorteo", rulesBody2:"Eligen equipos por turnos en orden de serpiente — la dirección cambia cada ronda. Todos terminan con el mismo número de equipos (48 ÷ jugadores).",
     rulesTitle3:"Fase de Grupos", rulesBody3:"Tus equipos juegan 3 partidos de grupo. Ganas 3 pts por victoria, 1 pt por empate. Las derrotas = 0.",
-    rulesTitle4:"Fase Eliminatoria", rulesBody4:"Puntos extra cada vez que uno de tus equipos gana un partido eliminatorio. Las apuestas suben cada ronda: R32=4, R16=6, CF=8, SF=10, 3er Puesto=6, Final=12.",
+    rulesTitle4:"Fase Eliminatoria", rulesBody4:"Puntos extra cada vez que uno de tus equipos gana un partido eliminatorio. Las apuestas suben cada ronda: R32=4, R16=6, CF=8, SF=10, 3er Puesto=5, Final=12.",
     rulesTitle5:"Ganar", rulesBody5:"El TOTAL más alto (Grupos + Eliminatorias) se lleva el premio. Desempate: más equipos en Ronda de 32 → diferencia de goles → goles a favor → récord H2H → sorteo.",
     tapToContinue:"Toca para continuar",
     hostAccess:"ACCESO ANFITRIÓN", hostPwPlaceholder:"Contraseña del anfitrión",
@@ -451,6 +451,9 @@ const KO_ODDS = {
   // SF
   K101:[59,41],  // France vs Spain (1.61/2.30)
   K102:[55,45],  // England vs Argentina (1.72/2.10)
+  // 3rd Place & Final
+  K103:[58,42],  // France vs England 3rd place (1.61/2.20)
+  K104:[59,41],  // Spain vs Argentina Final (1.61/2.30)
 };
 
 const fmtKickoff = (dateStr, timeUTC) => {

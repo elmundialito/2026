@@ -745,8 +745,19 @@ function getTeamStage(team, bracket, koResults, matchResults) {
       if(!w)return{stage:LABELS[round],eliminated:false};
       const won=(w==="A"&&bk.a===team)||(w==="B"&&bk.b===team);
       if(!won){
-        // SF losers go to 3rd place match — not eliminated yet
-        if(round==='sf')return{stage:'3v4',eliminated:false};
+        if(round==='sf'){
+          // Check if 3rd place match already has a result
+          const third=KM.find(m=>m.round==="third");
+          const thirdBk=bracket?.[third?.id];
+          if(thirdBk&&(thirdBk.a===team||thirdBk.b===team)){
+            const tw=koWinner(koResults?.[third.id]);
+            if(tw){
+              const twon=(tw==="A"&&thirdBk.a===team)||(tw==="B"&&thirdBk.b===team);
+              return twon?{stage:"🥉 3RD",eliminated:false,finished:true}:{stage:"4TH",eliminated:true,finished:true};
+            }
+          }
+          return{stage:'3v4',eliminated:false};
+        }
         return{stage:LABELS[round],eliminated:true};
       }
     }

@@ -3603,11 +3603,18 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
       const color=getPlayerColor(i,PC[i]);
       // Check if all teams are eliminated from KO stage
       const koTeams=myTeams.filter(team=>isInR32Bracket(team,bracket));
-      const allEliminated=koTeams.length>0&&koTeams.every(team=>{
+      const finalResult=koResults["K104"];
+      const finalDone=!!koWinner(finalResult);
+      const allEliminated=!finalDone&&koTeams.length>0&&koTeams.every(team=>{
         const status=getTeamStage(team,bracket,koResults,matchResults);
-        return status?.eliminated===true;
+        return status?.eliminated===true||status?.finished===true;
       });
-      return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,pastGroups,teamBreakdown,color,gd,gf,todayPts,myTeams,allEliminated};
+      // Check if this player owns the world champion
+      const finalWinnerSide=koWinner(finalResult);
+      const finalBk=bracket["K104"]||{};
+      const champion=finalWinnerSide==="A"?finalBk.a:finalWinnerSide==="B"?finalBk.b:null;
+      const isChampion=champion?myTeams.has(champion):false;
+      return{idx:i,name:config.playerNames[i],gsPts,koPts,total:gsPts+koPts,r32,pastGroups,teamBreakdown,color,gd,gf,todayPts,myTeams,allEliminated,isChampion,finalDone};
     }).sort((a,b)=>{
       if(b.total!==a.total)return b.total-a.total;
       if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;
@@ -3718,6 +3725,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
         {playerData.map((p,rank)=>{
           const color=p.color;const isFirst=rank===0;const expanded=expandedIdx===p.idx;
           const dead=p.allEliminated;
+          const champion=p.isChampion&&p.finalDone;
           return(
             <div key={p.idx} style={{background:isFirst?`linear-gradient(135deg,${color}18,rgba(26,39,68,0.5))`:"rgba(26,39,68,0.3)",borderRadius:14,padding:"16px 20px",border:`1px solid ${color}${isFirst?"66":"33"}`,position:"relative",overflow:"hidden",opacity:dead?0.55:1}}>
               {isFirst&&<div style={{position:"absolute",top:0,right:0,fontFamily:"'Bebas Neue'",fontSize:70,color:`${color}08`,letterSpacing:-2,lineHeight:1,padding:"0 10px"}}>1ST</div>}
@@ -3726,7 +3734,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                 <div style={{flex:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                     <PlayerAvatar idx={p.idx} name={p.name} size={44} style={{borderRadius:"50%",flexShrink:0}} refresh={picRefresh}/>
-                    <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:700,color,display:"flex",alignItems:"center",gap:6}}>{p.name}{dead&&<span style={{fontSize:14}}>❌</span>}{isFirst&&<span style={{fontSize:14}}>🏆</span>}{myPlayerIdx===p.idx&&<span style={{fontSize:10,color:"var(--accent)",background:"rgba(201,168,76,0.15)",padding:"1px 7px",borderRadius:8,fontFamily:"'DM Sans'",fontWeight:600}}>{lang==="es"?"yo":"you"}</span>}</div>
+                    <div style={{fontFamily:"'DM Sans'",fontSize:16,fontWeight:champion?900:700,color,display:"flex",alignItems:"center",gap:6}}>{p.name}{dead&&<span style={{fontSize:14}}>❌</span>}{champion&&<span style={{fontSize:16}}>🏆</span>}{!champion&&isFirst&&p.finalDone&&<span style={{fontSize:14}}>🏆</span>}{myPlayerIdx===p.idx&&<span style={{fontSize:10,color:"var(--accent)",background:"rgba(201,168,76,0.15)",padding:"1px 7px",borderRadius:8,fontFamily:"'DM Sans'",fontWeight:600}}>{lang==="es"?"yo":"you"}</span>}</div>
                     <span style={{fontFamily:"'DM Sans'",fontSize:11,color:`${color}88`,marginLeft:"auto"}}>{expanded?"▲":"▼"}</span>
                   </div>
                   <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
@@ -3754,8 +3762,8 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
                       return(
                         <div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:"rgba(10,22,40,0.3)"}}>
                           <span style={{fontSize:15,flexShrink:0}}>{tm?.flag}</span>
-                          <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,flex:1,color:eliminated?"#6b7a90":"#e0dcd4",textDecoration:eliminated?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>
-                          {stage&&<span style={{fontFamily:"'Bebas Neue'",fontSize:9,color:stageColor,background:stageBg,border:`1px solid ${stageBorder}`,padding:"1px 5px",borderRadius:4,flexShrink:0,letterSpacing:1,whiteSpace:"nowrap",textDecoration:eliminated?"line-through":"none"}}>{stage}</span>}
+                          <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:500,flex:1,color:eliminated&&!isMedal?"#6b7a90":"#e0dcd4",textDecoration:eliminated&&!isMedal?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>
+                          {stage&&<span style={{fontFamily:"'Bebas Neue'",fontSize:9,color:stageColor,background:stageBg,border:`1px solid ${stageBorder}`,padding:"1px 5px",borderRadius:4,flexShrink:0,letterSpacing:1,whiteSpace:"nowrap",textDecoration:eliminated&&!isMedal?"line-through":"none"}}>{stage}</span>}
                           <div style={{textAlign:"right",flexShrink:0}}>
                             <div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:color,letterSpacing:1,lineHeight:1}}>{tp}<span style={{fontSize:8,opacity:0.7}}>pts</span></div>
                           </div>
@@ -3825,7 +3833,9 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           const isFirst=ri===0;
           const isTop3=ri<3;
           const dead=p.allEliminated;
+          const champion=p.isChampion&&p.finalDone;
           ctx.globalAlpha=dead?0.55:1;
+          ctx.font=`${champion?900:700} ${isFirst?18:16}px DMSans,Arial`;
 
           // Row background — subtle tint for 1st, transparent for rest
           if(isFirst){
@@ -3903,7 +3913,7 @@ function StandingsScreen({config,picks,matchResults,bracket,koResults,initials,m
           while(ctx.measureText(name).width>maxNameW&&name.length>3) name=name.slice(0,-1)+"…";
           const blockCenterY=y+ROW/2;
           const nameY=p.todayPts>0?blockCenterY-5:blockCenterY+6;
-          ctx.fillText(name+(dead?" ❌":""),nameX,nameY);
+          ctx.fillText(name+(dead?" ❌":"")+(champion?" 🏆":""),nameX,nameY);
           if(p.todayPts>0){
             ctx.font=`600 9px DMSans,Arial`;
             ctx.fillStyle=`${color}99`;

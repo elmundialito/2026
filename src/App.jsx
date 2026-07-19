@@ -4984,7 +4984,7 @@ function FinaleSequence({playerData, bracket, koResults, matchResults, config, i
   const finalScore = finalResult ? `${finalResult.home} – ${finalResult.away}` : "? – ?";
 
   // Sort players 8th to 1st for reveal
-  const revealOrder = [...playerData].reverse(); // playerData is already sorted 1st→8th
+  // Sort players 8th to 1st for reveal — handled below at line of use
 
   // Splash animation
   useEffect(() => {

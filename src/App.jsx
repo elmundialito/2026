@@ -4966,10 +4966,11 @@ const THEME_COLORS = [
 
 function FinaleSequence({playerData, bracket, koResults, matchResults, config, initials, picRefresh, lang, onDone}) {
   // Phase 1: final score splash, Phase 2: leaderboard reveal (8→1)
-  const [phase, setPhase] = useState('splash'); // 'splash' | 'reveal'
-  const [revealIdx, setRevealIdx] = useState(7); // start at 8th place (index 7)
+  const [phase, setPhase] = useState('splash'); // 'splash' | 'reveal' | 'summary'
+  const [revealIdx, setRevealIdx] = useState(0); // 0=8th place, 7=1st place
   const [cardPhase, setCardPhase] = useState('enter'); // 'enter' | 'hold' | 'exit'
   const [splashPhase, setSplashPhase] = useState('in'); // 'in' | 'hold' | 'out'
+  const [summaryPhase, setSummaryPhase] = useState('in');
 
   const finalResult = koResults["K104"];
   const finalW = koWinner(finalResult);
@@ -4994,7 +4995,7 @@ function FinaleSequence({playerData, bracket, koResults, matchResults, config, i
     return () => [t1,t2,t3].forEach(clearTimeout);
   }, [phase]);
 
-  // Card flip cycle
+  // Card flip cycle — revealIdx 0=8th place, 7=1st place
   useEffect(() => {
     if(phase !== 'reveal') return;
     if(cardPhase === 'enter') {
@@ -5007,17 +5008,21 @@ function FinaleSequence({playerData, bracket, koResults, matchResults, config, i
     }
     if(cardPhase === 'exit') {
       const t = setTimeout(() => {
-        if(revealIdx > 0) {
-          setRevealIdx(i => i - 1);
+        if(revealIdx < playerData.length - 1) {
+          setRevealIdx(i => i + 1);
           setCardPhase('enter');
         } else {
-          onDone();
+          setPhase('summary');
+          setSummaryPhase('in');
+          setTimeout(() => setSummaryPhase('hold'), 50);
         }
       }, 500);
       return () => clearTimeout(t);
     }
   }, [phase, cardPhase, revealIdx]);
 
+  // revealOrder: index 0=last place, index 7=1st place
+  const revealOrder = [...playerData].reverse();
   const p = revealOrder[revealIdx];
   const rank = playerData.length - revealIdx; // 8,7,6...1
 
@@ -5137,6 +5142,33 @@ function FinaleSequence({playerData, bracket, koResults, matchResults, config, i
 
           {/* Skip */}
           <button onClick={onDone} style={{position:"absolute",bottom:24,right:20,fontFamily:"'DM Sans'",fontSize:11,color:"#3d5070",background:"transparent",border:"none",cursor:"pointer",letterSpacing:1}}>SKIP ›</button>
+        </>
+      )}
+
+      {/* === PHASE 3: SUMMARY === */}
+      {phase === 'summary' && (
+        <>
+          <div style={{width:"calc(100% - 32px)",maxWidth:420,transition:"opacity 0.6s, transform 0.6s",opacity:summaryPhase==='hold'?1:0,transform:summaryPhase==='hold'?'translateY(0)':'translateY(30px)'}}>
+            <div style={{textAlign:"center",marginBottom:16}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:14,color:"#c9a84c",letterSpacing:4}}>🏆 FINAL STANDINGS 🏆</div>
+              <div style={{fontFamily:"'DM Sans'",fontSize:10,color:"#3d5070",letterSpacing:2}}>MUNDIALITO 2026</div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {playerData.map((p,i)=>{
+                const isFirst=i===0;
+                const medals=['🥇','🥈','🥉'];
+                return(
+                  <div key={p.idx} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,background:isFirst?"linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05))":"rgba(26,39,68,0.4)",border:isFirst?"1px solid rgba(201,168,76,0.4)":"1px solid #1e2f50"}}>
+                    <div style={{fontFamily:"'Bebas Neue'",fontSize:i<3?18:14,color:p.color,width:28,textAlign:"center",flexShrink:0}}>{medals[i]||`#${i+1}`}</div>
+                    <PlayerAvatar idx={p.idx} name={p.name} size={32} refresh={picRefresh} style={{borderRadius:"50%",flexShrink:0}}/>
+                    <div style={{fontFamily:"'DM Sans'",fontSize:13,fontWeight:700,color:p.color,flex:1}}>{p.name}{p.isChampion&&p.finalDone?' 🏆':''}</div>
+                    <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:isFirst?"#c9a84c":p.color}}>{p.total}<span style={{fontFamily:"'DM Sans'",fontSize:9,color:"#5a6a8a",marginLeft:2}}>pts</span></div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <button onClick={onDone} style={{position:"absolute",bottom:24,right:20,fontFamily:"'DM Sans'",fontSize:11,color:"#3d5070",background:"transparent",border:"none",cursor:"pointer",letterSpacing:1}}>CLOSE ›</button>
         </>
       )}
     </div>

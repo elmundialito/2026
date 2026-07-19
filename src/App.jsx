@@ -5528,7 +5528,6 @@ export default function Mundialito() {
   const [saveStatus,setSaveStatus]=useState(null);
   const [resultOverlay,setResultOverlay]=useState(null); // array of result objects to show
   const [showFinale,setShowFinale]=useState(false);
-  const finaleShownKey="mundi_finale_shown_K104";
   // Player data for finale — computed at top level
   const [myPlayerIdx,setMyPlayerIdx]=useState(()=>{try{const v=window.localStorage?.getItem("mundi_my_player");return v!==null?parseInt(v):null;}catch(e){return null;}});
   const [playerColors,setPlayerColors]=useState({});
@@ -5832,21 +5831,25 @@ export default function Mundialito() {
     }
   },[st.koResults, myPlayerIdx, resolvedBracket]);
 
-  // Finale sequence — trigger once when K104 result is entered (localStorage once-only)
+  // Finale sequence — shows every time app opens within 24h of final kickoff
+  const shownFinaleThisSessionRef = useRef(false);
   useEffect(()=>{
     const finalResult=st.koResults["K104"];
     if(!koWinner(finalResult))return;
+    if(shownFinaleThisSessionRef.current)return;
+    // Only within 24h of final kickoff
     try{
-      if(window.localStorage?.getItem(finaleShownKey))return;
-      // Only show after ResultOverlay is done (slight delay)
-      const t=setTimeout(()=>{
-        if(!resultOverlay){
-          setShowFinale(true);
-          window.localStorage?.setItem(finaleShownKey,"1");
-        }
-      },800);
-      return ()=>clearTimeout(t);
-    }catch{setShowFinale(true);}
+      const finalMatch=KM.find(m=>m.id==="K104");
+      if(finalMatch){
+        const kickoff=new Date(finalMatch.d+"T"+(finalMatch.ko||"19:00")+":00Z").getTime();
+        if(Date.now()>kickoff+24*60*60*1000)return;
+      }
+    }catch{}
+    shownFinaleThisSessionRef.current=true;
+    const t=setTimeout(()=>{
+      if(!resultOverlay) setShowFinale(true);
+    },800);
+    return()=>clearTimeout(t);
   },[st.koResults, resultOverlay]);
   const playerRankings=useMemo(()=>{return Array.from({length:st.config.playerCount},(_,i)=>{const gsPts=playerGSPts(i,st.picks||[],st.matchResults);const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);let gd=0,gf=0;myTeams.forEach(team=>{GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]===team,isAway=m.t[1]===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const isHome=bk.a===team,isAway=bk.b===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});});const pastGroups=myTeams.filter(team=>isInR32Bracket(team,resolvedBracket)).length;const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(st.koResults[m.id]);if(!w0)return false;const bk=resolvedBracket[m.id];if(!bk)return false;const w=w0==="A"?bk.a:bk.b;return w&&myTeams.includes(w);}).length;return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,pastGroups,r32,gd,gf,myTeams};}).sort((a,b)=>{if(b.total!==a.total)return b.total-a.total;if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;if(b.gd!==a.gd)return b.gd-a.gd;if(b.gf!==a.gf)return b.gf-a.gf;let aWins=0,bWins=0,aGD=0,bGD=0,aGF=0,bGF=0;GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const aH=a.myTeams.includes(m.t[0]),aA=a.myTeams.includes(m.t[1]),bH=b.myTeams.includes(m.t[0]),bA=b.myTeams.includes(m.t[1]);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const aH=a.myTeams.includes(bk.a),aA=a.myTeams.includes(bk.b),bH=b.myTeams.includes(bk.a),bA=b.myTeams.includes(bk.b);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});if(aWins!==bWins)return bWins-aWins;if(aGD!==bGD)return bGD-aGD;if(aGF!==bGF)return bGF-aGF;const draftOrd=st.draftOrder||[];const aPick=draftOrd.indexOf(a.idx);const bPick=draftOrd.indexOf(b.idx);if(aPick!==-1&&bPick!==-1)return aPick-bPick;return a.idx-b.idx;});},[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
   const syncCode=useMemo(()=>encode(st),[st]);
@@ -6057,7 +6060,7 @@ export default function Mundialito() {
       {resultOverlay&&<ResultOverlay results={resultOverlay} onDone={()=>setResultOverlay(null)}/>}
       {showFinale&&finalePlayerData.length>0&&<FinaleSequence playerData={finalePlayerData} bracket={resolvedBracket} koResults={st.koResults} matchResults={st.matchResults} config={st.config} initials={initials} picRefresh={picRefresh} lang={lang} onDone={()=>setShowFinale(false)}/>}
       {isHost&&koWinner(st.koResults["K104"])&&!showFinale&&(
-        <button onClick={()=>{try{window.localStorage?.removeItem(finaleShownKey);}catch{}setShowFinale(true);}} style={{position:"fixed",bottom:72,right:16,zIndex:90,padding:"6px 12px",borderRadius:8,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(10,22,40,0.95)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>🎬 PREVIEW</button>
+        <button onClick={()=>setShowFinale(true)} style={{position:"fixed",bottom:72,right:16,zIndex:90,padding:"6px 12px",borderRadius:8,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(10,22,40,0.95)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>🎬 PREVIEW</button>
       )}
       {showSuggestions&&<SuggestionModal open={true} onClose={()=>setShowSuggestions(false)} poolCode={poolCode||window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code")} myPlayerIdx={myPlayerIdx} playerNames={st.config?.playerNames||[]} initials={initials}/>}
       {scrolled&&<button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:28,right:16,zIndex:100,padding:"8px 14px",borderRadius:20,background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.5)",color:"var(--accent)",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 16px rgba(0,0,0,0.5)"}}>↑ TOP</button>}

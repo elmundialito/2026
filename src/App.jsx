@@ -5168,7 +5168,90 @@ function FinaleSequence({playerData, bracket, koResults, matchResults, config, i
               })}
             </div>
           </div>
-          <button onClick={onDone} style={{position:"absolute",bottom:24,right:20,fontFamily:"'DM Sans'",fontSize:11,color:"#3d5070",background:"transparent",border:"none",cursor:"pointer",letterSpacing:1}}>CLOSE ›</button>
+          <button onClick={async()=>{
+            try{
+              const bebas=new FontFace("BebasNeue","url(https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9WdhyyTh89ZNpQ.woff2)");
+              const dm=new FontFace("DMSans","url(https://fonts.gstatic.com/s/dmsans/v15/rP2Hp2ywxg089UriCZa4ET-DNl0.woff2)");
+              await Promise.all([bebas.load(),dm.load()]);
+              document.fonts.add(bebas);document.fonts.add(dm);
+            }catch(e){}
+            const W=420,HEADER=110,ROW=64,PAD=14,FOOT=44;
+            const H=HEADER+ROW*playerData.length+FOOT;
+            const canvas=document.createElement("canvas");
+            const DPR=2;canvas.width=W*DPR;canvas.height=H*DPR;
+            const ctx=canvas.getContext("2d");ctx.scale(DPR,DPR);
+            // Background
+            const bg=ctx.createLinearGradient(0,0,0,H);
+            bg.addColorStop(0,"#020810");bg.addColorStop(0.5,"#050f20");bg.addColorStop(1,"#020810");
+            ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+            // Gold top bar
+            const bar=ctx.createLinearGradient(0,0,W,0);
+            bar.addColorStop(0,"#c9a84c");bar.addColorStop(0.5,"#e8c96a");bar.addColorStop(1,"#c9a84c");
+            ctx.fillStyle=bar;ctx.fillRect(0,0,W,5);
+            // Trophy + title
+            ctx.font=`400 36px Arial`;ctx.textAlign="center";ctx.fillText("🏆",W/2,48);
+            ctx.fillStyle="#c9a84c";ctx.font=`700 32px BebasNeue,Arial`;ctx.fillText("MUNDIALITO 2026",W/2,78);
+            ctx.fillStyle="#4a5a7a";ctx.font=`400 10px DMSans,Arial`;ctx.fillText("FINAL STANDINGS · WORLD CUP 2026",W/2,94);
+            ctx.fillStyle="#c9a84c";ctx.globalAlpha=0.2;ctx.fillRect(PAD*3,102,W-PAD*6,1);ctx.globalAlpha=1;
+            // Rows
+            for(let ri=0;ri<playerData.length;ri++){
+              const p=playerData[ri];const y=HEADER+ri*ROW;
+              const color=p.color||"#c9a84c";const isFirst=ri===0;const isTop3=ri<3;
+              const champion=p.isChampion&&p.finalDone;
+              // Row bg
+              if(isFirst){
+                const rowBg=ctx.createLinearGradient(0,y,W,y);
+                rowBg.addColorStop(0,`${color}22`);rowBg.addColorStop(1,"transparent");
+                ctx.fillStyle=rowBg;ctx.beginPath();
+                ctx.roundRect?ctx.roundRect(PAD,y+2,W-PAD*2,ROW-4,8):ctx.rect(PAD,y+2,W-PAD*2,ROW-4);
+                ctx.fill();
+              }
+              // Divider
+              ctx.fillStyle="rgba(20,35,65,0.9)";ctx.fillRect(PAD,y+ROW-1,W-PAD*2,1);
+              // Rank
+              const medals=["🥇","🥈","🥉"];
+              if(isTop3){ctx.font=`400 ${isFirst?24:19}px Arial`;ctx.textAlign="center";ctx.fillText(medals[ri],PAD+22,y+ROW/2+9);}
+              else{ctx.font=`700 13px BebasNeue,Arial`;ctx.fillStyle="#2a3a5a";ctx.textAlign="center";ctx.fillText(`#${ri+1}`,PAD+22,y+ROW/2+5);}
+              // Avatar
+              const ax=PAD+62,ay=y+ROW/2,AR=isTop3?19:16;
+              ctx.save();
+              if(isFirst){ctx.beginPath();ctx.arc(ax,ay,AR+4,0,Math.PI*2);ctx.fillStyle=color;ctx.globalAlpha=0.25;ctx.fill();ctx.globalAlpha=1;}
+              ctx.beginPath();ctx.arc(ax,ay,AR,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.clip();
+              const pic=getProfilePic(p.idx);
+              if(pic){try{await new Promise((res,rej)=>{const img=new Image();img.onload=()=>{ctx.drawImage(img,ax-AR,ay-AR,AR*2,AR*2);res();};img.onerror=rej;img.src=pic;});}catch{ctx.font=`700 ${AR*0.7}px BebasNeue,Arial`;ctx.fillStyle="#0a1628";ctx.textAlign="center";ctx.fillText(initials[p.idx]||"?",ax,ay+AR*0.25);}}
+              else{ctx.font=`700 ${AR*0.7}px BebasNeue,Arial`;ctx.fillStyle="#0a1628";ctx.textAlign="center";ctx.fillText(initials[p.idx]||"?",ax,ay+AR*0.25);}
+              ctx.restore();
+              // Name + champion badge
+              const nameX=PAD+92;
+              ctx.textAlign="left";
+              ctx.font=`${champion?900:700} ${isFirst?20:17}px DMSans,Arial`;
+              ctx.fillStyle=color;
+              ctx.fillText(p.name+(champion?" 🏆":""),nameX,y+ROW/2+isFirst?2:3);
+              // Score
+              ctx.textAlign="right";
+              ctx.font=`700 ${isFirst?32:26}px BebasNeue,Arial`;
+              ctx.fillStyle=isFirst?"#c9a84c":color;
+              ctx.fillText(p.total,W-PAD-4,y+ROW/2+9);
+              ctx.font=`400 9px DMSans,Arial`;ctx.fillStyle="#3a4a6a";
+              ctx.fillText("pts",W-PAD-4,y+ROW/2+20);
+            }
+            // Footer
+            ctx.fillStyle="#2a3a5a";ctx.font=`400 10px DMSans,Arial`;ctx.textAlign="center";
+            ctx.fillText("elmundialito.github.io/2026",W/2,H-14);
+            // Share
+            canvas.toBlob(async blob=>{
+              if(!blob)return;
+              const file=new File([blob],"mundialito-final.png",{type:"image/png"});
+              if(navigator.canShare&&navigator.canShare({files:[file]})){
+                try{await navigator.share({files:[file],title:"Mundialito 2026 Final Standings"});return;}catch{}
+              }
+              const url=URL.createObjectURL(blob);
+              const a=document.createElement("a");a.href=url;a.download="mundialito-final.png";a.click();
+              setTimeout(()=>URL.revokeObjectURL(url),2000);
+            },"image/png");
+          }} style={{marginTop:16,width:"100%",padding:"12px",borderRadius:10,border:"1px solid rgba(201,168,76,0.5)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,cursor:"pointer"}}>
+            📤 SHARE FINAL STANDINGS
+          </button>
         </>
       )}
     </div>

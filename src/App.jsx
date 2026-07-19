@@ -5834,10 +5834,8 @@ export default function Mundialito() {
     }
   },[st.koResults, myPlayerIdx, resolvedBracket]);
 
-  // Finale sequence — shows on every fresh app open within 24h of final kickoff
-  const finaleTriggeredRef = useRef(false);
+  // Finale sequence — fires whenever koResults loads with K104 result, within 24h
   useEffect(()=>{
-    if(finaleTriggeredRef.current)return;
     const finalResult=st.koResults["K104"];
     if(!koWinner(finalResult))return;
     try{
@@ -5847,7 +5845,6 @@ export default function Mundialito() {
         if(Date.now()>kickoff+24*60*60*1000)return;
       }
     }catch{}
-    finaleTriggeredRef.current=true;
     const t=setTimeout(()=>setShowFinale(true),3000);
     return()=>clearTimeout(t);
   },[st.koResults]);

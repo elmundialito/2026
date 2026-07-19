@@ -4964,6 +4964,185 @@ const THEME_COLORS = [
   {name:"Rose",value:"#fb7185"},
 ];
 
+function FinaleSequence({playerData, bracket, koResults, matchResults, config, initials, picRefresh, lang, onDone}) {
+  // Phase 1: final score splash, Phase 2: leaderboard reveal (8→1)
+  const [phase, setPhase] = useState('splash'); // 'splash' | 'reveal'
+  const [revealIdx, setRevealIdx] = useState(7); // start at 8th place (index 7)
+  const [cardPhase, setCardPhase] = useState('enter'); // 'enter' | 'hold' | 'exit'
+  const [splashPhase, setSplashPhase] = useState('in'); // 'in' | 'hold' | 'out'
+
+  const finalResult = koResults["K104"];
+  const finalW = koWinner(finalResult);
+  const finalBk = bracket["K104"] || {};
+  const winner = finalW === "A" ? finalBk.a : finalBk.b;
+  const loser = finalW === "A" ? finalBk.b : finalBk.a;
+  const winnerTm = TBN[winner] || {};
+  const loserTm = TBN[loser] || {};
+  const winnerFlag = winnerTm.flag || "🏆";
+  const loserFlag = loserTm.flag || "";
+  const finalScore = finalResult ? `${finalResult.home} – ${finalResult.away}` : "? – ?";
+
+  // Sort players 8th to 1st for reveal
+  const revealOrder = [...playerData].reverse(); // playerData is already sorted 1st→8th
+
+  // Splash animation
+  useEffect(() => {
+    if(phase !== 'splash') return;
+    const t1 = setTimeout(() => setSplashPhase('hold'), 400);
+    const t2 = setTimeout(() => setSplashPhase('out'), 4500);
+    const t3 = setTimeout(() => { setPhase('reveal'); setCardPhase('enter'); }, 5200);
+    return () => [t1,t2,t3].forEach(clearTimeout);
+  }, [phase]);
+
+  // Card flip cycle
+  useEffect(() => {
+    if(phase !== 'reveal') return;
+    if(cardPhase === 'enter') {
+      const t = setTimeout(() => setCardPhase('hold'), 400);
+      return () => clearTimeout(t);
+    }
+    if(cardPhase === 'hold') {
+      const t = setTimeout(() => setCardPhase('exit'), 3600);
+      return () => clearTimeout(t);
+    }
+    if(cardPhase === 'exit') {
+      const t = setTimeout(() => {
+        if(revealIdx > 0) {
+          setRevealIdx(i => i - 1);
+          setCardPhase('enter');
+        } else {
+          onDone();
+        }
+      }, 500);
+      return () => clearTimeout(t);
+    }
+  }, [phase, cardPhase, revealIdx]);
+
+  const p = revealOrder[revealIdx];
+  const rank = playerData.length - revealIdx; // 8,7,6...1
+
+  // Build team breakdown for current player, sorted by pts desc
+  const teamBreakdown = p ? (p.myTeams || []).map(team => {
+    const tgs = (() => {
+      let pts = 0;
+      GM.forEach(m => {
+        const r = matchResults[m.id]; if(!r||r.home==null)return;
+        const isHome=m.t[0]===team,isAway=m.t[1]===team;
+        if(!isHome&&!isAway)return;
+        const out = r.home>r.away?"A":r.away>r.home?"B":"D";
+        if((isHome&&out==="A")||(isAway&&out==="B"))pts+=3;
+        else if(out==="D")pts+=1;
+      }); return pts;
+    })();
+    const tko = teamKOPts(team, bracket, koResults, config.koPoints);
+    const {stage} = getTeamStage(team, bracket, koResults, matchResults);
+    return {team, pts: tgs+tko, stage, flag: TBN[team]?.flag||"🏳️"};
+  }).sort((a,b) => b.pts - a.pts) : [];
+
+  const isWinner = rank === 1;
+  const cardRotate = cardPhase === 'enter' ? 'rotateY(90deg)' : cardPhase === 'exit' ? 'rotateY(-90deg)' : 'rotateY(0deg)';
+  const cardOpacity = cardPhase === 'hold' ? 1 : 0;
+
+  const splashOpacity = splashPhase === 'hold' ? 1 : 0;
+  const splashScale = splashPhase === 'hold' ? 'scale(1)' : splashPhase === 'in' ? 'scale(0.85)' : 'scale(1.05)';
+
+  const rankLabels = ['','🥇','🥈','🥉','4th','5th','6th','7th','8th'];
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:1000,background:"linear-gradient(165deg,#020810,#050f20)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+      <style>{`
+        @keyframes goldPulse{0%,100%{opacity:0.6}50%{opacity:1}}
+        @keyframes starFloat{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(-120vh) rotate(720deg);opacity:0}}
+        @keyframes confettiBurst{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(-110vh) rotate(900deg);opacity:0}}
+        @keyframes splashPop{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+      `}</style>
+
+      {/* Gold star particles always in bg */}
+      {Array.from({length:20},(_,i)=>(
+        <div key={i} style={{position:"absolute",left:`${5+i*4.5}%`,bottom:-20,fontSize:10+Math.random()*8,animation:`starFloat ${4+Math.random()*6}s ${Math.random()*4}s linear infinite`,opacity:0.4}}>⭐</div>
+      ))}
+
+      {/* === PHASE 1: SPLASH === */}
+      {phase === 'splash' && (
+        <div style={{textAlign:"center",transition:"opacity 0.4s, transform 0.5s",opacity:splashOpacity,transform:splashScale}}>
+          {/* Winner confetti */}
+          {splashPhase==='hold'&&Array.from({length:30},(_,i)=>(
+            <div key={i} style={{position:"absolute",left:`${Math.random()*100}%`,top:-20,width:8+Math.random()*6,height:8+Math.random()*6,background:['#c9a84c','#ffd700','#fff0a0','#e0b834','#f5d060'][i%5],borderRadius:2,animation:`confettiBurst ${2+Math.random()*2}s ${Math.random()*0.8}s linear forwards`,transform:`rotate(${Math.random()*360}deg)`}}/>
+          ))}
+          <div style={{fontSize:60,marginBottom:8}}>🏆</div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"#c9a84c",letterSpacing:4,marginBottom:16}}>WORLD CUP 2026 CHAMPION</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:20,marginBottom:16}}>
+            <span style={{fontSize:56}}>{winnerFlag}</span>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:52,color:"#e0dcd4",letterSpacing:4,lineHeight:1}}>{finalScore}</div>
+              {finalResult?.pens && <div style={{fontFamily:"'DM Sans'",fontSize:12,color:"#8899b4",marginTop:4}}>{winner} won on penalties</div>}
+            </div>
+            <span style={{fontSize:56,opacity:0.4}}>{loserFlag}</span>
+          </div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:"#c9a84c",letterSpacing:6,animation:"goldPulse 1.5s ease-in-out infinite"}}>{countryName(winner,"en")}</div>
+          <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#3d5070",marginTop:12,letterSpacing:2}}>ARE WORLD CHAMPIONS</div>
+        </div>
+      )}
+
+      {/* === PHASE 2: LEADERBOARD REVEAL === */}
+      {phase === 'reveal' && p && (
+        <>
+          {/* Header */}
+          <div style={{position:"absolute",top:24,textAlign:"center",width:"100%"}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:13,color:"#c9a84c",letterSpacing:4,opacity:0.7}}>FINAL STANDINGS</div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"#3d5070",letterSpacing:3}}>{revealIdx+1} of {playerData.length}</div>
+          </div>
+
+          {/* Card */}
+          <div style={{width:"calc(100% - 48px)",maxWidth:400,transition:"transform 0.4s ease-in-out, opacity 0.25s",transform:cardRotate,opacity:cardOpacity,perspective:1000}}>
+            <div style={{background:isWinner?"linear-gradient(165deg,#1a1200,#2a2000)":"linear-gradient(165deg,#0a1628,#0f1e38)",borderRadius:16,padding:"20px 20px 16px",border:isWinner?"2px solid #c9a84c":"1px solid #1e3060",boxShadow:isWinner?"0 0 40px rgba(201,168,76,0.3)":"0 4px 24px rgba(0,0,0,0.6)"}}>
+              {/* Rank + name + score */}
+              <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:isWinner?48:36,color:isWinner?"#c9a84c":p.color,letterSpacing:1,minWidth:56,textAlign:"center",lineHeight:1}}>
+                  {rankLabels[rank]||`#${rank}`}
+                </div>
+                <PlayerAvatar idx={p.idx} name={p.name} size={isWinner?52:44} refresh={picRefresh} style={{borderRadius:"50%",flexShrink:0,border:isWinner?"2px solid #c9a84c":"2px solid #1e3060"}}/>
+                <div style={{flex:1}}>
+                  <div style={{fontFamily:"'DM Sans'",fontSize:isWinner?20:17,fontWeight:900,color:p.color,display:"flex",alignItems:"center",gap:6}}>
+                    {p.name}
+                    {isWinner&&<span style={{fontSize:16}}>🏆</span>}
+                    {p.allEliminated&&!p.finalDone&&<span style={{fontSize:12}}>❌</span>}
+                  </div>
+                  <div style={{display:"flex",alignItems:"baseline",gap:4,marginTop:2}}>
+                    <span style={{fontFamily:"'Bebas Neue'",fontSize:isWinner?36:28,color:isWinner?"#c9a84c":p.color,lineHeight:1}}>{p.total}</span>
+                    <span style={{fontFamily:"'DM Sans'",fontSize:11,color:"#5a6a8a"}}>pts</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div style={{height:1,background:`${p.color}22`,marginBottom:12}}/>
+
+              {/* Country breakdown */}
+              <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                {teamBreakdown.map(({team,pts,stage,flag})=>(
+                  <div key={team} style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:14,flexShrink:0}}>{flag}</span>
+                    <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#c8c0b0",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{countryName(team,"en")}</span>
+                    <span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"#5a6a8a",background:"rgba(26,39,68,0.8)",padding:"1px 5px",borderRadius:3,flexShrink:0,letterSpacing:0.5}}>{stage}</span>
+                    <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pts>0?p.color:"#3d5070",width:32,textAlign:"right",flexShrink:0}}>{pts}pt</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Winner special glow */}
+              {isWinner&&<div style={{textAlign:"center",marginTop:14,fontFamily:"'Bebas Neue'",fontSize:12,color:"#c9a84c",letterSpacing:3,animation:"goldPulse 1.5s ease-in-out infinite"}}>🏆 MUNDIALITO CHAMPION 🏆</div>}
+            </div>
+          </div>
+
+          {/* Skip */}
+          <button onClick={onDone} style={{position:"absolute",bottom:24,right:20,fontFamily:"'DM Sans'",fontSize:11,color:"#3d5070",background:"transparent",border:"none",cursor:"pointer",letterSpacing:1}}>SKIP ›</button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ResultOverlay({results, onDone}) {
   // results = [{team, flag, outcome: "W"|"D"|"L", opponent, opponentFlag, score}]
   const lang=useContext(LangContext);
@@ -5233,6 +5412,24 @@ export default function Mundialito() {
   const [picRefresh,setPicRefresh]=useState(0);
   const [saveStatus,setSaveStatus]=useState(null);
   const [resultOverlay,setResultOverlay]=useState(null); // array of result objects to show
+  const [showFinale,setShowFinale]=useState(false);
+  const finaleShownKey="mundi_finale_shown_K104";
+  // Player data for finale — computed at top level
+  const finalePlayerData=useMemo(()=>{
+    return Array.from({length:st.config.playerCount},(_,i)=>{
+      const gsPts=playerGSPts(i,st.picks||[],st.matchResults);
+      const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);
+      const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);
+      const color=getPlayerColor(i,PC[i]);
+      const finalResult=st.koResults["K104"];
+      const finalDone=!!koWinner(finalResult);
+      const finalWinnerSide=koWinner(finalResult);
+      const finalBk=resolvedBracket["K104"]||{};
+      const champ=finalWinnerSide==="A"?finalBk.a:finalWinnerSide==="B"?finalBk.b:null;
+      const isChampion=champ?myTeams.includes(champ):false;
+      return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,myTeams,color,isChampion,finalDone};
+    }).sort((a,b)=>b.total-a.total);
+  },[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
   const [myPlayerIdx,setMyPlayerIdx]=useState(()=>{try{const v=window.localStorage?.getItem("mundi_my_player");return v!==null?parseInt(v):null;}catch(e){return null;}});
   const [playerColors,setPlayerColors]=useState({});
   const [showSelectName,setShowSelectName]=useState(false);
@@ -5518,6 +5715,23 @@ export default function Mundialito() {
       setResultOverlay(prev=>prev?[...prev,...newResults]:newResults);
     }
   },[st.koResults, myPlayerIdx, resolvedBracket]);
+
+  // Finale sequence — trigger once when K104 result is entered (localStorage once-only)
+  useEffect(()=>{
+    const finalResult=st.koResults["K104"];
+    if(!koWinner(finalResult))return;
+    try{
+      if(window.localStorage?.getItem(finaleShownKey))return;
+      // Only show after ResultOverlay is done (slight delay)
+      const t=setTimeout(()=>{
+        if(!resultOverlay){
+          setShowFinale(true);
+          window.localStorage?.setItem(finaleShownKey,"1");
+        }
+      },800);
+      return ()=>clearTimeout(t);
+    }catch{setShowFinale(true);}
+  },[st.koResults["K104"], resultOverlay]);
   const playerRankings=useMemo(()=>{return Array.from({length:st.config.playerCount},(_,i)=>{const gsPts=playerGSPts(i,st.picks||[],st.matchResults);const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);let gd=0,gf=0;myTeams.forEach(team=>{GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]===team,isAway=m.t[1]===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const isHome=bk.a===team,isAway=bk.b===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});});const pastGroups=myTeams.filter(team=>isInR32Bracket(team,resolvedBracket)).length;const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(st.koResults[m.id]);if(!w0)return false;const bk=resolvedBracket[m.id];if(!bk)return false;const w=w0==="A"?bk.a:bk.b;return w&&myTeams.includes(w);}).length;return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,pastGroups,r32,gd,gf,myTeams};}).sort((a,b)=>{if(b.total!==a.total)return b.total-a.total;if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;if(b.gd!==a.gd)return b.gd-a.gd;if(b.gf!==a.gf)return b.gf-a.gf;let aWins=0,bWins=0,aGD=0,bGD=0,aGF=0,bGF=0;GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const aH=a.myTeams.includes(m.t[0]),aA=a.myTeams.includes(m.t[1]),bH=b.myTeams.includes(m.t[0]),bA=b.myTeams.includes(m.t[1]);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const aH=a.myTeams.includes(bk.a),aA=a.myTeams.includes(bk.b),bH=b.myTeams.includes(bk.a),bA=b.myTeams.includes(bk.b);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});if(aWins!==bWins)return bWins-aWins;if(aGD!==bGD)return bGD-aGD;if(aGF!==bGF)return bGF-aGF;const draftOrd=st.draftOrder||[];const aPick=draftOrd.indexOf(a.idx);const bPick=draftOrd.indexOf(b.idx);if(aPick!==-1&&bPick!==-1)return aPick-bPick;return a.idx-b.idx;});},[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
   const syncCode=useMemo(()=>encode(st),[st]);
   const readOnly=!isHost;
@@ -5725,6 +5939,10 @@ export default function Mundialito() {
         }}/>
       <PoolMgrModal/>
       {resultOverlay&&<ResultOverlay results={resultOverlay} onDone={()=>setResultOverlay(null)}/>}
+      {showFinale&&finalePlayerData.length>0&&<FinaleSequence playerData={finalePlayerData} bracket={resolvedBracket} koResults={st.koResults} matchResults={st.matchResults} config={st.config} initials={initials} picRefresh={picRefresh} lang={lang} onDone={()=>setShowFinale(false)}/>}
+      {isHost&&koWinner(st.koResults["K104"])&&!showFinale&&(
+        <button onClick={()=>{try{window.localStorage?.removeItem(finaleShownKey);}catch{}setShowFinale(true);}} style={{position:"fixed",bottom:72,right:16,zIndex:90,padding:"6px 12px",borderRadius:8,border:"1px solid rgba(201,168,76,0.4)",background:"rgba(10,22,40,0.95)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>🎬 PREVIEW</button>
+      )}
       {showSuggestions&&<SuggestionModal open={true} onClose={()=>setShowSuggestions(false)} poolCode={poolCode||window.localStorage?.getItem("mundi_pool_code")||window.localStorage?.getItem("mundi_spectator_code")} myPlayerIdx={myPlayerIdx} playerNames={st.config?.playerNames||[]} initials={initials}/>}
       {scrolled&&<button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:28,right:16,zIndex:100,padding:"8px 14px",borderRadius:20,background:"rgba(10,22,40,0.95)",border:"1px solid rgba(201,168,76,0.5)",color:"var(--accent)",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",boxShadow:"0 2px 16px rgba(0,0,0,0.5)"}}>↑ TOP</button>}
     </div></>{/* end app */}</PicBumpContext.Provider></PicContext.Provider></LangContext.Provider>

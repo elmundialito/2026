@@ -5130,7 +5130,7 @@ function FinaleSequence({playerData, bracket, koResults, matchResults, config, i
                     <span style={{fontSize:14,flexShrink:0}}>{flag}</span>
                     <span style={{fontFamily:"'DM Sans'",fontSize:11,fontWeight:600,color:"#c8c0b0",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{countryName(team,"en")}</span>
                     <span style={{fontFamily:"'Bebas Neue'",fontSize:11,color:"#5a6a8a",background:"rgba(26,39,68,0.8)",padding:"1px 5px",borderRadius:3,flexShrink:0,letterSpacing:0.5}}>{stage}</span>
-                    <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pts>0?p.color:"#3d5070",width:32,textAlign:"right",flexShrink:0}}>{pts}pt</span>
+                    <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:pts>0?p.color:"#3d5070",width:32,textAlign:"right",flexShrink:0}}>{pts}</span>
                   </div>
                 ))}
               </div>
@@ -5251,6 +5251,9 @@ function FinaleSequence({playerData, bracket, koResults, matchResults, config, i
             },"image/png");
           }} style={{marginTop:16,width:"100%",padding:"12px",borderRadius:10,border:"1px solid rgba(201,168,76,0.5)",background:"rgba(201,168,76,0.1)",color:"var(--accent)",fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:2,cursor:"pointer"}}>
             📤 SHARE FINAL STANDINGS
+          </button>
+          <button onClick={onDone} style={{marginTop:10,width:"100%",padding:"10px",borderRadius:10,border:"1px solid #1e2f50",background:"transparent",color:"#5a6a8a",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,cursor:"pointer"}}>
+            CLOSE
           </button>
         </>
       )}
@@ -5837,6 +5840,7 @@ export default function Mundialito() {
     const finalResult=st.koResults["K104"];
     if(!koWinner(finalResult))return;
     if(shownFinaleThisSessionRef.current)return;
+    if(resultOverlay)return; // wait for team animations to finish
     // Only within 24h of final kickoff
     try{
       const finalMatch=KM.find(m=>m.id==="K104");
@@ -5846,9 +5850,7 @@ export default function Mundialito() {
       }
     }catch{}
     shownFinaleThisSessionRef.current=true;
-    const t=setTimeout(()=>{
-      if(!resultOverlay) setShowFinale(true);
-    },800);
+    const t=setTimeout(()=>setShowFinale(true),800);
     return()=>clearTimeout(t);
   },[st.koResults, resultOverlay]);
   const playerRankings=useMemo(()=>{return Array.from({length:st.config.playerCount},(_,i)=>{const gsPts=playerGSPts(i,st.picks||[],st.matchResults);const koPts=playerKOPts(i,st.picks||[],resolvedBracket,st.koResults,st.config.koPoints);const myTeams=(st.picks||[]).filter(p=>p.playerIdx===i).map(p=>p.team);let gd=0,gf=0;myTeams.forEach(team=>{GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const isHome=m.t[0]===team,isAway=m.t[1]===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const isHome=bk.a===team,isAway=bk.b===team;if(isHome){gf+=r.home;gd+=(r.home-r.away);}else if(isAway){gf+=r.away;gd+=(r.away-r.home);}});});const pastGroups=myTeams.filter(team=>isInR32Bracket(team,resolvedBracket)).length;const r32=KM.filter(m=>m.round==="r32").filter(m=>{const w0=koWinner(st.koResults[m.id]);if(!w0)return false;const bk=resolvedBracket[m.id];if(!bk)return false;const w=w0==="A"?bk.a:bk.b;return w&&myTeams.includes(w);}).length;return{idx:i,name:st.config.playerNames[i],total:gsPts+koPts,pastGroups,r32,gd,gf,myTeams};}).sort((a,b)=>{if(b.total!==a.total)return b.total-a.total;if(b.pastGroups!==a.pastGroups)return b.pastGroups-a.pastGroups;if(b.gd!==a.gd)return b.gd-a.gd;if(b.gf!==a.gf)return b.gf-a.gf;let aWins=0,bWins=0,aGD=0,bGD=0,aGF=0,bGF=0;GM.forEach(m=>{const r=st.matchResults[m.id];if(!r||r.home==null||r.away==null)return;const aH=a.myTeams.includes(m.t[0]),aA=a.myTeams.includes(m.t[1]),bH=b.myTeams.includes(m.t[0]),bA=b.myTeams.includes(m.t[1]);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});KM.forEach(m=>{const r=st.koResults[m.id];if(!r||typeof r==="string"||r.home==null||r.away==null)return;const bk=resolvedBracket[m.id];if(!bk)return;const aH=a.myTeams.includes(bk.a),aA=a.myTeams.includes(bk.b),bH=b.myTeams.includes(bk.a),bA=b.myTeams.includes(bk.b);if(aH&&bA){aGF+=r.home;bGF+=r.away;aGD+=(r.home-r.away);bGD+=(r.away-r.home);if(r.home>r.away)aWins++;else if(r.away>r.home)bWins++;}else if(aA&&bH){aGF+=r.away;bGF+=r.home;aGD+=(r.away-r.home);bGD+=(r.home-r.away);if(r.away>r.home)aWins++;else if(r.home>r.away)bWins++;}});if(aWins!==bWins)return bWins-aWins;if(aGD!==bGD)return bGD-aGD;if(aGF!==bGF)return bGF-aGF;const draftOrd=st.draftOrder||[];const aPick=draftOrd.indexOf(a.idx);const bPick=draftOrd.indexOf(b.idx);if(aPick!==-1&&bPick!==-1)return aPick-bPick;return a.idx-b.idx;});},[st.config,st.picks,st.matchResults,resolvedBracket,st.koResults]);
